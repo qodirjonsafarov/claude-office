@@ -4,6 +4,10 @@ const ptBR: Record<TranslationKey, string> = {
   // App
   "app.title": "Visualizador do Escritório",
   "app.subtitle": "QG da equipe de IA",
+  "hud.agents": "Equipe",
+  "hud.tasks": "Tarefas",
+  "hud.tools": "Ferram.",
+  "hud.context": "Contexto",
   "app.initializingSystems": "Inicializando Sistemas...",
 
   // Header Controls

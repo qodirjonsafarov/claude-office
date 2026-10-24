@@ -2,6 +2,10 @@ const en = {
   // App
   "app.title": "Office",
   "app.subtitle": "AI team HQ",
+  "hud.agents": "Team",
+  "hud.tasks": "Tasks",
+  "hud.tools": "Tools",
+  "hud.context": "Context",
   "app.initializingSystems": "Initializing Systems...",
 
   // Header Controls

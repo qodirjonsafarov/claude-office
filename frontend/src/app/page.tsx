@@ -32,6 +32,7 @@ import { SessionSidebar } from "@/components/layout/SessionSidebar";
 import { MobileDrawer } from "@/components/layout/MobileDrawer";
 import { MobileAgentActivity } from "@/components/layout/MobileAgentActivity";
 import { RightSidebar } from "@/components/layout/RightSidebar";
+import { HudStats } from "@/components/layout/HudStats";
 import { HeaderControls } from "@/components/layout/HeaderControls";
 import {
   StatusToast,
@@ -437,6 +438,12 @@ export default function V2TestPage(): React.ReactNode {
         </div>
 
         {!isMobile && (
+          <div className="hidden xl:flex flex-1 justify-center min-w-0 px-4">
+            <HudStats />
+          </div>
+        )}
+
+        {!isMobile && (
           <HeaderControls
             isConnected={isConnected}
             debugMode={debugMode}
@@ -515,7 +522,13 @@ export default function V2TestPage(): React.ReactNode {
             data-tour-id="game-canvas"
             className="qo-stage flex-grow border border-slate-800 rounded-lg shadow-2xl bg-slate-900 overflow-hidden relative"
           >
-            <OfficeGame />
+            {/* Keep the 1280x1024 scene's aspect ratio and center it, so the
+                canvas fills its box exactly (no letterbox, clicks stay aligned) */}
+            <div className="qo-stage-inner">
+              <div className="qo-stage-screen">
+                <OfficeGame />
+              </div>
+            </div>
           </div>
 
           <RightSidebar />

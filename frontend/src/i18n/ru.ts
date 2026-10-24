@@ -4,6 +4,10 @@ const ru: Record<TranslationKey, string> = {
   // App
   "app.title": "Office",
   "app.subtitle": "Штаб AI-команды",
+  "hud.agents": "Команда",
+  "hud.tasks": "Задачи",
+  "hud.tools": "Действия",
+  "hud.context": "Память",
   "app.initializingSystems": "Запуск систем...",
 
   // Header Controls

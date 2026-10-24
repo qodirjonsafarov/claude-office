@@ -309,21 +309,88 @@ body {
 .qo-stage canvas {
   border-radius: 10px;
 }
-/* Лёгкие «линии экрана» поверх сцены */
-.qo-stage::after {
+/* Сцена держит пропорции 1280x1024 и стоит по центру */
+.qo-stage-inner {
+  position: absolute;
+  inset: 0;
+  padding: 14px;
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.qo-stage-screen {
+  position: relative;
+  width: min(100cqw, 125cqh);
+  aspect-ratio: 1280 / 1024;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.6),
+    0 0 0 4px rgba(130, 150, 200, 0.18),
+    0 0 40px -4px rgba(139, 92, 246, 0.45),
+    0 24px 50px -20px rgba(0, 0, 0, 0.9);
+}
+/* Лёгкие «линии экрана» и затемнение по краям поверх сцены */
+.qo-stage-screen::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  border-radius: 16px;
   background: repeating-linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.018) 0 1px,
+    rgba(255, 255, 255, 0.016) 0 1px,
     transparent 1px 3px
   );
-  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.5);
   z-index: 5;
 }
+
+/* ---------- Счётчики в шапке ---------- */
+.qo-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(12, 18, 34, 0.9), rgba(20, 28, 52, 0.9));
+  border: 1px solid rgba(130, 150, 200, 0.22);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.qo-chip-label {
+  font-family: var(--qo-pixel);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8f9ab3;
+}
+.qo-chip-value {
+  font-family: var(--qo-pixel);
+  font-size: 16px;
+  font-weight: 700;
+  color: #f8fafc;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
+  min-width: 18px;
+  text-align: right;
+}
+.qo-bar {
+  width: 90px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(130, 150, 200, 0.2);
+  overflow: hidden;
+}
+.qo-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--qo-cyan), var(--qo-violet));
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.7);
+  transition: width 400ms ease;
+}
+.qo-bar-warn { background: linear-gradient(90deg, var(--qo-gold), var(--qo-orange)); }
+.qo-bar-danger { background: linear-gradient(90deg, #fb7185, #ef4444); box-shadow: 0 0 10px rgba(239, 68, 68, 0.8); }
 
 /* ---------- Шапка: HUD-полоса ---------- */
 .qo-bg header {
@@ -435,3 +502,38 @@ body {
   background: linear-gradient(90deg, rgba(139, 92, 246, 0.28), rgba(255, 138, 61, 0.10)) !important;
   box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.45), 0 0 18px -6px rgba(139, 92, 246, 0.7);
 }
+
+/* На средних экранах прячем подписи у счётчиков, остаются значки и числа */
+@media (max-width: 1535px) {
+  .qo-chip-label { display: none; }
+  .qo-bar { width: 64px; }
+}
+
+/* Пустые состояния: аккуратная плашка вместо серого курсива */
+.qo-bg .italic.text-center {
+  font-style: normal !important;
+  font-family: var(--qo-pixel);
+  letter-spacing: 0.04em;
+  color: #7f8aa3 !important;
+  margin: 10px;
+  padding: 18px 12px !important;
+  border: 1px dashed rgba(130, 150, 200, 0.25);
+  border-radius: 10px;
+  background:
+    radial-gradient(120px 60px at 50% 0%, rgba(139, 92, 246, 0.10), transparent 70%),
+    rgba(10, 15, 30, 0.35);
+}
+.qo-bg .italic.text-center::before {
+  content: "◆";
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: var(--qo-violet);
+  text-shadow: 0 0 10px rgba(139, 92, 246, 0.8);
+  animation: qo-float 2.4s ease-in-out infinite;
+}
+@keyframes qo-float {
+  0%, 100% { transform: translateY(0); opacity: 0.8; }
+  50% { transform: translateY(-3px); opacity: 1; }
+}
+.qo-bg .flex.italic.text-center { flex-direction: column; flex-grow: 0 !important; margin: auto 10px; }

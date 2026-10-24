@@ -54,12 +54,13 @@ SPECS = {
     "blue":   dict(shirt="blue",   pants="charcoal", shoes="black", skin="light",  hair="parted",       hair_color="dark_brown", eyes="brown"),
     "green":  dict(shirt="green",  pants="navy",     shoes="brown", skin="olive",  hair="buzzcut",      hair_color="black",      eyes="brown"),
     "purple": dict(shirt="purple", pants="charcoal", shoes="black", skin="amber",  hair="curly_short",  hair_color="raven",      eyes="green"),
-    "orange": dict(shirt="orange", pants="slate",    shoes="black", skin="light",  hair="spiked",       hair_color="ginger",     eyes="blue"),
+    "orange": dict(shirt="orange", pants="slate",    shoes="black", skin="amber",  hair="curly_short",  hair_color="dark_brown", eyes="brown"),
     "pink":   dict(shirt="pink",   pants="gray",     shoes="brown", skin="taupe",  hair="swoop",        hair_color="chestnut",   eyes="brown"),
     "teal":   dict(shirt="teal",   pants="charcoal", shoes="black", skin="bronze", hair="messy1",       hair_color="black",      eyes="brown"),
     "yellow": dict(shirt="yellow", pants="navy",     shoes="brown", skin="light",  hair="bedhead",      hair_color="blonde",     eyes="blue"),
     "red":    dict(shirt="red",    pants="charcoal", shoes="black", skin="olive",  hair="plain",        hair_color="dark_brown", eyes="gray"),
-    "boss":   dict(shirt="black",  pants="black",    shoes="black", skin="olive",  hair="parted",       hair_color="raven",      eyes="brown"),
+    # Claude (the boss): the ginger guy in orange
+    "boss":   dict(shirt="orange", pants="slate",    shoes="black", skin="light",  hair="spiked",       hair_color="ginger",     eyes="blue"),
 }
 OUT.mkdir(parents=True, exist_ok=True)
 for name, spec in SPECS.items():

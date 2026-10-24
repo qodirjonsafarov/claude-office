@@ -20,6 +20,7 @@ import { drawBubble, drawIconBadge } from "./shared/drawBubble";
 import { drawRightArm, drawLeftArm } from "./shared/drawArm";
 import { truncateBubbleText } from "@/utils/bubbleText";
 import { PersonSprite, sheetForColor, usePersonMotion } from "./PersonSprite";
+import { NameTag, accentFromHex } from "./NameTag";
 
 // ============================================================================
 // TYPES
@@ -186,19 +187,7 @@ function AgentSpriteComponent({
 
       {/* Agent name if present - hide when in elevator or when renderLabel is false */}
       {renderLabel && name && !isInElevatorZone(position) && (
-        <pixiContainer y={-70} scale={0.5}>
-          <pixiText
-            text={name}
-            anchor={0.5}
-            style={{
-              fontFamily: "monospace",
-              fontSize: 24,
-              fill: 0xffffff,
-              fontWeight: "bold",
-              stroke: { width: 4, color: 0x000000 },
-            }}
-          />
-        </pixiContainer>
+        <NameTag name={name} accent={accentFromHex(color)} y={-72} />
       )}
 
       {/* Bubble - hide when in elevator or when renderBubble is false */}
@@ -304,23 +293,21 @@ export const AgentHeadset = memo(AgentHeadsetComponent);
 export interface AgentLabelProps {
   name: string;
   position: Position;
+  color?: string;
 }
 
-function AgentLabelComponent({ name, position }: AgentLabelProps): ReactNode {
+function AgentLabelComponent({
+  name,
+  position,
+  color,
+}: AgentLabelProps): ReactNode {
   return (
-    <pixiContainer x={position.x} y={position.y - 70} scale={0.5}>
-      <pixiText
-        text={name}
-        anchor={0.5}
-        style={{
-          fontFamily: "monospace",
-          fontSize: 24,
-          fill: 0xffffff,
-          fontWeight: "bold",
-          stroke: { width: 4, color: 0x000000 },
-        }}
-      />
-    </pixiContainer>
+    <NameTag
+      name={name}
+      accent={color ? accentFromHex(color) : undefined}
+      x={position.x}
+      y={position.y - 72}
+    />
   );
 }
 

@@ -724,6 +724,7 @@ export function OfficeGame(): ReactNode {
                         key={`label-${agent.id}`}
                         name={agent.name!}
                         position={agent.currentPosition}
+                        color={agent.color}
                       />
                     ))}
 

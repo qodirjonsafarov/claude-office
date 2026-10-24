@@ -17,6 +17,7 @@ import { drawBubble, drawIconBadge } from "./shared/drawBubble";
 import { drawRightArm, drawLeftArm } from "./shared/drawArm";
 import { truncateBubbleText } from "@/utils/bubbleText";
 import { PersonSprite, usePersonMotion } from "./PersonSprite";
+import { NameTag } from "./NameTag";
 
 // ============================================================================
 // TYPES
@@ -66,7 +67,6 @@ const _STATE_COLORS: Record<BossState, number> = {
 // ============================================================================
 // DRAWING FUNCTIONS
 // ============================================================================
-
 
 function drawFallbackChair(g: Graphics): void {
   g.clear();
@@ -302,21 +302,7 @@ function BossSpriteComponent({
       )}
 
       {/* Boss label - hidden when away from desk */}
-      {!isAway && (
-        <pixiContainer y={-63} scale={0.5}>
-          <pixiText
-            text="Claude"
-            anchor={0.5}
-            style={{
-              fontFamily: "monospace",
-              fontSize: 24,
-              fill: 0xffffff,
-              fontWeight: "bold",
-              stroke: { width: 4, color: 0x000000 },
-            }}
-          />
-        </pixiContainer>
-      )}
+      {!isAway && <NameTag name="Claude" accent={0xff8a3d} y={-60} />}
 
       {/* Task marquee on desk - scrolling user prompt */}
       {currentTask && (
@@ -369,19 +355,7 @@ function MobileBossComponent({
       />
 
       {/* Boss label */}
-      <pixiContainer y={-63} scale={0.5}>
-        <pixiText
-          text="Claude"
-          anchor={0.5}
-          style={{
-            fontFamily: "monospace",
-            fontSize: 24,
-            fill: 0xffffff,
-            fontWeight: "bold",
-            stroke: { width: 4, color: 0x000000 },
-          }}
-        />
-      </pixiContainer>
+      <NameTag name="Claude" accent={0xff8a3d} y={-60} />
     </pixiContainer>
   );
 }

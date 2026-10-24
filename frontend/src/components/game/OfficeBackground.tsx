@@ -4,7 +4,7 @@
  * Renders the office floor, walls, and tile pattern using sprites.
  */
 
-import { type ReactNode, useMemo, useCallback } from "react";
+import { type ReactNode, useCallback } from "react";
 import { Graphics, Texture } from "pixi.js";
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from "@/constants/canvas";
 
@@ -15,7 +15,6 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT } from "@/constants/canvas";
 // Floor/wall dimensions
 const WALL_HEIGHT = 250;
 const WALL_TRIM_HEIGHT = 10;
-const FLOOR_TILE_SIZE = 100;
 
 // Colors (Qodirjon theme: deep navy walls, warm wood floor, neon accents)
 const FLOOR_COLOR = 0x3a2a1e;
@@ -36,17 +35,6 @@ const WALL_BANDS = 10;
 interface OfficeBackgroundProps {
   floorTileTexture?: Texture | null;
 }
-
-interface TileData {
-  x: number;
-  y: number;
-  rotation: number;
-  tint: number;
-}
-
-// Tint colors for checkerboard effect
-const TILE_TINT_LIGHT = 0xf6dfbd; // Warm wood
-const TILE_TINT_DARK = 0xe2c49c; // Darker wood
 
 // ============================================================================
 // DRAWING FUNCTION
@@ -112,6 +100,63 @@ function drawWalls(g: Graphics): void {
   g.fill(WALL_TRIM_HIGHLIGHT);
 }
 
+// Modern floor: light ash planks with staggered seams
+const PLANK_HEIGHT = 32;
+const PLANK_COLORS = [0xa3927f, 0x9a8a78, 0xad9c88, 0x958572, 0xa8978a];
+const PLANK_SEAM = 0x6f6252;
+
+// Team zone carpet under the desk grid
+const TEAM_ZONE = { x: 150, y: 360, w: 980, h: 400 };
+const TEAM_ZONE_COLOR = 0x23324f;
+const TEAM_ZONE_BORDER = 0x3b4f7a;
+
+function drawFloor(g: Graphics): void {
+  g.clear();
+  let row = 0;
+  for (let y = WALL_HEIGHT; y < CANVAS_HEIGHT; y += PLANK_HEIGHT, row++) {
+    // Deterministic pseudo-random plank lengths per row
+    let x = -((row * 97) % 160);
+    let n = row * 7;
+    while (x < CANVAS_WIDTH) {
+      n = (n * 1103515245 + 12345) & 0x7fffffff;
+      const len = 140 + (n % 120);
+      const color = PLANK_COLORS[n % PLANK_COLORS.length];
+      g.rect(x, y, len, PLANK_HEIGHT);
+      g.fill(color);
+      // subtle grain line
+      g.rect(x + 8, y + 10 + (n % 12), len - 16, 1);
+      g.fill({ color: 0x000000, alpha: 0.05 });
+      // seam at plank end
+      g.rect(x + len - 1, y, 2, PLANK_HEIGHT);
+      g.fill({ color: PLANK_SEAM, alpha: 0.6 });
+      x += len;
+    }
+    // row seam
+    g.rect(0, y + PLANK_HEIGHT - 1, CANVAS_WIDTH, 1);
+    g.fill({ color: PLANK_SEAM, alpha: 0.55 });
+  }
+
+  // Team zone carpet with a soft shadow and a glowing edge
+  const z = TEAM_ZONE;
+  g.roundRect(z.x + 6, z.y + 8, z.w, z.h, 28);
+  g.fill({ color: 0x000000, alpha: 0.18 });
+  g.roundRect(z.x, z.y, z.w, z.h, 28);
+  g.fill(TEAM_ZONE_COLOR);
+  g.stroke({ width: 4, color: TEAM_ZONE_BORDER });
+  g.roundRect(z.x + 14, z.y + 14, z.w - 28, z.h - 28, 20);
+  g.stroke({ width: 2, color: 0x8b5cf6, alpha: 0.35 });
+  // carpet texture: fine diagonal pattern
+  for (let d = 0; d < z.w + z.h; d += 22) {
+    const x0 = z.x + Math.max(0, d - z.h);
+    const y0 = z.y + Math.min(d, z.h);
+    const len = Math.min(d, z.h, z.w - (x0 - z.x));
+    if (len <= 0) continue;
+    g.moveTo(x0 + 18, y0 - 18);
+    g.lineTo(x0 + len - 18, y0 - len + 18);
+    g.stroke({ width: 1, color: 0xffffff, alpha: 0.025 });
+  }
+}
+
 /**
  * Soft light pools from the ceiling lamps and a shadow under the wall,
  * drawn on top of the floor tiles.
@@ -150,33 +195,13 @@ function drawLighting(g: Graphics): void {
 // COMPONENT
 // ============================================================================
 
-export function OfficeBackground({
-  floorTileTexture,
-}: OfficeBackgroundProps): ReactNode {
-  // Generate tile positions with alternating rotations and tints
-  const tiles = useMemo(() => {
-    const result: TileData[] = [];
-    const startY = WALL_HEIGHT;
-
-    for (let y = startY; y < CANVAS_HEIGHT; y += FLOOR_TILE_SIZE) {
-      const rowIndex = Math.floor((y - startY) / FLOOR_TILE_SIZE);
-      for (let x = 0; x < CANVAS_WIDTH; x += FLOOR_TILE_SIZE) {
-        const colIndex = Math.floor(x / FLOOR_TILE_SIZE);
-        // Checkerboard pattern: alternate rotation based on row + column
-        const isAlternate = (rowIndex + colIndex) % 2 === 1;
-        result.push({
-          x: x + FLOOR_TILE_SIZE / 2,
-          y: y + FLOOR_TILE_SIZE / 2,
-          rotation: isAlternate ? Math.PI / 2 : 0,
-          tint: isAlternate ? TILE_TINT_DARK : TILE_TINT_LIGHT,
-        });
-      }
-    }
-    return result;
-  }, []);
-
+export function OfficeBackground(
+  // floorTileTexture is kept in the props for compatibility; the floor is now drawn
+  _props: OfficeBackgroundProps,
+): ReactNode {
   // Stable reference for wall drawing
   const drawWallsCallback = useCallback((g: Graphics) => drawWalls(g), []);
+  const drawFloorCallback = useCallback((g: Graphics) => drawFloor(g), []);
   const drawLightingCallback = useCallback(
     (g: Graphics) => drawLighting(g),
     [],
@@ -187,19 +212,8 @@ export function OfficeBackground({
       {/* Walls and floor background */}
       <pixiGraphics draw={drawWallsCallback} />
 
-      {/* Floor tiles with alternating rotations and tints */}
-      {floorTileTexture &&
-        tiles.map((tile, index) => (
-          <pixiSprite
-            key={index}
-            texture={floorTileTexture}
-            x={tile.x}
-            y={tile.y}
-            anchor={0.5}
-            rotation={tile.rotation}
-            tint={tile.tint}
-          />
-        ))}
+      {/* Modern plank floor and team zone carpet */}
+      <pixiGraphics draw={drawFloorCallback} />
 
       {/* Ambient lighting over the floor */}
       <pixiGraphics draw={drawLightingCallback} />

@@ -537,3 +537,7 @@ body {
   50% { transform: translateY(-3px); opacity: 1; }
 }
 .qo-bg .flex.italic.text-center { flex-direction: column; flex-grow: 0 !important; margin: auto 10px; }
+
+/* Кнопки масштаба не закрывают сцену: полупрозрачные, пока не навели */
+.qo-stage-screen .absolute:has(> button[aria-label]) { opacity: 0.55; transition: opacity 150ms ease; }
+.qo-stage-screen .absolute:has(> button[aria-label]):hover { opacity: 1; }

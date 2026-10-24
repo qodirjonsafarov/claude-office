@@ -86,6 +86,7 @@ import { Whiteboard } from "./Whiteboard";
 import { SafetySign } from "./SafetySign";
 import { CityWindow } from "./CityWindow";
 import { EmployeeOfTheMonth } from "./EmployeeOfTheMonth";
+import { OfficeDecor } from "./OfficeDecor";
 import { Elevator, isAgentInElevator } from "./Elevator";
 import { PrinterStation } from "./PrinterStation";
 import { DebugOverlays } from "./DebugOverlays";
@@ -430,6 +431,9 @@ export function OfficeGame(): ReactNode {
                       scale={0.3}
                     />
                   )}
+
+                  {/* Modern decor: neon sign, lounge corner, plants */}
+                  <OfficeDecor plantTexture={textures.plant} />
 
                   {/* Wall decorations */}
                   <pixiContainer

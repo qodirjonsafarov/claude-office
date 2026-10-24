@@ -164,3 +164,17 @@ body {
     opacity: 1;
   }
 }
+
+/* Qodirjon: крупнее и контрастнее текст в панелях, чтобы легче читать.
+   Стоит вне @layer, поэтому перекрывает классы Tailwind. Удалить блок = вернуть как было. */
+.text-\[8px\] { font-size: 10px; }
+.text-\[9px\] { font-size: 11px; }
+.text-\[10px\] { font-size: 12px; }
+.text-\[11px\] { font-size: 13px; }
+.text-\[12px\] { font-size: 14px; }
+.text-xs { font-size: 13px; line-height: 1.45; }
+.text-sm { font-size: 15px; line-height: 1.5; }
+.text-slate-600 { color: #94a3b8; }
+.text-slate-500 { color: #aab4c3; }
+.text-slate-400 { color: #c3cad6; }
+.text-slate-300 { color: #dde2ea; }

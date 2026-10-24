@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Claude Office Visualizer",
+  title: "Qodirjon Office",
   description:
     "Real-time pixel art visualization of Claude Code operations in a virtual office",
 };

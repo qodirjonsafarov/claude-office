@@ -1,6 +1,6 @@
 const en = {
   // App
-  "app.title": "Office Visualizer",
+  "app.title": "Office",
   "app.initializingSystems": "Initializing Systems...",
 
   // Header Controls

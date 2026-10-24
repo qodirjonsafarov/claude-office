@@ -16,6 +16,7 @@ import { ICON_MAP } from "./shared/iconMap";
 import { drawBubble, drawIconBadge } from "./shared/drawBubble";
 import { drawRightArm, drawLeftArm } from "./shared/drawArm";
 import { truncateBubbleText } from "@/utils/bubbleText";
+import { PersonSprite, usePersonMotion } from "./PersonSprite";
 
 // ============================================================================
 // TYPES
@@ -43,8 +44,10 @@ export interface BossSpriteProps {
 // CONSTANTS
 // ============================================================================
 
+/** Capsule arms/headset from the original art; off with LPC workers. */
+const SHOW_CAPSULE_PARTS = false;
+
 const BOSS_WIDTH = 48; // 1.5 blocks × 32px
-const BOSS_HEIGHT = 80; // 2.5 blocks × 32px
 const STROKE_WIDTH = 4;
 
 // State colors for the boss (kept for reference, not currently used)
@@ -64,23 +67,6 @@ const _STATE_COLORS: Record<BossState, number> = {
 // DRAWING FUNCTIONS
 // ============================================================================
 
-function drawBossBody(g: Graphics, _state: BossState): void {
-  g.clear();
-  // Boss body (black capsule - state color changes were distracting)
-  // Inset by half stroke width so total size matches BOSS_WIDTH × BOSS_HEIGHT
-  const innerWidth = BOSS_WIDTH - STROKE_WIDTH;
-  const innerHeight = BOSS_HEIGHT - STROKE_WIDTH;
-  const bossRadius = innerWidth / 2;
-  g.roundRect(
-    -innerWidth / 2,
-    -innerHeight / 2,
-    innerWidth,
-    innerHeight,
-    bossRadius,
-  );
-  g.fill(0x1f2937); // Always dark gray
-  g.stroke({ width: STROKE_WIDTH, color: 0xffffff });
-}
 
 function drawFallbackChair(g: Graphics): void {
   g.clear();
@@ -162,21 +148,13 @@ function Bubble({ content, yOffset }: BubbleProps): ReactNode {
         <pixiContainer x={-bWidth / 2 - 6} y={-bHeight + 6}>
           <pixiGraphics draw={(g) => drawIconBadge(g, badgeRadius)} />
           <pixiContainer scale={0.5} x={0} y={1}>
-            <pixiText
-              text={iconEmoji}
-              anchor={0.5}
-              style={iconStyle}
-            />
+            <pixiText text={iconEmoji} anchor={0.5} style={iconStyle} />
           </pixiContainer>
         </pixiContainer>
       )}
       {/* Text rendered at 2x and scaled down for sharpness */}
       <pixiContainer x={-bWidth / 2 + 17} y={-bHeight / 2} scale={0.5}>
-        <pixiText
-          text={text}
-          anchor={{ x: 0, y: 0.5 }}
-          style={textStyle}
-        />
+        <pixiText text={text} anchor={{ x: 0, y: 0.5 }} style={textStyle} />
       </pixiContainer>
     </pixiContainer>
   );
@@ -188,7 +166,7 @@ function Bubble({ content, yOffset }: BubbleProps): ReactNode {
 
 function BossSpriteComponent({
   position,
-  state,
+  state: _state,
   bubble,
   inUseBy: _inUseBy,
   currentTask,
@@ -198,7 +176,7 @@ function BossSpriteComponent({
   monitorTexture,
   phoneTexture: _phoneTexture,
   headsetTexture,
-  sunglassesTexture,
+  sunglassesTexture: _sunglassesTexture,
   renderBubble = true,
   isTyping = false,
   isAway = false,
@@ -220,12 +198,6 @@ function BossSpriteComponent({
   const leftArmOffset = isTyping
     ? Math.sin(typingTime * 8 + Math.PI * 0.7) * 2
     : 0;
-
-  // Memoize draw callbacks
-  const drawBossCallback = useMemo(
-    () => (g: Graphics) => drawBossBody(g, state),
-    [state],
-  );
 
   // Boss arm params: body half-width 22px, shoulder at y=0, keyboard at y=32
   const bossArmParams = useMemo(
@@ -271,20 +243,8 @@ function BossSpriteComponent({
       {/* Boss character (body + accessories) - hidden when away from desk */}
       {!isAway && (
         <pixiContainer y={6}>
-          {/* Boss body - in front of chair, behind desk */}
-          <pixiGraphics draw={drawBossCallback} />
-
-          {/* Sunglasses - boss always looks cool (drawn before arms) */}
-          {sunglassesTexture && (
-            <pixiSprite
-              texture={sunglassesTexture}
-              anchor={0.5}
-              x={0}
-              y={-19}
-              scale={{ x: 0.036, y: 0.04 }}
-              tint={0x000000}
-            />
-          )}
+          {/* Boss: LPC pixel-art worker in black, sitting at the desk */}
+          <PersonSprite sheet="boss" mode="sit" direction="down" feetY={30} />
         </pixiContainer>
       )}
 
@@ -311,8 +271,8 @@ function BossSpriteComponent({
         />
       )}
 
-      {/* Arms - hidden when away from desk */}
-      {!isAway && (
+      {/* Arms - the LPC worker has its own, so these stay off */}
+      {!isAway && SHOW_CAPSULE_PARTS && (
         <pixiContainer y={6}>
           <pixiGraphics draw={drawRightArmCallback} />
           <pixiGraphics draw={drawLeftArmCallback} />
@@ -320,7 +280,7 @@ function BossSpriteComponent({
       )}
 
       {/* Headset - hidden when away from desk */}
-      {!isAway && headsetTexture && (
+      {!isAway && SHOW_CAPSULE_PARTS && headsetTexture && (
         <pixiSprite
           texture={headsetTexture}
           anchor={0.5}
@@ -394,41 +354,19 @@ function MobileBossComponent({
   position,
   jumpOffset = 0,
   scale = 1.0,
-  sunglassesTexture,
-  headsetTexture,
+  sunglassesTexture: _sunglassesTexture,
+  headsetTexture: _headsetTexture,
 }: MobileBossProps): ReactNode {
-  const drawBossCallback = useMemo(
-    () => (g: Graphics) => drawBossBody(g, "working"),
-    [],
-  );
+  const motion = usePersonMotion(position);
 
   return (
     <pixiContainer x={position.x} y={position.y + jumpOffset} scale={scale}>
-      {/* Boss body */}
-      <pixiGraphics draw={drawBossCallback} />
-
-      {/* Sunglasses */}
-      {sunglassesTexture && (
-        <pixiSprite
-          texture={sunglassesTexture}
-          anchor={0.5}
-          x={0}
-          y={-19}
-          scale={{ x: 0.036, y: 0.04 }}
-          tint={0x000000}
-        />
-      )}
-
-      {/* Headset */}
-      {headsetTexture && (
-        <pixiSprite
-          texture={headsetTexture}
-          anchor={0.5}
-          x={0}
-          y={-20}
-          scale={{ x: 0.66825, y: 0.675 }}
-        />
-      )}
+      {/* Boss walking as an LPC worker */}
+      <PersonSprite
+        sheet="boss"
+        mode={motion.moving ? "walk" : "idle"}
+        direction={motion.direction}
+      />
 
       {/* Boss label */}
       <pixiContainer y={-63} scale={0.5}>

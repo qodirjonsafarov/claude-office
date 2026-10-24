@@ -179,6 +179,9 @@ function FloorSign({
 // their source image (posters, clock, whiteboard icons).
 TextureSource.defaultOptions.autoGenerateMipmaps = true;
 
+// Qodirjon: draw agents and the boss as LPC pixel-art office workers.
+const USE_PEOPLE = true;
+
 /**
  * Render the canvas at exactly the size it is shown on screen (times the
  * device pixel ratio and the current zoom), instead of rendering 1280x1024
@@ -603,8 +606,9 @@ export function OfficeGame(): ReactNode {
                   />
 
                   {/* Agent arms - rendered after desk/keyboard, before headsets */}
+                  {/* LPC workers have their own arms, so the capsule arms are off */}
                   {Array.from(agents.values())
-                    .filter((agent) => agent.phase === "idle")
+                    .filter((agent) => agent.phase === "idle" && !USE_PEOPLE)
                     .map((agent) => (
                       <AgentArms
                         key={`arms-${agent.id}`}
@@ -615,6 +619,7 @@ export function OfficeGame(): ReactNode {
 
                   {/* Agent headsets - rendered after arms so they appear on top */}
                   {textures.headset &&
+                    !USE_PEOPLE &&
                     Array.from(agents.values())
                       .filter((agent) => agent.phase === "idle")
                       .map((agent) => (

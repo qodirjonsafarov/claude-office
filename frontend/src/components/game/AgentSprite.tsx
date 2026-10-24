@@ -1,8 +1,8 @@
 /**
  * AgentSprite Component
  *
- * Renders a single agent character as a colored capsule with optional bubble.
- * Supports headset and sunglasses accessories.
+ * Renders a single agent as an LPC pixel-art office worker (see PersonSprite)
+ * whose shirt matches the agent color, with optional bubble.
  */
 
 "use client";
@@ -19,6 +19,7 @@ import { ICON_MAP } from "./shared/iconMap";
 import { drawBubble, drawIconBadge } from "./shared/drawBubble";
 import { drawRightArm, drawLeftArm } from "./shared/drawArm";
 import { truncateBubbleText } from "@/utils/bubbleText";
+import { PersonSprite, sheetForColor, usePersonMotion } from "./PersonSprite";
 
 // ============================================================================
 // TYPES
@@ -44,35 +45,11 @@ export interface AgentSpriteProps {
 // ============================================================================
 
 const AGENT_WIDTH = 48; // 1.5 blocks × 32px (matches boss)
-const AGENT_HEIGHT = 80; // 2.5 blocks × 32px (matches boss)
 const STROKE_WIDTH = 4;
 
 // ============================================================================
 // DRAWING FUNCTIONS
 // ============================================================================
-
-function drawAgent(g: Graphics, color: string): void {
-  g.clear();
-
-  // Convert hex color string to number
-  const colorNum = parseInt(color.replace("#", ""), 16) || 0xff6b6b;
-
-  // Agent body (colored capsule with white border)
-  // Position is at CENTER OF BOTTOM CIRCLE, so capsule extends from -54 to +22
-  // Inset by half stroke width so total size matches AGENT_WIDTH × AGENT_HEIGHT
-  const innerWidth = AGENT_WIDTH - STROKE_WIDTH;
-  const innerHeight = AGENT_HEIGHT - STROKE_WIDTH;
-  const agentRadius = innerWidth / 2; // 22px - radius of top/bottom circles
-  g.roundRect(
-    -innerWidth / 2,
-    -innerHeight + agentRadius, // Bottom circle center at y=0
-    innerWidth,
-    innerHeight,
-    agentRadius,
-  );
-  g.fill(colorNum);
-  g.stroke({ width: STROKE_WIDTH, color: 0xffffff });
-}
 
 // ============================================================================
 // BUBBLE COMPONENT
@@ -140,21 +117,13 @@ function Bubble({ content, yOffset }: BubbleProps): ReactNode {
         <pixiContainer x={-bWidth / 2 - 6} y={-bHeight + 6}>
           <pixiGraphics draw={(g) => drawIconBadge(g, badgeRadius)} />
           <pixiContainer scale={0.5} x={0} y={1}>
-            <pixiText
-              text={iconEmoji}
-              anchor={0.5}
-              style={iconStyle}
-            />
+            <pixiText text={iconEmoji} anchor={0.5} style={iconStyle} />
           </pixiContainer>
         </pixiContainer>
       )}
       {/* Text rendered at 2x and scaled down for sharpness */}
       <pixiContainer x={-bWidth / 2 + 17} y={-bHeight / 2} scale={0.5}>
-        <pixiText
-          text={text}
-          anchor={{ x: 0, y: 0.5 }}
-          style={textStyle}
-        />
+        <pixiText text={text} anchor={{ x: 0, y: 0.5 }} style={textStyle} />
       </pixiContainer>
     </pixiContainer>
   );
@@ -170,10 +139,10 @@ function AgentSpriteComponent({
   color,
   number: _number,
   position,
-  phase: _phase,
+  phase,
   bubble,
   headsetTexture: _headsetTexture,
-  sunglassesTexture,
+  sunglassesTexture: _sunglassesTexture,
   renderBubble = true,
   renderLabel = true,
   isTyping: _isTyping = false,
@@ -181,11 +150,9 @@ function AgentSpriteComponent({
   const clickToFocusEnabled = usePreferencesStore((s) => s.clickToFocusEnabled);
   const openFocusPopup = useAttentionStore((s) => s.openFocusPopup);
 
-  // Memoize draw callback
-  const drawCallback = useMemo(
-    () => (g: Graphics) => drawAgent(g, color),
-    [color],
-  );
+  const sheet = useMemo(() => sheetForColor(color, id), [color, id]);
+  const motion = usePersonMotion(position);
+  const personMode = motion.moving ? "walk" : phase === "idle" ? "sit" : "idle";
 
   // Click handler for focus popup
   const handlePointerTap = useCallback(() => {
@@ -209,19 +176,13 @@ function AgentSpriteComponent({
       onPointerTap={handlePointerTap}
       interactive={clickToFocusEnabled}
     >
-      {/* Agent capsule body */}
-      <pixiGraphics draw={drawCallback} />
-
-      {/* Sunglasses */}
-      {sunglassesTexture && (
-        <pixiSprite
-          texture={sunglassesTexture}
-          anchor={0.5}
-          x={0}
-          y={-37}
-          scale={{ x: 0.036, y: 0.04 }}
-        />
-      )}
+      {/* Pixel-art office worker */}
+      <PersonSprite
+        sheet={sheet}
+        mode={personMode}
+        direction={personMode === "sit" ? "down" : motion.direction}
+        feetY={personMode === "sit" ? 30 : 22}
+      />
 
       {/* Agent name if present - hide when in elevator or when renderLabel is false */}
       {renderLabel && name && !isInElevatorZone(position) && (

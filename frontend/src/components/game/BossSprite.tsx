@@ -116,28 +116,28 @@ function Bubble({ content, yOffset }: BubbleProps): ReactNode {
   const badgeRadius = 16; // Radius of the circular badge
 
   // Calculate bubble dimensions (at display scale) - icon is outside bubble now
-  const charWidth = 7.5;
-  const paddingH = 30;
-  const maxW = 220;
+  const charWidth = 11.5;
+  const paddingH = 34;
+  const maxW = 340;
   const rawWidth = text.length * charWidth + paddingH;
-  const bWidth = Math.min(maxW, Math.max(80, rawWidth));
+  const bWidth = Math.min(maxW, Math.max(90, rawWidth));
   const capacity = (bWidth - paddingH) / charWidth;
   const lines = Math.max(1, Math.ceil(text.length / capacity));
-  const bHeight = 35 + lines * 14;
+  const bHeight = 30 + lines * 21;
 
   // Text style at 2x for sharp rendering
   const textStyle = useMemo<Partial<TextStyle>>(
     () => ({
       fontFamily:
-        '"Courier New", Courier, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", monospace',
-      fontSize: 20,
-      fill: "#000000",
+        '"DejaVu Sans", Verdana, Arial, "Noto Color Emoji", sans-serif',
+      fontSize: 34,
+      fill: "#0f172a",
       fontWeight: "bold",
       wordWrap: true,
-      wordWrapWidth: (bWidth - 30) * 2,
+      wordWrapWidth: (bWidth - 34) * 2,
       breakWords: true,
       align: "left",
-      lineHeight: 28,
+      lineHeight: 42,
       stroke: { width: 0, color: 0x000000 },
     }),
     [bWidth],
@@ -172,12 +172,12 @@ function Bubble({ content, yOffset }: BubbleProps): ReactNode {
         </pixiContainer>
       )}
       {/* Text rendered at 2x and scaled down for sharpness */}
-      <pixiContainer x={-bWidth / 2 + 15} y={-bHeight / 2} scale={0.5}>
+      <pixiContainer x={-bWidth / 2 + 17} y={-bHeight / 2} scale={0.5}>
         <pixiText
           text={text}
           anchor={{ x: 0, y: 0.5 }}
           style={textStyle}
-          resolution={2}
+          resolution={4}
         />
       </pixiContainer>
     </pixiContainer>

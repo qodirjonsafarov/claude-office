@@ -165,7 +165,6 @@ function CommandCenterPeerComponent({
         <pixiText
           text={shortLabel}
           anchor={0.5}
-          resolution={2}
           style={{
             fontFamily: "monospace",
             fontSize: 20,
@@ -183,7 +182,6 @@ function CommandCenterPeerComponent({
             <pixiText
               text={`+${peer.subagentCount}`}
               anchor={0.5}
-              resolution={2}
               style={{
                 fontFamily: "monospace",
                 fontSize: 18,
@@ -202,7 +200,6 @@ function CommandCenterPeerComponent({
             <pixiText
               text={`${peer.todoDone}/${peer.todoTotal}`}
               anchor={{ x: 0.5, y: 0 }}
-              resolution={2}
               style={{
                 fontFamily: "monospace",
                 fontSize: 14,

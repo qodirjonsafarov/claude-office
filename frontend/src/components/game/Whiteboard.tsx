@@ -107,7 +107,6 @@ function WhiteboardFrame({
             fontWeight: "bold",
             fill: "#ffffff",
           }}
-          resolution={2}
         />
       </pixiContainer>
 

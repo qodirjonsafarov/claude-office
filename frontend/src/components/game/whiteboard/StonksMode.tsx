@@ -79,7 +79,6 @@ export function StonksMode({ data }: StonksModeProps): ReactNode {
               fontWeight: "bold",
               fill: "#1f2937",
             }}
-            resolution={2}
           />
           <pixiText
             text={stock.up ? "▲" : "▼"}
@@ -90,7 +89,6 @@ export function StonksMode({ data }: StonksModeProps): ReactNode {
               fontSize: 12,
               fill: stock.up ? "#22c55e" : "#ef4444",
             }}
-            resolution={2}
           />
           <pixiText
             text={stock.price}
@@ -101,7 +99,6 @@ export function StonksMode({ data }: StonksModeProps): ReactNode {
               fontSize: 12,
               fill: stock.up ? "#22c55e" : "#ef4444",
             }}
-            resolution={2}
           />
           {/* Mini sparkline */}
           <pixiGraphics

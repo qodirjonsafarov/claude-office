@@ -89,7 +89,6 @@ export function TodoListMode({ todos }: TodoListModeProps): ReactNode {
             fontSize: 24,
             fill: "#9ca3af",
           }}
-          resolution={2}
         />
       </pixiContainer>
     );
@@ -107,7 +106,6 @@ export function TodoListMode({ todos }: TodoListModeProps): ReactNode {
               fontSize: 12,
               fill: getStatusColor(todo.status),
             }}
-            resolution={2}
           />
           <pixiText
             text={
@@ -122,7 +120,6 @@ export function TodoListMode({ todos }: TodoListModeProps): ReactNode {
               fill: todo.status === "completed" ? "#6b7280" : "#1f2937",
               fontWeight: todo.status === "in_progress" ? "bold" : "normal",
             }}
-            resolution={2}
           />
         </pixiContainer>
       ))}
@@ -137,7 +134,6 @@ export function TodoListMode({ todos }: TodoListModeProps): ReactNode {
               fontSize: 18,
               fill: "#9ca3af",
             }}
-            resolution={2}
           />
         </pixiContainer>
       )}

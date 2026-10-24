@@ -42,7 +42,6 @@ export function HeatMapMode({ data }: HeatMapModeProps): ReactNode {
             fontSize: 24,
             fill: "#9ca3af",
           }}
-          resolution={2}
         />
       </pixiContainer>
     );
@@ -62,7 +61,6 @@ export function HeatMapMode({ data }: HeatMapModeProps): ReactNode {
               fontSize: 10,
               fill: "#374151",
             }}
-            resolution={2}
           />
 
           {/* Heat bar */}
@@ -87,7 +85,6 @@ export function HeatMapMode({ data }: HeatMapModeProps): ReactNode {
               fontSize: 10,
               fill: "#6b7280",
             }}
-            resolution={2}
           />
         </pixiContainer>
       ))}

@@ -105,7 +105,6 @@ function StickyNote({
           fontWeight: "bold",
           fill: textColor,
         }}
-        resolution={2}
       />
 
       {/* Linear badge */}
@@ -119,7 +118,6 @@ function StickyNote({
             fontSize: 8,
             fill: "#6366f1",
           }}
-          resolution={2}
         />
       )}
 
@@ -134,7 +132,6 @@ function StickyNote({
             fontSize: 8,
             fill: "#6b7280",
           }}
-          resolution={2}
         />
       )}
     </pixiContainer>
@@ -198,7 +195,6 @@ function KanbanColumn({
             fontWeight: "bold",
             fill: "#ffffff",
           }}
-          resolution={2}
         />
       </pixiContainer>
 
@@ -212,7 +208,6 @@ function KanbanColumn({
             fontSize: 14,
             fill: "#ffffff",
           }}
-          resolution={2}
         />
       </pixiContainer>
 
@@ -244,7 +239,6 @@ function KanbanColumn({
               fontSize: 14,
               fill: "#9ca3af",
             }}
-            resolution={2}
           />
         </pixiContainer>
       )}
@@ -274,7 +268,6 @@ export function KanbanMode({ data }: KanbanModeProps): ReactNode {
             fontSize: 24,
             fill: "#9ca3af",
           }}
-          resolution={2}
         />
       </pixiContainer>
     );

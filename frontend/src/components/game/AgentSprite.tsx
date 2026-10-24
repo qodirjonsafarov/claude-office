@@ -144,7 +144,6 @@ function Bubble({ content, yOffset }: BubbleProps): ReactNode {
               text={iconEmoji}
               anchor={0.5}
               style={iconStyle}
-              resolution={2}
             />
           </pixiContainer>
         </pixiContainer>
@@ -155,7 +154,6 @@ function Bubble({ content, yOffset }: BubbleProps): ReactNode {
           text={text}
           anchor={{ x: 0, y: 0.5 }}
           style={textStyle}
-          resolution={4}
         />
       </pixiContainer>
     </pixiContainer>
@@ -238,7 +236,6 @@ function AgentSpriteComponent({
               fontWeight: "bold",
               stroke: { width: 4, color: 0x000000 },
             }}
-            resolution={2}
           />
         </pixiContainer>
       )}
@@ -361,7 +358,6 @@ function AgentLabelComponent({ name, position }: AgentLabelProps): ReactNode {
           fontWeight: "bold",
           stroke: { width: 4, color: 0x000000 },
         }}
-        resolution={2}
       />
     </pixiContainer>
   );

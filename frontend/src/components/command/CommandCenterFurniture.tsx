@@ -234,7 +234,6 @@ function ExitDoorComponent({
           <pixiText
             text="EXIT"
             anchor={0.5}
-            resolution={2}
             style={{
               fontFamily: "monospace",
               fontSize: 26,

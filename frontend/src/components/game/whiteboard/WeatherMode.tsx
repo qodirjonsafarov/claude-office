@@ -55,7 +55,6 @@ export function WeatherMode({ data }: WeatherModeProps): ReactNode {
         y={50}
         anchor={0.5}
         style={{ fontSize: 50 }}
-        resolution={2}
       />
 
       {/* Weather label */}
@@ -70,7 +69,6 @@ export function WeatherMode({ data }: WeatherModeProps): ReactNode {
           fontWeight: "bold",
           fill: weather.color,
         }}
-        resolution={2}
       />
 
       {/* Stats */}
@@ -82,7 +80,6 @@ export function WeatherMode({ data }: WeatherModeProps): ReactNode {
             fontSize: 10,
             fill: "#22c55e",
           }}
-          resolution={2}
         />
         <pixiText
           text={`Errors: ${recentErrorCount}`}
@@ -92,7 +89,6 @@ export function WeatherMode({ data }: WeatherModeProps): ReactNode {
             fontSize: 10,
             fill: "#ef4444",
           }}
-          resolution={2}
         />
         <pixiText
           text={`Activity: ${((data.activityLevel ?? 0) * 100).toFixed(0)}%`}
@@ -102,7 +98,6 @@ export function WeatherMode({ data }: WeatherModeProps): ReactNode {
             fontSize: 10,
             fill: "#3b82f6",
           }}
-          resolution={2}
         />
         <pixiText
           text={`Total ops: ${totalOps}`}
@@ -112,7 +107,6 @@ export function WeatherMode({ data }: WeatherModeProps): ReactNode {
             fontSize: 10,
             fill: "#6b7280",
           }}
-          resolution={2}
         />
       </pixiContainer>
     </pixiContainer>

@@ -50,7 +50,6 @@ export function NewsTickerMode({ data }: NewsTickerModeProps): ReactNode {
             fontSize: 24,
             fill: "#9ca3af",
           }}
-          resolution={2}
         />
       </pixiContainer>
     );
@@ -79,7 +78,6 @@ export function NewsTickerMode({ data }: NewsTickerModeProps): ReactNode {
           fontWeight: "bold",
           fill: "#ffffff",
         }}
-        resolution={2}
       />
 
       {/* Current headline */}
@@ -93,7 +91,6 @@ export function NewsTickerMode({ data }: NewsTickerModeProps): ReactNode {
           fontSize: 11,
           fill: CATEGORY_COLORS[currentNews.category] ?? "#374151",
         }}
-        resolution={2}
       />
 
       {/* Timestamp */}
@@ -107,7 +104,6 @@ export function NewsTickerMode({ data }: NewsTickerModeProps): ReactNode {
           fontSize: 9,
           fill: "#9ca3af",
         }}
-        resolution={2}
       />
 
       {/* News index indicator */}
@@ -121,7 +117,6 @@ export function NewsTickerMode({ data }: NewsTickerModeProps): ReactNode {
           fontSize: 9,
           fill: "#9ca3af",
         }}
-        resolution={2}
       />
     </pixiContainer>
   );

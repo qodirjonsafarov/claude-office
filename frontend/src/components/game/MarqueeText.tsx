@@ -156,7 +156,6 @@ export function MarqueeText({
             fill: color,
             fontWeight: "bold",
           }}
-          resolution={2}
         />
       </pixiContainer>
     </pixiContainer>

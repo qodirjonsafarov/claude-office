@@ -99,7 +99,6 @@ export function ToolPizzaMode({ toolUsage }: ToolPizzaModeProps): ReactNode {
                 fontSize: 10,
                 fill: "#374151",
               }}
-              resolution={2}
             />
           </pixiContainer>
         ))}
@@ -111,7 +110,6 @@ export function ToolPizzaMode({ toolUsage }: ToolPizzaModeProps): ReactNode {
               fontSize: 10,
               fill: "#9ca3af",
             }}
-            resolution={2}
           />
         )}
       </pixiContainer>

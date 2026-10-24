@@ -93,7 +93,6 @@ export function EmployeeOfTheMonth(): ReactNode {
               angle: Math.PI / 4,
             },
           }}
-          resolution={2}
         />
       </pixiContainer>
       <pixiContainer x={60} y={26} scale={0.5}>
@@ -106,7 +105,6 @@ export function EmployeeOfTheMonth(): ReactNode {
             fontWeight: "bold",
             fill: "#ffffff",
           }}
-          resolution={2}
         />
       </pixiContainer>
       {/* Photo */}
@@ -130,7 +128,6 @@ export function EmployeeOfTheMonth(): ReactNode {
             fontWeight: "bold",
             fill: "#1a1a1a",
           }}
-          resolution={2}
         />
       </pixiContainer>
     </pixiContainer>

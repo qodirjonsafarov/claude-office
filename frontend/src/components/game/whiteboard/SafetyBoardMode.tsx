@@ -46,7 +46,6 @@ export function SafetyBoardMode({ data }: SafetyBoardModeProps): ReactNode {
           fontWeight: "bold",
           fill: "#22c55e",
         }}
-        resolution={2}
       />
 
       {/* Label */}
@@ -60,7 +59,6 @@ export function SafetyBoardMode({ data }: SafetyBoardModeProps): ReactNode {
           fontSize: 10,
           fill: "#374151",
         }}
-        resolution={2}
       />
 
       {/* Time since incident */}
@@ -74,7 +72,6 @@ export function SafetyBoardMode({ data }: SafetyBoardModeProps): ReactNode {
           fontSize: 9,
           fill: "#6b7280",
         }}
-        resolution={2}
       />
     </pixiContainer>
   );

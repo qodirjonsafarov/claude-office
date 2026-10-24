@@ -34,7 +34,6 @@ export function CoffeeMode({ data }: CoffeeModeProps): ReactNode {
           fontWeight: "bold",
           fill: "#78350f",
         }}
-        resolution={2}
       />
 
       {/* Big number */}
@@ -49,7 +48,6 @@ export function CoffeeMode({ data }: CoffeeModeProps): ReactNode {
           fontWeight: "bold",
           fill: "#92400e",
         }}
-        resolution={2}
       />
 
       <pixiText
@@ -62,7 +60,6 @@ export function CoffeeMode({ data }: CoffeeModeProps): ReactNode {
           fontSize: 9,
           fill: "#a16207",
         }}
-        resolution={2}
       />
 
       {/* Coffee cup grid */}
@@ -74,7 +71,6 @@ export function CoffeeMode({ data }: CoffeeModeProps): ReactNode {
             x={(i % 5) * 22}
             y={Math.floor(i / 5) * 18}
             style={{ fontSize: 14 }}
-            resolution={2}
           />
         ))}
         {cups > MAX_DISPLAY && (
@@ -87,7 +83,6 @@ export function CoffeeMode({ data }: CoffeeModeProps): ReactNode {
               fontSize: 10,
               fill: "#a16207",
             }}
-            resolution={2}
           />
         )}
       </pixiContainer>

@@ -69,7 +69,6 @@ export function RemoteWorkersMode({ data }: RemoteWorkersModeProps): ReactNode {
               fontSize: 24,
               fill: "#6b7280",
             }}
-            resolution={2}
           />
         </pixiContainer>
       </pixiContainer>
@@ -118,7 +117,6 @@ export function RemoteWorkersMode({ data }: RemoteWorkersModeProps): ReactNode {
                 fontSize: 8,
                 fill: "#9ca3af",
               }}
-              resolution={2}
             />
 
             {/* Summary text */}
@@ -131,7 +129,6 @@ export function RemoteWorkersMode({ data }: RemoteWorkersModeProps): ReactNode {
                 fontSize: 9,
                 fill: "#e5e7eb",
               }}
-              resolution={2}
             />
 
             {/* Status emoji */}
@@ -146,7 +143,6 @@ export function RemoteWorkersMode({ data }: RemoteWorkersModeProps): ReactNode {
               anchor={0.5}
               y={14}
               style={{ fontSize: 10 }}
-              resolution={2}
             />
           </pixiContainer>
         );
@@ -164,7 +160,6 @@ export function RemoteWorkersMode({ data }: RemoteWorkersModeProps): ReactNode {
             fontSize: 9,
             fill: "#6b7280",
           }}
-          resolution={2}
         />
       )}
     </pixiContainer>

@@ -125,7 +125,6 @@ export function TimelineMode({ data }: TimelineModeProps): ReactNode {
             fontSize: 24,
             fill: "#9ca3af",
           }}
-          resolution={2}
         />
       </pixiContainer>
     );
@@ -147,7 +146,6 @@ export function TimelineMode({ data }: TimelineModeProps): ReactNode {
             fontSize: 8,
             fill: lifespan.color,
           }}
-          resolution={2}
         />
       ))}
 
@@ -160,7 +158,6 @@ export function TimelineMode({ data }: TimelineModeProps): ReactNode {
           y={2}
           anchor={0.5}
           style={{ fontSize: 10 }}
-          resolution={2}
         />
       ))}
     </pixiContainer>

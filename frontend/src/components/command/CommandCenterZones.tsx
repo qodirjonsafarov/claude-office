@@ -50,7 +50,6 @@ function ZoneColumn({ zone, count, overflow }: ZoneColumnProps): ReactNode {
               : `${zone.emoji}  ${t(zone.labelKey).toUpperCase()}  (${count})`
           }
           anchor={0.5}
-          resolution={2}
           style={{
             fontFamily: "monospace",
             fontSize: 24,
@@ -65,7 +64,6 @@ function ZoneColumn({ zone, count, overflow }: ZoneColumnProps): ReactNode {
           <pixiText
             text={t("commandCenter.moreCount", { count: overflow })}
             anchor={{ x: 0.5, y: 1 }}
-            resolution={2}
             style={{
               fontFamily: "monospace",
               fontSize: 22,

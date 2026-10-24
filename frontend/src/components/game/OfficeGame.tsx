@@ -17,6 +17,7 @@ import {
   Text,
   Graphics,
   Sprite,
+  TextureSource,
   Application as PixiApplication,
 } from "pixi.js";
 import { useMemo, useEffect, useRef, useCallback, type ReactNode } from "react";
@@ -161,7 +162,6 @@ function FloorSign({
         <pixiText
           text={label}
           anchor={0.5}
-          resolution={2}
           style={{
             fontSize: 18,
             fill: "#ffffff",
@@ -174,6 +174,31 @@ function FloorSign({
   );
 }
 
+// Qodirjon: mipmaps keep sprites smooth when they are drawn smaller than
+// their source image (posters, clock, whiteboard icons).
+TextureSource.defaultOptions.autoGenerateMipmaps = true;
+
+/**
+ * Render the canvas at exactly the size it is shown on screen (times the
+ * device pixel ratio and the current zoom), instead of rendering 1280x1024
+ * and letting the browser shrink it. Text and vector shapes then rasterize
+ * at their final size and stay sharp.
+ */
+function computeRenderResolution(
+  container: HTMLElement | null,
+  zoom: number,
+): number {
+  const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+  if (!container) return dpr;
+  const fit = Math.min(
+    container.clientWidth / CANVAS_WIDTH,
+    container.clientHeight / CANVAS_HEIGHT,
+  );
+  if (!Number.isFinite(fit) || fit <= 0) return dpr;
+  const target = dpr * fit * Math.max(1, zoom);
+  return Math.min(Math.max(target, 0.5), dpr * 3);
+}
+
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -183,6 +208,34 @@ export function OfficeGame(): ReactNode {
   const appRef = useRef<PixiApplication | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const transformRef = useRef<ReactZoomPanPinchRef>(null);
+  const zoomRef = useRef(1);
+  const zoomTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep the renderer resolution matched to the on-screen size.
+  const syncResolution = useCallback(() => {
+    const app = appRef.current;
+    if (!app?.renderer) return;
+    const next = computeRenderResolution(containerRef.current, zoomRef.current);
+    const current = app.renderer.resolution;
+    if (Math.abs(next - current) / current < 0.05) return;
+    app.renderer.resolution = next;
+    app.renderer.resize(CANVAS_WIDTH, CANVAS_HEIGHT);
+  }, []);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(syncResolution);
+    });
+    observer.observe(el);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [syncResolution]);
 
   // HMR version for forcing remount
   const hmrVersion = getHmrVersion();
@@ -324,6 +377,11 @@ export function OfficeGame(): ReactNode {
         pinch={{ step: 5 }}
         doubleClick={{ mode: "reset" }}
         onTransform={(ref, state) => {
+          if (state.scale !== zoomRef.current) {
+            zoomRef.current = state.scale;
+            if (zoomTimerRef.current) clearTimeout(zoomTimerRef.current);
+            zoomTimerRef.current = setTimeout(syncResolution, 150);
+          }
           // Auto-reset pan offset when zooming back out to 1:1
           if (
             state.scale <= 1 &&
@@ -350,6 +408,7 @@ export function OfficeGame(): ReactNode {
               }
               onInit={(app) => {
                 appRef.current = app;
+                syncResolution();
               }}
             >
               {/* Loading screen - shown while sprites are loading */}

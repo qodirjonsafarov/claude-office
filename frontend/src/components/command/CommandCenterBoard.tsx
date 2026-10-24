@@ -71,7 +71,6 @@ export function CommandCenterBoard({
         <pixiText
           text={`\u{1F4CB} ${t("commandCenter.board.allSessions")}`}
           anchor={{ x: 0.5, y: 0.5 }}
-          resolution={2}
           style={{
             fontFamily: "monospace",
             fontSize: 26,
@@ -86,7 +85,6 @@ export function CommandCenterBoard({
         <pixiText
           text={`${t("commandCenter.board.terminals")}: ${summary.terminals}    ${t("commandCenter.board.employees")}: ${summary.subagents}`}
           anchor={{ x: 0, y: 0.5 }}
-          resolution={2}
           style={{ fontFamily: "monospace", fontSize: 22, fill: 0x334155 }}
         />
       </pixiContainer>
@@ -96,7 +94,6 @@ export function CommandCenterBoard({
         <pixiText
           text={`⚠ ${counts.needs_you ?? 0}`}
           anchor={{ x: 0, y: 0.5 }}
-          resolution={2}
           style={{
             fontFamily: "monospace",
             fontSize: 22,
@@ -109,7 +106,6 @@ export function CommandCenterBoard({
         <pixiText
           text={`\u{1F7E2} ${counts.working ?? 0}`}
           anchor={{ x: 0, y: 0.5 }}
-          resolution={2}
           style={{
             fontFamily: "monospace",
             fontSize: 22,
@@ -122,7 +118,6 @@ export function CommandCenterBoard({
         <pixiText
           text={`✅ ${counts.done ?? 0}`}
           anchor={{ x: 0, y: 0.5 }}
-          resolution={2}
           style={{
             fontFamily: "monospace",
             fontSize: 22,
@@ -137,7 +132,6 @@ export function CommandCenterBoard({
         <pixiText
           text={`${t("commandCenter.board.todos")} ${summary.todoDone}/${summary.todoTotal}`}
           anchor={{ x: 0, y: 0.5 }}
-          resolution={2}
           style={{ fontFamily: "monospace", fontSize: 20, fill: 0x334155 }}
         />
       </pixiContainer>

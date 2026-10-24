@@ -81,7 +81,6 @@ export function OrgChartMode({
           fontWeight: "bold",
           fill: "#92400e",
         }}
-        resolution={2}
       />
       <pixiText
         text={bossTask ? bossTask.slice(0, 12) : "Supervising"}
@@ -93,7 +92,6 @@ export function OrgChartMode({
           fontSize: 8,
           fill: "#b45309",
         }}
-        resolution={2}
       />
 
       {/* Agents */}
@@ -129,7 +127,6 @@ export function OrgChartMode({
                   fontWeight: "bold",
                   fill: agent.color,
                 }}
-                resolution={2}
               />
               <pixiText
                 text={SILLY_TITLES[i % SILLY_TITLES.length].slice(0, 15)}
@@ -140,7 +137,6 @@ export function OrgChartMode({
                   fontSize: 7,
                   fill: "#6b7280",
                 }}
-                resolution={2}
               />
             </pixiContainer>
           );
@@ -156,7 +152,6 @@ export function OrgChartMode({
             fontSize: 11,
             fill: "#9ca3af",
           }}
-          resolution={2}
         />
       )}
     </pixiContainer>

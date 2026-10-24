@@ -34,7 +34,6 @@ export function LoadingScreen(): ReactNode {
             fill: 0x4ade80,
             letterSpacing: 2,
           }}
-          resolution={2}
         />
       </pixiContainer>
       {/* Animated dots */}

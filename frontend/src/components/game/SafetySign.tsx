@@ -52,7 +52,6 @@ export function SafetySign(): ReactNode {
             fontWeight: "bold",
             fill: "#ffffff",
           }}
-          resolution={2}
         />
       </pixiContainer>
       {/* Big number - dynamic counter */}
@@ -66,7 +65,6 @@ export function SafetySign(): ReactNode {
             fontWeight: "bold",
             fill: "#ffffff",
           }}
-          resolution={2}
         />
       </pixiContainer>
       {/* Label text */}
@@ -80,7 +78,6 @@ export function SafetySign(): ReactNode {
             fontWeight: "bold",
             fill: "#ffcc00",
           }}
-          resolution={2}
         />
       </pixiContainer>
       <pixiContainer x={70} y={84} scale={0.5}>
@@ -93,7 +90,6 @@ export function SafetySign(): ReactNode {
             fontWeight: "bold",
             fill: "#ffcc00",
           }}
-          resolution={2}
         />
       </pixiContainer>
     </pixiContainer>

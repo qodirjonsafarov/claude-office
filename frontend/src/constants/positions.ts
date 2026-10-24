@@ -9,7 +9,7 @@
 // ============================================================================
 
 /** Employee of the Month frame position */
-export const EMPLOYEE_OF_MONTH_POSITION = { x: 184, y: 50 };
+export const EMPLOYEE_OF_MONTH_POSITION = { x: 182, y: 28 };
 
 /** City window position */
 export const CITY_WINDOW_POSITION = { x: 319, y: 30 };

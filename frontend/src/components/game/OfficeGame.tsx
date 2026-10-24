@@ -432,7 +432,7 @@ export function OfficeGame(): ReactNode {
                     />
                   )}
 
-                  {/* Modern decor: neon sign, lounge corner, plants */}
+                  {/* Modern decor: neon sign and plants */}
                   <OfficeDecor plantTexture={textures.plant} />
 
                   {/* Wall decorations */}

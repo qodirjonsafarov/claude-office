@@ -180,101 +180,258 @@ body {
 .text-slate-300 { color: #dde2ea; }
 
 /* ======================================================================
-   Qodirjon Office theme: тёмное «ночное» стекло с тёплым оранжевым и
-   фиолетовым акцентом. Вне @layer, поэтому перекрывает классы Tailwind.
+   Qodirjon Office: игровой HUD.
+   Тёмное стекло, рамки с уголками как в играх, пиксельный шрифт заголовков,
+   «объёмные» кнопки. Вне @layer, поэтому перекрывает классы Tailwind.
    ====================================================================== */
 :root {
-  --qo-bg: #070b16;
-  --qo-panel: rgba(17, 24, 43, 0.72);
-  --qo-panel-head: rgba(30, 41, 70, 0.55);
-  --qo-line: rgba(148, 163, 184, 0.14);
-  --qo-line-strong: rgba(148, 163, 184, 0.24);
+  --qo-bg: #060a14;
+  --qo-panel: rgba(13, 19, 36, 0.78);
+  --qo-panel-head: linear-gradient(180deg, rgba(40, 52, 92, 0.75), rgba(22, 30, 56, 0.75));
+  --qo-line: rgba(130, 150, 200, 0.16);
+  --qo-line-strong: rgba(130, 150, 200, 0.28);
   --qo-orange: #ff8a3d;
+  --qo-gold: #ffc14d;
   --qo-violet: #8b5cf6;
   --qo-cyan: #22d3ee;
+  --qo-green: #34d399;
+  --qo-pixel: var(--font-pixel), "Press Start 2P", monospace;
 }
 
 body {
   background: var(--qo-bg);
-  font-family: var(--font-geist-sans), "Inter", system-ui, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+/* ---------- Фон: глубокий космос с мягким светом и сеткой ---------- */
 .qo-bg {
   background:
-    radial-gradient(1200px 600px at 8% -10%, rgba(255, 138, 61, 0.16), transparent 60%),
-    radial-gradient(1000px 700px at 100% 0%, rgba(139, 92, 246, 0.18), transparent 60%),
-    radial-gradient(900px 600px at 50% 120%, rgba(34, 211, 238, 0.10), transparent 60%),
+    radial-gradient(1100px 600px at 6% -12%, rgba(255, 138, 61, 0.17), transparent 60%),
+    radial-gradient(1000px 700px at 104% -6%, rgba(139, 92, 246, 0.20), transparent 60%),
+    radial-gradient(900px 600px at 50% 125%, rgba(34, 211, 238, 0.10), transparent 60%),
+    linear-gradient(rgba(130, 150, 200, 0.035) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgba(130, 150, 200, 0.035) 1px, transparent 1px) 0 0 / 32px 32px,
     var(--qo-bg) !important;
 }
 
-/* Панели: матовое стекло */
+/* ---------- Пиксельный шрифт для заголовков, вкладок и кнопок ---------- */
+.qo-bg .uppercase,
+.qo-bg header button,
+.qo-subtitle {
+  font-family: var(--qo-pixel) !important;
+  letter-spacing: 0.06em !important;
+  font-weight: 600 !important;
+}
+
+/* ---------- Панели: HUD-рамка с уголками ---------- */
 .qo-bg .bg-slate-950 {
   background: var(--qo-panel) !important;
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
 }
-.qo-bg .bg-slate-900 { background: var(--qo-panel-head) !important; }
-.qo-bg .bg-slate-900\/50 { background: rgba(30, 41, 70, 0.35) !important; }
+.qo-bg .flex.flex-col.bg-slate-950 {
+  position: relative;
+  border: 1px solid var(--qo-line-strong) !important;
+  border-radius: 12px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 20px 40px -20px rgba(0, 0, 0, 0.85);
+}
+/* Светящиеся уголки */
+.qo-bg .flex.flex-col.bg-slate-950::before,
+.qo-bg .flex.flex-col.bg-slate-950::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  z-index: 2;
+}
+.qo-bg .flex.flex-col.bg-slate-950::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--qo-orange);
+  border-left: 2px solid var(--qo-orange);
+  border-top-left-radius: 12px;
+  filter: drop-shadow(0 0 4px rgba(255, 138, 61, 0.8));
+}
+.qo-bg .flex.flex-col.bg-slate-950::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid var(--qo-violet);
+  border-right: 2px solid var(--qo-violet);
+  border-bottom-right-radius: 12px;
+  filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.8));
+}
+
+/* Шапки панелей */
+.qo-bg .bg-slate-900 {
+  background: var(--qo-panel-head) !important;
+}
+.qo-bg .bg-slate-900.border-b {
+  border-bottom: 1px solid var(--qo-line-strong) !important;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+}
+.qo-bg .bg-slate-900\/50 { background: rgba(30, 41, 76, 0.35) !important; }
 .qo-bg .border-slate-800 { border-color: var(--qo-line) !important; }
 .qo-bg .border-slate-700 { border-color: var(--qo-line-strong) !important; }
-.qo-bg .rounded-lg { border-radius: 14px; }
-.qo-bg .rounded-xl { border-radius: 18px; }
-.qo-bg .flex.flex-col.bg-slate-950 {
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 18px 40px -18px rgba(0, 0, 0, 0.7);
-}
-.qo-bg .hover\:bg-slate-900\/50:hover { background: rgba(139, 92, 246, 0.10) !important; }
+.qo-bg .rounded-lg { border-radius: 12px; }
+.qo-bg .rounded-xl { border-radius: 16px; }
 
-/* Сцена офиса: светящаяся рамка */
+/* Строки списков: подсветка при наведении */
+.qo-bg .hover\:bg-slate-900\/50:hover {
+  background: linear-gradient(90deg, rgba(255, 138, 61, 0.12), rgba(139, 92, 246, 0.06)) !important;
+}
+
+/* Вкладки справа */
+.qo-bg aside .border-b-2 {
+  background: linear-gradient(180deg, transparent, rgba(255, 138, 61, 0.10)) !important;
+  text-shadow: 0 0 10px currentColor;
+}
+
+/* ---------- Сцена офиса: «экран» игры ---------- */
 .qo-stage {
   border: 1px solid var(--qo-line-strong) !important;
-  border-radius: 18px !important;
+  border-radius: 16px !important;
   background:
-    radial-gradient(800px 400px at 50% 0%, rgba(139, 92, 246, 0.14), transparent 70%),
-    #0b1122 !important;
+    radial-gradient(700px 380px at 50% 0%, rgba(139, 92, 246, 0.16), transparent 70%),
+    linear-gradient(rgba(130, 150, 200, 0.05) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, rgba(130, 150, 200, 0.05) 1px, transparent 1px) 0 0 / 24px 24px,
+    #0a1020 !important;
   box-shadow:
-    0 0 0 1px rgba(255, 138, 61, 0.10),
-    0 0 40px -8px rgba(139, 92, 246, 0.35),
-    0 30px 60px -30px rgba(0, 0, 0, 0.8) !important;
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 0 0 4px rgba(20, 28, 52, 0.9),
+    0 0 0 5px rgba(130, 150, 200, 0.22),
+    0 0 50px -6px rgba(139, 92, 246, 0.40),
+    0 40px 80px -30px rgba(0, 0, 0, 0.9) !important;
+}
+.qo-stage canvas {
+  border-radius: 10px;
+}
+/* Лёгкие «линии экрана» поверх сцены */
+.qo-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 16px;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.018) 0 1px,
+    transparent 1px 3px
+  );
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.55);
+  z-index: 5;
 }
 
-/* Шапка */
+/* ---------- Шапка: HUD-полоса ---------- */
+.qo-bg header {
+  background: linear-gradient(180deg, rgba(22, 30, 56, 0.85), rgba(13, 19, 36, 0.75));
+  border: 1px solid var(--qo-line-strong);
+  border-radius: 14px;
+  padding: 8px 12px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 30px -16px rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(16px);
+}
 .qo-logo {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
-  font-weight: 800;
-  font-size: 20px;
+  font-family: var(--qo-pixel);
+  font-size: 22px;
   color: #fff;
-  background: linear-gradient(135deg, var(--qo-orange), var(--qo-violet));
-  box-shadow: 0 6px 20px -6px rgba(255, 138, 61, 0.6);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+  background: linear-gradient(135deg, var(--qo-gold), var(--qo-orange) 45%, var(--qo-violet));
+  box-shadow:
+    inset 0 -3px 0 rgba(0, 0, 0, 0.25),
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    0 0 0 2px rgba(0, 0, 0, 0.4),
+    0 6px 22px -6px rgba(255, 138, 61, 0.75);
+  animation: qo-logo-glow 3.5s ease-in-out infinite;
+}
+@keyframes qo-logo-glow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.15) saturate(1.1); }
 }
 .qo-title {
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  background: linear-gradient(90deg, #ffb37a, var(--qo-orange) 35%, #c4b5fd 80%);
+  font-family: var(--qo-pixel);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: linear-gradient(90deg, var(--qo-gold), var(--qo-orange) 40%, #c4b5fd 85%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.5));
 }
 .qo-subtitle {
   font-size: 11px;
-  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #8b95ab;
+  color: #8f9ab3;
 }
 
-/* Кнопки в шапке: мягкие «пилюли» */
+/* Кнопки в шапке: объёмные игровые кнопки */
 .qo-bg header button {
-  border-radius: 999px !important;
-  padding-left: 14px;
-  padding-right: 14px;
-  transition: transform 120ms ease, background 150ms ease;
+  border-radius: 10px !important;
+  padding: 7px 14px !important;
+  background: linear-gradient(180deg, rgba(58, 72, 120, 0.9), rgba(32, 42, 76, 0.9)) !important;
+  border: 1px solid rgba(160, 180, 230, 0.28) !important;
+  color: #e2e8f0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 3px 0 rgba(8, 12, 24, 0.9),
+    0 6px 14px -6px rgba(0, 0, 0, 0.8);
+  transition: transform 90ms ease, box-shadow 90ms ease, filter 120ms ease;
 }
-.qo-bg header button:hover { transform: translateY(-1px); }
+.qo-bg header button:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 4px 0 rgba(8, 12, 24, 0.9),
+    0 0 18px -4px rgba(139, 92, 246, 0.6);
+}
+.qo-bg header button:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 1px 0 rgba(8, 12, 24, 0.9);
+}
+
+/* Кнопки масштаба на сцене */
+.qo-stage button {
+  border-radius: 10px !important;
+  background: linear-gradient(180deg, rgba(58, 72, 120, 0.95), rgba(32, 42, 76, 0.95)) !important;
+  border: 1px solid rgba(160, 180, 230, 0.3) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 3px 0 rgba(8, 12, 24, 0.9);
+  z-index: 6;
+}
+.qo-stage button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(8, 12, 24, 0.9); }
 
 /* Полоса прокрутки под тему */
+::-webkit-scrollbar-thumb { background: rgba(130, 150, 200, 0.25) !important; }
 ::-webkit-scrollbar-thumb:hover { background: var(--qo-violet) !important; }
+
+/* Записи журнала: карточки с цветной полосой слева */
+.qo-bg .border-l-2.cursor-pointer {
+  background: rgba(30, 41, 76, 0.28);
+  border-radius: 8px !important;
+  margin-bottom: 4px;
+  border-left-color: rgba(255, 138, 61, 0.55) !important;
+  transition: background 120ms ease, transform 120ms ease;
+}
+.qo-bg .border-l-2.cursor-pointer:hover {
+  background: rgba(139, 92, 246, 0.14) !important;
+  border-left-color: var(--qo-violet) !important;
+  transform: translateX(2px);
+}
+/* Выбранная сессия слева */
+.qo-bg .bg-purple-500\/20,
+.qo-bg .bg-purple-900\/30 {
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.28), rgba(255, 138, 61, 0.10)) !important;
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.45), 0 0 18px -6px rgba(139, 92, 246, 0.7);
+}

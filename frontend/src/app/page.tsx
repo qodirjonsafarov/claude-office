@@ -279,7 +279,7 @@ export default function V2TestPage(): React.ReactNode {
   // Render
   // ------------------------------------------------------------------
   return (
-    <main className="flex h-screen flex-col bg-neutral-950 p-2 overflow-hidden relative">
+    <main className="qo-bg flex h-screen flex-col bg-neutral-950 p-3 overflow-hidden relative">
       {/* ----------------------------------------------------------------
           Modals
       ---------------------------------------------------------------- */}
@@ -402,7 +402,7 @@ export default function V2TestPage(): React.ReactNode {
       {/* ----------------------------------------------------------------
           Header
       ---------------------------------------------------------------- */}
-      <header className="flex justify-between items-center mb-2 px-1 relative h-12">
+      <header className="flex justify-between items-center mb-3 px-1 relative h-14">
         <div className="flex items-center gap-3">
           {isMobile && (
             <button
@@ -414,19 +414,23 @@ export default function V2TestPage(): React.ReactNode {
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           )}
-          <h1
-            className={`font-bold text-white tracking-tight flex items-center gap-2 ${
-              isMobile ? "text-lg" : "text-2xl"
-            }`}
-          >
-            <span className="text-orange-500">Qodirjon</span>{" "}
-            {!isMobile && t("app.title")}
-            {!isMobile && (
-              <span className="text-xs font-mono font-normal px-2 py-0.5 bg-slate-800 rounded text-slate-400 border border-slate-700">
-                v0.25.0
-              </span>
-            )}
-          </h1>
+          <div className="flex items-center gap-3">
+            <div className="qo-logo" aria-hidden="true">
+              Q
+            </div>
+            <div className="flex flex-col leading-tight">
+              <h1
+                className={`qo-title flex items-center gap-2 ${
+                  isMobile ? "text-lg" : "text-2xl"
+                }`}
+              >
+                Qodirjon {!isMobile && t("app.title")}
+              </h1>
+              {!isMobile && (
+                <span className="qo-subtitle">{t("app.subtitle")}</span>
+              )}
+            </div>
+          </div>
 
           {/* Breadcrumb — only when in building/floor view */}
           {!isMobile && <Breadcrumb />}
@@ -509,7 +513,7 @@ export default function V2TestPage(): React.ReactNode {
 
           <div
             data-tour-id="game-canvas"
-            className="flex-grow border border-slate-800 rounded-lg shadow-2xl bg-slate-900 overflow-hidden relative"
+            className="qo-stage flex-grow border border-slate-800 rounded-lg shadow-2xl bg-slate-900 overflow-hidden relative"
           >
             <OfficeGame />
           </div>

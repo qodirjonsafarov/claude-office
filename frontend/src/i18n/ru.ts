@@ -3,6 +3,7 @@ import type { TranslationKey } from "./en";
 const ru: Record<TranslationKey, string> = {
   // App
   "app.title": "Office",
+  "app.subtitle": "Штаб AI-команды",
   "app.initializingSystems": "Запуск систем...",
 
   // Header Controls

@@ -1,6 +1,7 @@
 const en = {
   // App
   "app.title": "Office",
+  "app.subtitle": "AI team HQ",
   "app.initializingSystems": "Initializing Systems...",
 
   // Header Controls

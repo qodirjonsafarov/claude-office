@@ -181,6 +181,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(LocalhostOnlyMiddleware)
+app.add_middleware(ApiKeyMiddleware)
+# Added last = outermost, so 401/403 responses from the middlewares above
+# still carry CORS headers and the browser sees the status, not a network error.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
@@ -188,9 +192,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-app.add_middleware(LocalhostOnlyMiddleware)
-app.add_middleware(ApiKeyMiddleware)
 
 app.include_router(events.router, prefix=f"{settings.API_V1_STR}")
 app.include_router(floors.router, prefix=f"{settings.API_V1_STR}")

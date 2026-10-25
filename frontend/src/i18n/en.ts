@@ -307,6 +307,14 @@ const en = {
   "team.tools_other": "{count} tools",
   "team.needsYou": "Needs you",
   "team.progress": "Progress",
+  "eventLog.search": "Search events",
+  "eventLog.filters": "Event filters",
+  "eventLog.all": "All",
+  "eventLog.kindTools": "Tools",
+  "eventLog.kindErrors": "Errors",
+  "eventLog.kindPermissions": "Permissions",
+  "eventLog.noMatches": "No events match",
+  "eventLog.clearFilters": "Clear filters",
 } as const;
 
 export type TranslationKey = keyof typeof en;

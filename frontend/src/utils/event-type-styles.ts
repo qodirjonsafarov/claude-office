@@ -10,55 +10,54 @@ interface EventTypeStyle {
   badge: string;
 }
 
+// Olymp tones only (styles/tokens.css): accent = done/ok, info = flow,
+// warn = tool in flight, max (gold) = needs the user, danger = failure.
 const DEFAULT_STYLES: EventTypeStyle = {
-  text: "text-slate-400",
-  badge: "bg-slate-500/20 text-slate-300 border-slate-500/40",
+  text: "text-ink-faint",
+  badge: "bg-panel-3 text-ink-soft border-transparent",
 };
 
 const EVENT_TYPE_STYLES: Record<string, EventTypeStyle> = {
   pre_tool_use: {
-    text: "text-amber-400",
-    badge: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+    text: "text-warn",
+    badge: "bg-warn-dim text-warn border-transparent",
   },
   post_tool_use: {
-    text: "text-emerald-400",
-    badge: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+    text: "text-accent",
+    badge: "bg-accent-dim text-accent border-transparent",
   },
   user_prompt_submit: {
-    text: "text-cyan-400",
-    badge: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",
+    text: "text-info",
+    badge: "bg-info-dim text-info border-transparent",
   },
   permission_request: {
-    text: "text-orange-400",
-    badge: "bg-orange-500/20 text-orange-300 border-orange-500/40",
+    text: "text-max",
+    badge: "bg-max-dim text-max border-transparent",
   },
   subagent_start: {
-    text: "text-blue-400",
-    badge: "bg-blue-500/20 text-blue-300 border-blue-500/40",
+    text: "text-info",
+    badge: "bg-info-dim text-info border-transparent",
   },
   subagent_stop: {
-    text: "text-purple-400",
-    badge: "bg-purple-500/20 text-purple-300 border-purple-500/40",
+    text: "text-accent",
+    badge: "bg-accent-dim text-accent border-transparent",
   },
   session_start: {
-    text: "text-green-400",
-    badge: "bg-green-500/20 text-green-300 border-green-500/40",
+    text: "text-accent",
+    badge: "bg-accent-dim text-accent border-transparent",
   },
-  session_end: {
-    text: "text-slate-500",
-    badge: "bg-slate-500/20 text-slate-300 border-slate-500/40",
-  },
+  session_end: DEFAULT_STYLES,
   stop: {
-    text: "text-rose-400",
-    badge: "bg-rose-500/20 text-rose-300 border-rose-500/40",
+    text: "text-accent",
+    badge: "bg-accent-dim text-accent border-transparent",
   },
   error: {
-    text: "text-red-500",
-    badge: "bg-red-500/20 text-red-300 border-red-500/40",
+    text: "text-danger",
+    badge: "bg-danger-dim text-danger border-transparent",
   },
   background_task_notification: {
-    text: "text-teal-400",
-    badge: "bg-teal-500/20 text-teal-300 border-teal-500/40",
+    text: "text-info",
+    badge: "bg-info-dim text-info border-transparent",
   },
 };
 

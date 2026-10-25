@@ -309,6 +309,14 @@ const es: Record<TranslationKey, string> = {
   "team.tools_other": "{count} herramientas",
   "team.needsYou": "Te necesita",
   "team.progress": "Progreso",
+  "eventLog.search": "Buscar eventos",
+  "eventLog.filters": "Filtros de eventos",
+  "eventLog.all": "Todos",
+  "eventLog.kindTools": "Herramientas",
+  "eventLog.kindErrors": "Errores",
+  "eventLog.kindPermissions": "Permisos",
+  "eventLog.noMatches": "Ningún evento coincide",
+  "eventLog.clearFilters": "Quitar filtros",
 };
 
 export default es;

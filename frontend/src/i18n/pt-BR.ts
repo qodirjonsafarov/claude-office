@@ -309,6 +309,14 @@ const ptBR: Record<TranslationKey, string> = {
   "team.tools_other": "{count} ferramentas",
   "team.needsYou": "Precisa de você",
   "team.progress": "Progresso",
+  "eventLog.search": "Buscar eventos",
+  "eventLog.filters": "Filtros de eventos",
+  "eventLog.all": "Todos",
+  "eventLog.kindTools": "Ferramentas",
+  "eventLog.kindErrors": "Erros",
+  "eventLog.kindPermissions": "Permissões",
+  "eventLog.noMatches": "Nenhum evento corresponde",
+  "eventLog.clearFilters": "Limpar filtros",
 };
 
 export default ptBR;

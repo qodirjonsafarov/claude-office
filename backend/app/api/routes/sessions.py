@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.chat_status import chat_status, permission_pending
 from app.core.connection_manager import get_manager
 from app.core.event_processor import get_event_processor
 from app.core.token_tracker import usage_for_transcript
@@ -66,6 +67,8 @@ class SessionSummary(TypedDict):
     roomId: str | None
     # Session token totals (TokenUsage, camelCase) or None without a transcript.
     tokenUsage: dict[str, Any] | None
+    # Web chat availability (ChatStatus, camelCase).
+    chat: dict[str, Any]
 
 
 class ReplayEvent(TypedDict):
@@ -176,6 +179,7 @@ async def list_sessions(
         visible.append((rec, count))
 
     usage_by_session = await _token_usage_for_sessions(db, [rec.id for rec, _ in visible])
+    pane_owners = _pane_owners([row[0] for row in rows])
 
     sessions: list[SessionSummary] = []
     for rec, count in visible:
@@ -204,9 +208,34 @@ async def list_sessions(
                 "floorId": rec.floor_id,
                 "roomId": rec.room_id,
                 "tokenUsage": usage_by_session.get(rec.id),
+                "chat": await _session_chat(rec, pane_owners),
             }
         )
     return sessions
+
+
+def _pane_owners(records: list[SessionRecord]) -> dict[str, str]:
+    """tmux pane -> the active session that reported it most recently.
+
+    *records* come newest first, so the first active one per pane wins.
+    """
+    owners: dict[str, str] = {}
+    for rec in records:
+        if rec.status == "active" and rec.tmux_pane and rec.tmux_pane not in owners:
+            owners[rec.tmux_pane] = rec.id
+    return owners
+
+
+async def _session_chat(rec: SessionRecord, pane_owners: dict[str, str]) -> dict[str, Any]:
+    sm = get_event_processor().sessions.get(rec.id)
+    status, _ = await chat_status(
+        active=rec.status == "active",
+        pane=rec.tmux_pane,
+        pane_taken=bool(rec.tmux_pane) and pane_owners.get(rec.tmux_pane or "") != rec.id,
+        waiting_permission=permission_pending(sm),
+        label=rec.project_name,
+    )
+    return status.model_dump(by_alias=True)
 
 
 _JUNK_MAX_EVENTS = 2

@@ -115,6 +115,8 @@ class EventData(BaseModel):
     background_task_summary: str | None = None
     # Task list override (from CLAUDE_CODE_TASK_LIST_ID env var)
     task_list_id: str | None = None
+    # tmux pane the session runs in (TMUX_PANE), for prompts sent from the web UI
+    tmux_pane: str | None = None
     # Room assignment (populated by ProductMapper)
     floor_id: str | None = None
     room_id: str | None = None
@@ -211,6 +213,10 @@ class EventDataBase(BaseModel):
     teammate_name: str | None = None
     # Task list override (session_handler reads for SESSION_*).
     task_list_id: str | None = None
+    # tmux pane the session runs in (hooks send TMUX_PANE); stored per session
+    # so the office can paste a prompt typed in the web UI. Its format is
+    # checked where it is used (tmux_service.is_valid_pane_id).
+    tmux_pane: str | None = None
     # Token accounting (token_tracker.update_from_event fast path).
     input_tokens: int | None = None
     output_tokens: int | None = None

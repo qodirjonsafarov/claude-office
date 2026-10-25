@@ -542,6 +542,16 @@ def _handle_task_completed(sm: "StateMachine", event: AnyEvent) -> None:
         )
 
 
+# notification_type of the event the prompt route records after a web send.
+WEB_PROMPT_NOTIFICATION = "web_prompt"
+
+
+def _handle_notification(sm: "StateMachine", event: AnyEvent) -> None:
+    """Handle NOTIFICATION: a prompt sent from the web UI gets a boss bubble."""
+    if getattr(event.data, "notification_type", None) == WEB_PROMPT_NOTIFICATION:
+        sm.boss_bubble = BubbleContent(type=BubbleType.SPEECH, text="Message received", icon="📨")
+
+
 def _handle_teammate_idle(sm: "StateMachine", event: AnyEvent) -> None:
     """Handle TEAMMATE_IDLE: set teammate boss state to idle."""
     sm.boss_state = BossState.IDLE
@@ -569,6 +579,7 @@ _DISPATCH_TABLE: dict[EventType, Callable[["StateMachine", AnyEvent], None]] = {
     EventType.TASK_CREATED: _handle_task_created,
     EventType.TASK_COMPLETED: _handle_task_completed,
     EventType.TEAMMATE_IDLE: _handle_teammate_idle,
+    EventType.NOTIFICATION: _handle_notification,
 }
 
 
@@ -659,6 +670,13 @@ class StateMachine:
     is_lead: bool = True
     teammate_name: str | None = None
     team_name: str | None = None
+
+    # Web chat: the tmux pane the session runs in, its project name (shown in
+    # the confirm step) and whether the session has ended.
+    tmux_pane: str | None = None
+    project_name: str | None = None
+    session_ended: bool = False
+
     kanban_tasks: dict[str, KanbanTask] = field(
         default_factory=lambda: cast(dict[str, KanbanTask], {})
     )
@@ -817,6 +835,15 @@ class StateMachine:
         # token accounting, which relies on this call being synchronous and
         # deterministic.
         self.token_tracker.update_from_event(event)
+
+        if event.data.tmux_pane:
+            self.tmux_pane = event.data.tmux_pane
+        if event.data.project_name:
+            self.project_name = event.data.project_name
+        if event.event_type == EventType.SESSION_START:
+            self.session_ended = False
+        elif event.event_type == EventType.SESSION_END:
+            self.session_ended = True
 
         handler = _DISPATCH_TABLE.get(event.event_type)
         if handler is not None:

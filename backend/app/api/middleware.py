@@ -56,8 +56,9 @@ def _is_state_changing(path: str, method: str) -> bool:
 
     Covers global destructive operations (clearing all sessions, running a
     simulation) and per-session OS side effects (terminal activation + clipboard
-    write via ``/focus``). Other per-session mutations remain open in the default
-    configuration and are fully gated when an explicit key is set (handled by
+    write via ``/focus``, typing into the terminal via ``/prompt``). Other
+    per-session mutations remain open in the default configuration and are
+    fully gated when an explicit key is set (handled by
     ``settings.has_explicit_key`` in the middleware).
     """
     prefix = settings.API_V1_STR + "/sessions"
@@ -65,6 +66,7 @@ def _is_state_changing(path: str, method: str) -> bool:
         (path == prefix and method == "DELETE")
         or (path == f"{prefix}/simulate" and method == "POST")
         or (path.startswith(f"{prefix}/") and path.endswith("/focus") and method == "POST")
+        or (path.startswith(f"{prefix}/") and path.endswith("/prompt") and method == "POST")
     )
 
 

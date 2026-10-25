@@ -48,6 +48,7 @@ from app.models.overview import OverviewEntry, OverviewState  # noqa: E402  # ty
 from app.models.sessions import (  # noqa: E402  # type: ignore[import]
     AgentLifespan,
     BackgroundTask,
+    ChatStatus,
     FileEdit,
     GameState,
     NewsItem,
@@ -93,6 +94,7 @@ MODELS = [
     NewsItem,
     WhiteboardData,
     Session,
+    ChatStatus,
     GameState,
     ChangedFile,
     Commit,

@@ -62,6 +62,7 @@ export type Message = string | null;
 export type TeamName = string | null;
 export type TeammateName = string | null;
 export type TaskListId = string | null;
+export type TmuxPane = string | null;
 export type InputTokens = number | null;
 export type OutputTokens = number | null;
 export type CacheReadTokens = number | null;
@@ -101,6 +102,7 @@ export type Message1 = string | null;
 export type TeamName1 = string | null;
 export type TeammateName1 = string | null;
 export type TaskListId1 = string | null;
+export type TmuxPane1 = string | null;
 export type InputTokens1 = number | null;
 export type OutputTokens1 = number | null;
 export type CacheReadTokens1 = number | null;
@@ -137,6 +139,9 @@ export type Path = string;
  */
 export type FileStatus = "M" | "A" | "D" | "R" | "C" | "?" | "!";
 export type Staged = boolean;
+export type Cansend = boolean;
+export type Reason = string | null;
+export type Label = string | null;
 /**
  * Short commit hash (7 chars)
  */
@@ -215,7 +220,7 @@ export type ResultSummary1 = string | null;
 export type NotificationType = string | null;
 export type Message3 = string | null;
 export type ErrorType = string | null;
-export type Reason = string | null;
+export type Reason1 = string | null;
 export type Summary3 = string | null;
 export type Prompt = string | null;
 export type TranscriptPath2 = string | null;
@@ -230,6 +235,7 @@ export type BackgroundTaskOutputFile1 = string | null;
 export type BackgroundTaskStatus1 = string | null;
 export type BackgroundTaskSummary1 = string | null;
 export type TaskListId2 = string | null;
+export type TmuxPane2 = string | null;
 export type FloorId2 = string | null;
 export type RoomId2 = string | null;
 export type TeamName2 = string | null;
@@ -250,6 +256,7 @@ export type Message4 = string | null;
 export type TeamName3 = string | null;
 export type TeammateName3 = string | null;
 export type TaskListId3 = string | null;
+export type TmuxPane3 = string | null;
 export type InputTokens3 = number | null;
 export type OutputTokens3 = number | null;
 export type CacheReadTokens3 = number | null;
@@ -371,6 +378,7 @@ export type Message5 = string | null;
 export type TeamName4 = string | null;
 export type TeammateName4 = string | null;
 export type TaskListId4 = string | null;
+export type TmuxPane4 = string | null;
 export type InputTokens4 = number | null;
 export type OutputTokens4 = number | null;
 export type CacheReadTokens4 = number | null;
@@ -379,7 +387,7 @@ export type FloorId4 = string | null;
 export type RoomId4 = string | null;
 export type NotificationType1 = string | null;
 export type ErrorType1 = string | null;
-export type Reason1 = string | null;
+export type Reason2 = string | null;
 export type Sessionid1 = string;
 export type Bucket = "needs_you" | "working" | "done";
 export type Currenttask2 = string | null;
@@ -408,6 +416,7 @@ export type Message6 = string | null;
 export type TeamName5 = string | null;
 export type TeammateName5 = string | null;
 export type TaskListId5 = string | null;
+export type TmuxPane5 = string | null;
 export type InputTokens5 = number | null;
 export type OutputTokens5 = number | null;
 export type CacheReadTokens5 = number | null;
@@ -434,13 +443,14 @@ export type Message7 = string | null;
 export type TeamName6 = string | null;
 export type TeammateName6 = string | null;
 export type TaskListId6 = string | null;
+export type TmuxPane6 = string | null;
 export type InputTokens6 = number | null;
 export type OutputTokens6 = number | null;
 export type CacheReadTokens6 = number | null;
 export type CacheCreationTokens6 = number | null;
 export type FloorId6 = string | null;
 export type RoomId6 = string | null;
-export type Reason2 = string | null;
+export type Reason3 = string | null;
 export type ProjectName7 = string | null;
 export type ProjectDir7 = string | null;
 export type WorkingDir7 = string | null;
@@ -454,6 +464,7 @@ export type Message8 = string | null;
 export type TeamName7 = string | null;
 export type TeammateName7 = string | null;
 export type TaskListId7 = string | null;
+export type TmuxPane7 = string | null;
 export type InputTokens7 = number | null;
 export type OutputTokens7 = number | null;
 export type CacheReadTokens7 = number | null;
@@ -475,6 +486,7 @@ export type Message9 = string | null;
 export type TeamName8 = string | null;
 export type TeammateName8 = string | null;
 export type TaskListId8 = string | null;
+export type TmuxPane8 = string | null;
 export type InputTokens8 = number | null;
 export type OutputTokens8 = number | null;
 export type CacheReadTokens8 = number | null;
@@ -577,6 +589,7 @@ export interface AgentEventData {
   team_name?: TeamName;
   teammate_name?: TeammateName;
   task_list_id?: TaskListId;
+  tmux_pane?: TmuxPane;
   input_tokens?: InputTokens;
   output_tokens?: OutputTokens;
   cache_read_tokens?: CacheReadTokens;
@@ -654,6 +667,7 @@ export interface BackgroundTaskEventData {
   team_name?: TeamName1;
   teammate_name?: TeammateName1;
   task_list_id?: TaskListId1;
+  tmux_pane?: TmuxPane1;
   input_tokens?: InputTokens1;
   output_tokens?: OutputTokens1;
   cache_read_tokens?: CacheReadTokens1;
@@ -693,6 +707,18 @@ export interface ChangedFile {
   path: Path;
   status: FileStatus;
   staged?: Staged;
+  [k: string]: unknown;
+}
+/**
+ * Whether the office UI can send a prompt into this session's terminal.
+ *
+ * This interface was referenced by `ClaudeOfficeBackendTypes`'s JSON-Schema
+ * via the `definition` "ChatStatus".
+ */
+export interface ChatStatus {
+  canSend?: Cansend;
+  reason?: Reason;
+  label?: Label;
   [k: string]: unknown;
 }
 /**
@@ -774,7 +800,7 @@ export interface EventData {
   notification_type?: NotificationType;
   message?: Message3;
   error_type?: ErrorType;
-  reason?: Reason;
+  reason?: Reason1;
   summary?: Summary3;
   prompt?: Prompt;
   bubble_content?: BubbleContent | null;
@@ -791,6 +817,7 @@ export interface EventData {
   background_task_status?: BackgroundTaskStatus1;
   background_task_summary?: BackgroundTaskSummary1;
   task_list_id?: TaskListId2;
+  tmux_pane?: TmuxPane2;
   floor_id?: FloorId2;
   room_id?: RoomId2;
   team_name?: TeamName2;
@@ -823,6 +850,7 @@ export interface EventDataBase {
   team_name?: TeamName3;
   teammate_name?: TeammateName3;
   task_list_id?: TaskListId3;
+  tmux_pane?: TmuxPane3;
   input_tokens?: InputTokens3;
   output_tokens?: OutputTokens3;
   cache_read_tokens?: CacheReadTokens3;
@@ -862,6 +890,7 @@ export interface GameState {
   conversation?: Conversation;
   floorId?: Floorid;
   roomId?: Roomid;
+  chat?: ChatStatus | null;
   [k: string]: unknown;
 }
 /**
@@ -1037,6 +1066,7 @@ export interface LifecycleEventData {
   team_name?: TeamName4;
   teammate_name?: TeammateName4;
   task_list_id?: TaskListId4;
+  tmux_pane?: TmuxPane4;
   input_tokens?: InputTokens4;
   output_tokens?: OutputTokens4;
   cache_read_tokens?: CacheReadTokens4;
@@ -1045,7 +1075,7 @@ export interface LifecycleEventData {
   room_id?: RoomId4;
   notification_type?: NotificationType1;
   error_type?: ErrorType1;
-  reason?: Reason1;
+  reason?: Reason2;
   bubble_content?: BubbleContent | null;
   speech_content?: SpeechContent | null;
   [k: string]: unknown;
@@ -1097,6 +1127,7 @@ export interface PromptEventData {
   team_name?: TeamName5;
   teammate_name?: TeammateName5;
   task_list_id?: TaskListId5;
+  tmux_pane?: TmuxPane5;
   input_tokens?: InputTokens5;
   output_tokens?: OutputTokens5;
   cache_read_tokens?: CacheReadTokens5;
@@ -1141,13 +1172,14 @@ export interface SessionEventData {
   team_name?: TeamName6;
   teammate_name?: TeammateName6;
   task_list_id?: TaskListId6;
+  tmux_pane?: TmuxPane6;
   input_tokens?: InputTokens6;
   output_tokens?: OutputTokens6;
   cache_read_tokens?: CacheReadTokens6;
   cache_creation_tokens?: CacheCreationTokens6;
   floor_id?: FloorId6;
   room_id?: RoomId6;
-  reason?: Reason2;
+  reason?: Reason3;
   [k: string]: unknown;
 }
 /**
@@ -1170,6 +1202,7 @@ export interface TaskEventData {
   team_name?: TeamName7;
   teammate_name?: TeammateName7;
   task_list_id?: TaskListId7;
+  tmux_pane?: TmuxPane7;
   input_tokens?: InputTokens7;
   output_tokens?: OutputTokens7;
   cache_read_tokens?: CacheReadTokens7;
@@ -1200,6 +1233,7 @@ export interface ToolEventData {
   team_name?: TeamName8;
   teammate_name?: TeammateName8;
   task_list_id?: TaskListId8;
+  tmux_pane?: TmuxPane8;
   input_tokens?: InputTokens8;
   output_tokens?: OutputTokens8;
   cache_read_tokens?: CacheReadTokens8;

@@ -113,3 +113,6 @@ frontend/public/sprites/paid/
 .superpowers
 docs/superpowers
 .cc2cc-session-id
+
+# Web prompt audit log (backend/app/config.py WEB_PROMPT_AUDIT_LOG)
+backend/logs/

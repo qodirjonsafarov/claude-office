@@ -17,6 +17,7 @@ __all__ = [
     "WhiteboardData",
     "Session",
     "HistoryEntry",
+    "ChatStatus",
     "GameState",
 ]
 
@@ -136,6 +137,18 @@ class HistoryEntry(TypedDict):
     detail: dict[str, object]
 
 
+class ChatStatus(BaseModel):
+    """Whether the office UI can send a prompt into this session's terminal."""
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    can_send: bool = False
+    # Why not (core.web_prompt.ChatBlockReason), None when can_send.
+    reason: str | None = None
+    # Project name shown in the confirm step before the first send.
+    label: str | None = None
+
+
 class GameState(BaseModel):
     """Complete state of the office visualization for frontend rendering."""
 
@@ -156,3 +169,5 @@ class GameState(BaseModel):
     )
     floor_id: str | None = None
     room_id: str | None = None
+    # Web chat availability (None for merged room views).
+    chat: ChatStatus | None = None

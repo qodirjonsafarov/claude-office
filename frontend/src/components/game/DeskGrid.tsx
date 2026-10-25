@@ -193,9 +193,10 @@ interface DeskSurfacesTopProps {
  */
 function drawTerminalGlow(g: Graphics): void {
   g.clear();
-  for (let i = 0; i < 4; i++) {
-    g.ellipse(0, 0, 26 - i * 5, 14 - i * 3);
-    g.fill({ color: 0x5cff8a, alpha: 0.07 + i * 0.03 });
+  // Wider than the monitor, so the light shows around its edges
+  for (let i = 0; i < 5; i++) {
+    g.ellipse(0, 0, 50 - i * 7, 34 - i * 5);
+    g.fill({ color: 0x5cff8a, alpha: 0.06 + i * 0.025 });
   }
 }
 

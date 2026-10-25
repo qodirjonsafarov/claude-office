@@ -218,7 +218,108 @@
   --color-orange-900: var(--qo-max-dim);
   --color-orange-950: var(--qo-max-dim);
 
-  --animate-qo-spin: qo-spin 0.8s linear infinite;
+  /* Cool colours (blue, sky, cyan, indigo, teal, violet) -> Olymp info blue;
+     green/lime -> the accent; yellow -> warn; white -> ink. */
+  --color-blue-50: var(--qo-info);
+  --color-blue-100: var(--qo-info);
+  --color-blue-200: var(--qo-info);
+  --color-blue-300: var(--qo-info);
+  --color-blue-400: var(--qo-info);
+  --color-blue-500: var(--qo-info);
+  --color-blue-600: var(--qo-info);
+  --color-blue-700: var(--qo-info);
+  --color-blue-800: var(--qo-info-dim);
+  --color-blue-900: var(--qo-info-dim);
+  --color-blue-950: var(--qo-info-dim);
+  --color-sky-50: var(--qo-info);
+  --color-sky-100: var(--qo-info);
+  --color-sky-200: var(--qo-info);
+  --color-sky-300: var(--qo-info);
+  --color-sky-400: var(--qo-info);
+  --color-sky-500: var(--qo-info);
+  --color-sky-600: var(--qo-info);
+  --color-sky-700: var(--qo-info);
+  --color-sky-800: var(--qo-info-dim);
+  --color-sky-900: var(--qo-info-dim);
+  --color-sky-950: var(--qo-info-dim);
+  --color-cyan-50: var(--qo-info);
+  --color-cyan-100: var(--qo-info);
+  --color-cyan-200: var(--qo-info);
+  --color-cyan-300: var(--qo-info);
+  --color-cyan-400: var(--qo-info);
+  --color-cyan-500: var(--qo-info);
+  --color-cyan-600: var(--qo-info);
+  --color-cyan-700: var(--qo-info);
+  --color-cyan-800: var(--qo-info-dim);
+  --color-cyan-900: var(--qo-info-dim);
+  --color-cyan-950: var(--qo-info-dim);
+  --color-indigo-50: var(--qo-info);
+  --color-indigo-100: var(--qo-info);
+  --color-indigo-200: var(--qo-info);
+  --color-indigo-300: var(--qo-info);
+  --color-indigo-400: var(--qo-info);
+  --color-indigo-500: var(--qo-info);
+  --color-indigo-600: var(--qo-info);
+  --color-indigo-700: var(--qo-info);
+  --color-indigo-800: var(--qo-info-dim);
+  --color-indigo-900: var(--qo-info-dim);
+  --color-indigo-950: var(--qo-info-dim);
+  --color-teal-50: var(--qo-info);
+  --color-teal-100: var(--qo-info);
+  --color-teal-200: var(--qo-info);
+  --color-teal-300: var(--qo-info);
+  --color-teal-400: var(--qo-info);
+  --color-teal-500: var(--qo-info);
+  --color-teal-600: var(--qo-info);
+  --color-teal-700: var(--qo-info);
+  --color-teal-800: var(--qo-info-dim);
+  --color-teal-900: var(--qo-info-dim);
+  --color-teal-950: var(--qo-info-dim);
+  --color-violet-50: var(--qo-info);
+  --color-violet-100: var(--qo-info);
+  --color-violet-200: var(--qo-info);
+  --color-violet-300: var(--qo-info);
+  --color-violet-400: var(--qo-info);
+  --color-violet-500: var(--qo-info);
+  --color-violet-600: var(--qo-info);
+  --color-violet-700: var(--qo-info);
+  --color-violet-800: var(--qo-info-dim);
+  --color-violet-900: var(--qo-info-dim);
+  --color-violet-950: var(--qo-info-dim);
+  --color-green-50: var(--qo-accent);
+  --color-green-100: var(--qo-accent);
+  --color-green-200: var(--qo-accent);
+  --color-green-300: var(--qo-accent);
+  --color-green-400: var(--qo-accent);
+  --color-green-500: var(--qo-accent);
+  --color-green-600: var(--qo-accent-dark);
+  --color-green-700: var(--qo-accent-dark);
+  --color-green-800: var(--qo-accent-dim);
+  --color-green-900: var(--qo-accent-dim);
+  --color-green-950: var(--qo-accent-dim);
+  --color-lime-50: var(--qo-accent);
+  --color-lime-100: var(--qo-accent);
+  --color-lime-200: var(--qo-accent);
+  --color-lime-300: var(--qo-accent);
+  --color-lime-400: var(--qo-accent);
+  --color-lime-500: var(--qo-accent);
+  --color-lime-600: var(--qo-accent-dark);
+  --color-lime-700: var(--qo-accent-dark);
+  --color-lime-800: var(--qo-accent-dim);
+  --color-lime-900: var(--qo-accent-dim);
+  --color-lime-950: var(--qo-accent-dim);
+  --color-yellow-50: var(--qo-warn);
+  --color-yellow-100: var(--qo-warn);
+  --color-yellow-200: var(--qo-warn);
+  --color-yellow-300: var(--qo-warn);
+  --color-yellow-400: var(--qo-warn);
+  --color-yellow-500: var(--qo-warn);
+  --color-yellow-600: var(--qo-warn);
+  --color-yellow-700: var(--qo-warn);
+  --color-yellow-800: var(--qo-warn-dim);
+  --color-yellow-900: var(--qo-warn-dim);
+  --color-yellow-950: var(--qo-warn-dim);
+  --color-white: var(--qo-ink);
 }
 
 /* ---------------------------------------------------------------------------
@@ -346,18 +447,6 @@
     color: var(--qo-accent);
   }
 
-  /* A capsule holding a group of controls, floating over the page. */
-  .qo-capsule {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px;
-    border-radius: 999px;
-    background: var(--qo-panel);
-    border: 1px solid var(--qo-line-strong);
-    box-shadow: 0 8px 24px var(--qo-float-shade);
-  }
-
   /* Glass bars: mostly the page's colour, a strong blur of what passes under. */
   .qo-glass,
   .qo-glass-panel {
@@ -402,6 +491,12 @@
   .qo-segmented > button[aria-selected="true"] {
     background: var(--qo-accent);
     color: var(--qo-on-accent);
+  }
+  /* Touch screens: 44px targets. */
+  @media (pointer: coarse) {
+    .qo-segmented > button {
+      height: 44px;
+    }
   }
 
   /* A text field. */
@@ -520,13 +615,6 @@
     animation: qo-spin 0.8s linear infinite;
   }
 
-  /* A placeholder the size of what is coming, with a slow sheen. */
-  .qo-shimmer {
-    background: linear-gradient(90deg, var(--qo-panel) 0%, var(--qo-panel-2) 40%, var(--qo-panel) 80%);
-    background-size: 200% 100%;
-    animation: qo-shimmer 1.6s ease-in-out infinite;
-  }
-
   /* The studio behind the office scene. */
   .qo-studio {
     background:
@@ -535,17 +623,15 @@
   }
 
   /* Arrivals: a sheet rises from the bottom, a window grows in the middle, a scrim fades in. */
+  /* backwards fill: once risen, inline transforms (the pull-down) win. */
   .qo-sheet-up {
-    animation: qo-sheet-up 0.34s cubic-bezier(0.32, 0.72, 0, 1) both;
+    animation: qo-sheet-up 0.34s cubic-bezier(0.32, 0.72, 0, 1) backwards;
   }
   .qo-pop {
     animation: qo-pop-in 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
   .qo-fade-in {
     animation: qo-fade-in 0.24s ease-out both;
-  }
-  .qo-reveal {
-    animation: qo-reveal 0.32s ease-out both;
   }
 }
 
@@ -579,14 +665,6 @@
     transform: rotate(360deg);
   }
 }
-@keyframes qo-shimmer {
-  from {
-    background-position: -200% 0;
-  }
-  to {
-    background-position: 200% 0;
-  }
-}
 @keyframes qo-sheet-up {
   from {
     transform: translateY(100%);
@@ -613,27 +691,14 @@
     opacity: 1;
   }
 }
-@keyframes qo-reveal {
-  from {
-    opacity: 0;
-    filter: blur(6px);
-  }
-  to {
-    opacity: 1;
-    filter: blur(0);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .qo-live-dot,
   .qo-progress-busy > span,
   .qo-progress-wait > span,
   .qo-spinner,
-  .qo-shimmer,
   .qo-sheet-up,
   .qo-pop,
-  .qo-fade-in,
-  .qo-reveal {
+  .qo-fade-in {
     animation: none !important;
   }
 }

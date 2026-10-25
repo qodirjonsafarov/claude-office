@@ -197,7 +197,7 @@ export default function CommandBar(): ReactNode {
       }}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" />
+      <div className="absolute inset-0 bg-scrim" />
 
       {/* Command palette */}
       <div className="relative w-full max-w-lg bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl overflow-hidden">

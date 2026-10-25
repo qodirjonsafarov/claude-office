@@ -94,3 +94,13 @@ export function filterEvents<T extends FilterableEvent>(
     return haystack.includes(query);
   });
 }
+
+/**
+ * How many entries (newest first) came after `seen`, the newest entry the
+ * user has seen. Compared by identity, never by time: the server's and the
+ * phone's clocks differ. If `seen` is gone (log trimmed or reset), all count.
+ */
+export function countUnseen<T>(log: readonly T[], seen: T | null): number {
+  const index = seen === null ? -1 : log.indexOf(seen);
+  return index === -1 ? log.length : index;
+}

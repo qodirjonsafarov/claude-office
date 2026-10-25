@@ -14,6 +14,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR as dateFnsPtBR, es as dateFnsEs } from "date-fns/locale";
 import { GitStatusPanel } from "@/components/layout/GitStatusPanel";
 import type { Session } from "@/hooks/useSessions";
+import { getProjectKey, groupSessionsByProject } from "@/utils/sessionGroups";
 import { usageLabel } from "@/utils/tokenUsage";
 import { useDragResize } from "@/hooks/useDragResize";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -30,47 +31,6 @@ const SESSIONS_DEFAULT_HEIGHT = 280;
 
 /** Max height is 70% of viewport to prevent overflow on smaller screens */
 const getMaxPanelHeight = () => Math.floor(window.innerHeight * 0.7);
-
-// ============================================================================
-// GROUPING HELPERS
-// ============================================================================
-
-/** Derive a display name for grouping from a session. */
-function getProjectKey(session: Session): string {
-  if (session.projectName) return session.projectName;
-  if (session.projectRoot)
-    return session.projectRoot.split("/").pop() ?? "unknown";
-  return "unknown";
-}
-
-/** Group sessions by project, sorted: groups with active sessions first, then by most recent update. */
-function groupSessionsByProject(sessions: Session[]): Map<string, Session[]> {
-  const groups = new Map<string, Session[]>();
-  for (const s of sessions) {
-    const key = getProjectKey(s);
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(s);
-  }
-  // Sort within each group: active first, then by updatedAt desc
-  for (const list of groups.values()) {
-    list.sort((a, b) => {
-      if (a.status === "active" && b.status !== "active") return -1;
-      if (b.status === "active" && a.status !== "active") return 1;
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
-  }
-  // Sort groups: those with active sessions first, then by most recent update
-  const sorted = [...groups.entries()].sort(([, a], [, b]) => {
-    const aActive = a.some((s) => s.status === "active");
-    const bActive = b.some((s) => s.status === "active");
-    if (aActive && !bActive) return -1;
-    if (bActive && !aActive) return 1;
-    const aNewest = Math.max(...a.map((s) => new Date(s.updatedAt).getTime()));
-    const bNewest = Math.max(...b.map((s) => new Date(s.updatedAt).getTime()));
-    return bNewest - aNewest;
-  });
-  return new Map(sorted);
-}
 
 // ============================================================================
 // TYPES
@@ -386,8 +346,7 @@ export function SessionSidebar({
                               ) : (
                                 <ChevronRight size={10} />
                               )}
-                              {rest.length} older session
-                              {rest.length !== 1 ? "s" : ""}
+                              {t("sessions.older", { count: rest.length })}
                             </button>
 
                             {isExpanded &&

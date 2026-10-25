@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import {
   agentNames,
+  countUnseen,
   eventKind,
   filterEvents,
   logPeople,
@@ -140,5 +141,29 @@ describe("names", () => {
 
   it("lists the agents that appear in the log, in order of first event", () => {
     expect(logPeople(log)).toEqual(["b2", "a5a60c7f-1"]);
+  });
+});
+
+describe("countUnseen", () => {
+  // Newest first, like the store; entries are compared by identity, never
+  // by clock (server and phone clocks differ).
+  const a = { id: "a" };
+  const b = { id: "b" };
+  const c = { id: "c" };
+
+  it("counts the entries newer than the last seen one", () => {
+    expect(countUnseen([c, b, a], a)).toBe(2);
+  });
+
+  it("is zero when the newest was seen", () => {
+    expect(countUnseen([c, b, a], c)).toBe(0);
+  });
+
+  it("counts everything once the seen entry is gone", () => {
+    expect(countUnseen([c, b], a)).toBe(2);
+  });
+
+  it("is zero for an empty log", () => {
+    expect(countUnseen([], null)).toBe(0);
   });
 });

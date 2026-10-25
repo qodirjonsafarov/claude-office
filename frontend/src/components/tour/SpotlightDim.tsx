@@ -83,7 +83,7 @@ export function SpotlightDim({
   const w = rect.width + padding * 2;
   const h = rect.height + padding * 2;
 
-  const dimStyle = "fixed z-[50] bg-black/60 pointer-events-none";
+  const dimStyle = "fixed z-[50] bg-scrim pointer-events-none";
 
   return (
     <>

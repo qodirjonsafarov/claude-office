@@ -19,7 +19,6 @@ const en = {
   "header.status": "Status",
   "header.connected": "Connected",
   "header.disconnected": "Disconnected",
-  "header.agents": "agents",
   "header.tour": "Tour",
   "header.more": "More",
   "header.moreMenu": "More actions",
@@ -170,7 +169,6 @@ const en = {
   "mobile.allIdle": "All quiet",
   "mobile.actions": "Actions",
   "mobile.working": "working",
-  "mobile.idle": "idle",
 
   // Status Messages
   "status.switchedToSession": "Switched to session {sessionId}...",
@@ -266,6 +264,9 @@ const en = {
   "eventLog.noMatches": "No events match",
   "eventLog.clearFilters": "Clear filters",
   "hud.tokens": "Tokens",
+  "sessions.older": "older sessions",
+  "sessions.older_one": "{count} older session",
+  "sessions.older_other": "{count} older sessions",
 } as const;
 
 export type TranslationKey = keyof typeof en;

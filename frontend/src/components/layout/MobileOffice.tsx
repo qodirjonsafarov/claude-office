@@ -19,7 +19,12 @@ import { MobileSheet } from "@/components/layout/MobileSheet";
 import { MobileTabBar, type MobileTab } from "@/components/layout/MobileTabBar";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { Session } from "@/hooks/useSessions";
-import { useGameStore, selectEventLog } from "@/stores/gameStore";
+import {
+  useGameStore,
+  selectEventLog,
+  type EventLogEntry,
+} from "@/stores/gameStore";
+import { countUnseen } from "@/utils/eventFilter";
 import { countWorking } from "@/utils/workStatus";
 
 // ============================================================================
@@ -43,20 +48,6 @@ interface MobileOfficeProps {
   onToggleDebug: () => void;
   onOpenSettings: () => void;
   onOpenHelp: () => void;
-}
-
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-/** How many events came after `since` (the log is newest first). */
-function countNewer(log: { timestamp: Date }[], since: number): number {
-  let count = 0;
-  for (const entry of log) {
-    if (entry.timestamp.getTime() <= since) break;
-    count += 1;
-  }
-  return count;
 }
 
 // ============================================================================
@@ -89,20 +80,23 @@ export function MobileOffice({
   const { t } = useTranslation();
   const [tab, setTab] = useState<MobileTab>("office");
   const [logTab, setLogTab] = useState<"events" | "conversation">("events");
-  const [eventsSeenAt, setEventsSeenAt] = useState(() => Date.now());
+  // The newest event the user has seen (by identity, not clock).
+  const [seenEvent, setSeenEvent] = useState<EventLogEntry | null>(
+    () => useGameStore.getState().eventLog[0] ?? null,
+  );
 
   const eventLog = useGameStore(selectEventLog);
   const working = useGameStore((s) =>
     countWorking(s.boss.backendState, s.agents.values()),
   );
-  const newEvents = tab === "events" ? 0 : countNewer(eventLog, eventsSeenAt);
+  const newEvents = tab === "events" ? 0 : countUnseen(eventLog, seenEvent);
 
   const close = () => {
-    if (tab === "events") setEventsSeenAt(Date.now());
+    if (tab === "events") setSeenEvent(eventLog[0] ?? null);
     setTab("office");
   };
   const select = (next: MobileTab) => {
-    if (tab === "events") setEventsSeenAt(Date.now());
+    if (tab === "events") setSeenEvent(eventLog[0] ?? null);
     setTab(next === tab ? "office" : next);
   };
   const run = (action: () => void) => () => {
@@ -173,7 +167,7 @@ export function MobileOffice({
       )}
 
       {landscape ? (
-        <main className="flex-1 min-w-0 flex gap-3 p-3 pr-[max(12px,env(safe-area-inset-right))] pb-[max(12px,env(safe-area-inset-bottom))]">
+        <div className="flex-1 min-w-0 flex gap-3 p-3 pr-[max(12px,env(safe-area-inset-right))] pb-[max(12px,env(safe-area-inset-bottom))]">
           <div className="relative flex-1 min-w-0 [container-type:size]">
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-[min(100cqw,125cqh)]">{stage}</div>
@@ -183,15 +177,15 @@ export function MobileOffice({
             {status}
             <MobileAgentActivity className="flex-1" />
           </div>
-        </main>
+        </div>
       ) : (
-        <main className="flex-1 min-h-0 flex flex-col gap-3 py-3 qo-safe-x [--qo-gutter:12px]">
+        <div className="flex-1 min-h-0 flex flex-col gap-3 py-3 qo-safe-x [--qo-gutter:12px]">
           {stage}
           <div className="-mx-3 px-3 overflow-x-auto flex-shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <HudStats />
           </div>
           <MobileAgentActivity className="flex-1" />
-        </main>
+        </div>
       )}
 
       {!landscape && (

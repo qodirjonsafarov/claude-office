@@ -21,6 +21,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // Mirrors --qo-bg in styles/tokens.css (metadata cannot read CSS vars).
   themeColor: "#080d0c",
 };
 

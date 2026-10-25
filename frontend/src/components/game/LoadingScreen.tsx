@@ -10,6 +10,7 @@
 import { type ReactNode } from "react";
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from "@/constants/canvas";
 import { useTranslation } from "@/hooks/useTranslation";
+import { PIXI_COLORS } from "@/styles/pixiColors";
 
 export function LoadingScreen(): ReactNode {
   const { t } = useTranslation();
@@ -19,7 +20,7 @@ export function LoadingScreen(): ReactNode {
       <pixiGraphics
         draw={(g) => {
           g.clear();
-          g.fill({ color: 0x0f1715 });
+          g.fill({ color: PIXI_COLORS.panel });
           g.rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         }}
       />
@@ -32,7 +33,7 @@ export function LoadingScreen(): ReactNode {
             fontFamily: "Manrope, system-ui, sans-serif",
             fontSize: 48,
             fontWeight: "800",
-            fill: 0xa9b8b0,
+            fill: PIXI_COLORS.inkSoft,
             letterSpacing: 1,
           }}
         />
@@ -45,7 +46,7 @@ export function LoadingScreen(): ReactNode {
             x={(i - 1) * 20}
             draw={(g) => {
               g.clear();
-              g.fill({ color: 0xa7f36a, alpha: 0.8 });
+              g.fill({ color: PIXI_COLORS.accent, alpha: 0.8 });
               g.circle(0, 0, 4);
             }}
           />

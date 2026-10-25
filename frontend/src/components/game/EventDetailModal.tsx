@@ -4,12 +4,14 @@
 
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useRef } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { format } from "date-fns";
 import type { EventLogEntry } from "@/stores/gameStore";
 import { useTranslation } from "@/hooks/useTranslation";
 import { getEventTypeBadgeClasses } from "@/utils/event-type-styles";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 interface EventDetailModalProps {
   event: EventLogEntry;
@@ -18,38 +20,29 @@ interface EventDetailModalProps {
 
 export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
   const { t } = useTranslation();
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    },
-    [onClose],
-  );
-
-  useEffect(() => {
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
+  const box = useRef<HTMLDivElement>(null);
+  useDialogFocus(box, { onEscape: onClose });
 
   const detail = event.detail ?? {};
   const hasDetail = Object.keys(detail).length > 0;
 
-  return (
+  // Portaled to <body>: inside a phone sheet (a transformed box) a fixed
+  // element would be positioned relative to the sheet instead of the screen.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-scrim qo-fade-in" onClick={onClose} />
 
       {/* Modal Panel */}
       <div
+        ref={box}
         role="dialog"
         aria-modal="true"
         aria-label={`${event.type.replace(/_/g, " ")} — ${event.summary}`}
-        className="relative z-10 w-full max-w-2xl max-h-[80vh] flex flex-col bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden font-mono text-xs"
+        className="qo-pop relative z-10 w-full max-w-2xl max-h-[80vh] flex flex-col bg-panel border border-line rounded-xl3 shadow-[0_16px_48px_var(--qo-float-shade)] overflow-hidden font-mono text-xs"
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-700 bg-slate-950 flex-shrink-0">
+        <div className="flex items-center gap-3 pl-4 pr-2 py-2 border-b border-line flex-shrink-0">
           <span
             className={`px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider ${getEventTypeBadgeClasses(event.type)}`}
           >
@@ -65,10 +58,11 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
           )}
           <button
             onClick={onClose}
-            className="ml-auto p-1.5 text-slate-500 hover:text-white hover:bg-slate-700 rounded transition-colors"
+            className="qo-icon-btn ml-auto"
             aria-label={t("modal.close")}
+            data-autofocus
           >
-            <X size={14} />
+            <X size={18} />
           </button>
         </div>
 
@@ -192,15 +186,13 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 px-4 py-3 border-t border-slate-700 bg-slate-950 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold rounded transition-colors"
-          >
+        <div className="flex-shrink-0 px-4 py-3 border-t border-line flex justify-end">
+          <button onClick={onClose} className="qo-btn qo-btn-secondary">
             {t("modal.close")}
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

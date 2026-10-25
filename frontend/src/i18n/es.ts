@@ -21,7 +21,6 @@ const es: Record<TranslationKey, string> = {
   "header.status": "Estado",
   "header.connected": "Conectado",
   "header.disconnected": "Desconectado",
-  "header.agents": "agentes",
   "header.tour": "Tour",
   "header.more": "Más",
   "header.moreMenu": "Más acciones",
@@ -173,7 +172,6 @@ const es: Record<TranslationKey, string> = {
   "mobile.allIdle": "Todo tranquilo",
   "mobile.actions": "Acciones",
   "mobile.working": "trabajando",
-  "mobile.idle": "libre",
 
   // Status Messages
   "status.switchedToSession": "Cambió a sesión {sessionId}...",
@@ -269,6 +267,9 @@ const es: Record<TranslationKey, string> = {
   "eventLog.noMatches": "Ningún evento coincide",
   "eventLog.clearFilters": "Quitar filtros",
   "hud.tokens": "Tokens",
+  "sessions.older": "sesiones anteriores",
+  "sessions.older_one": "{count} sesión anterior",
+  "sessions.older_other": "{count} sesiones anteriores",
 };
 
 export default es;

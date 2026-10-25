@@ -15,7 +15,7 @@ const SIDEBAR_MIN_WIDTH = 200;
 const SIDEBAR_MAX_WIDTH = 600;
 const SIDEBAR_DEFAULT_WIDTH = 320; // equivalent to w-80
 const AGENT_PANEL_MIN_HEIGHT = 60;
-const AGENT_PANEL_DEFAULT_HEIGHT = 240;
+const AGENT_PANEL_DEFAULT_HEIGHT = 360;
 
 /** Max height is 70% of viewport to prevent overflow on smaller screens */
 const getMaxPanelHeight = () => Math.floor(window.innerHeight * 0.7);

@@ -10,65 +10,12 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-mono: var(--font-geist-mono);
-  --animate-tour-ring: tour-ring-pulse 1.5s ease-in-out infinite;
-  --animate-slide-up: slide-up 300ms ease-out forwards;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--qo-font);
-}
-
-@keyframes tour-ring-pulse {
-  0%,
-  100% {
-    box-shadow:
-      0 0 0 3px rgba(249, 115, 22, 0.6),
-      0 0 20px 4px rgba(249, 115, 22, 0.2);
-  }
-  50% {
-    box-shadow:
-      0 0 0 5px rgba(249, 115, 22, 0.4),
-      0 0 30px 8px rgba(249, 115, 22, 0.3);
-  }
-}
-
-@keyframes slide-up {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes zoomInView {
-  from {
-    transform: scale(0.3);
-    opacity: 0;
-    filter: blur(4px);
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-    filter: blur(0px);
-  }
-}
-
-@keyframes zoomOutView {
-  from {
-    transform: scale(3);
-    opacity: 0;
-    filter: blur(4px);
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-    filter: blur(0px);
-  }
 }
 
 @layer utilities {
@@ -126,38 +73,14 @@ body {
 @keyframes tourPulse {
   0%,
   100% {
-    box-shadow: 0 0 12px rgba(249, 115, 22, 0.4);
-    border-color: rgba(249, 115, 22, 0.7);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--qo-max) 40%, transparent);
+    border-color: color-mix(in srgb, var(--qo-max) 70%, transparent);
   }
   50% {
-    box-shadow: 0 0 24px rgba(249, 115, 22, 0.6);
-    border-color: rgba(249, 115, 22, 1);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--qo-max) 60%, transparent);
+    border-color: var(--qo-max);
   }
 }
-
-/* View transition animations */
-@keyframes zoomInView {
-  from {
-    transform: scale(0.3);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes zoomOutView {
-  from {
-    transform: scale(1.5);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
 
 /* ======================================================================
    Qodirjon Office in the Olymp look: the bridge from the older markup

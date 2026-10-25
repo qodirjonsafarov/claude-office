@@ -1,8 +1,9 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 interface MobileSheetProps {
   title: string;
@@ -31,13 +32,17 @@ export function MobileSheet({
   const box = useRef<HTMLDivElement>(null);
   const pull = useRef<{ y: number; at: number; moved: number } | null>(null);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const closeTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    },
+    [],
+  );
+  const close = useCallback(() => onClose(), [onClose]);
+
+  // Focus the close button, trap Tab; Escape only while no modal is on top.
+  useDialogFocus(box, { onEscape: close });
 
   const pullStart = (e: React.PointerEvent) => {
     if (e.pointerType === "mouse") return;
@@ -48,8 +53,11 @@ export function MobileSheet({
     if (!pull.current || !sheet) return;
     const moved = Math.max(0, e.clientY - pull.current.y);
     pull.current.moved = moved;
-    if (moved < 8) return;
     sheet.style.transition = "none";
+    if (moved < 8) {
+      sheet.style.transform = "";
+      return;
+    }
     sheet.style.transform = `translateY(${moved}px)`;
   };
   const pullEnd = () => {
@@ -61,7 +69,7 @@ export function MobileSheet({
     sheet.style.transition = "transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)";
     if (state.moved > 110 || (fast && state.moved > 30)) {
       sheet.style.transform = "translateY(110%)";
-      window.setTimeout(onClose, 180);
+      closeTimer.current = window.setTimeout(close, 180);
     } else {
       sheet.style.transform = "";
     }
@@ -70,7 +78,7 @@ export function MobileSheet({
   return (
     <div
       className="fixed inset-0 z-40 flex items-end justify-center bg-scrim qo-fade-in"
-      onClick={onClose}
+      onClick={close}
     >
       <div
         ref={box}
@@ -104,9 +112,10 @@ export function MobileSheet({
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={close}
               aria-label={t("modal.close")}
               className="qo-icon-btn -mr-2"
+              data-autofocus
             >
               <X size={20} />
             </button>

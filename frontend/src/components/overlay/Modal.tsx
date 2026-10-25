@@ -1,8 +1,9 @@
 "use client";
 
 import { X } from "lucide-react";
-import { ReactNode, useEffect, useId } from "react";
+import { ReactNode, useId, useRef } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 interface ModalProps {
   isOpen: boolean;
@@ -24,16 +25,12 @@ export default function Modal({
   const { t } = useTranslation();
   const titleId = useId();
 
-  // Close on Escape key (only if dismissible)
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && dismissible) onClose();
-    };
-    if (isOpen) {
-      document.addEventListener("keydown", handleEsc);
-    }
-    return () => document.removeEventListener("keydown", handleEsc);
-  }, [isOpen, onClose, dismissible]);
+  const box = useRef<HTMLDivElement>(null);
+  // Focus the close button, trap Tab, Escape closes (only if dismissible)
+  useDialogFocus(box, {
+    active: isOpen,
+    onEscape: dismissible ? onClose : undefined,
+  });
 
   if (!isOpen) return null;
 
@@ -43,6 +40,7 @@ export default function Modal({
       onClick={dismissible ? onClose : undefined}
     >
       <div
+        ref={box}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -61,6 +59,7 @@ export default function Modal({
             onClick={onClose}
             aria-label={t("modal.close")}
             className="qo-icon-btn"
+            data-autofocus
           >
             <X size={20} />
           </button>

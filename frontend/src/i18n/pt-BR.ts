@@ -21,7 +21,6 @@ const ptBR: Record<TranslationKey, string> = {
   "header.status": "Status",
   "header.connected": "Conectado",
   "header.disconnected": "Desconectado",
-  "header.agents": "agentes",
   "header.tour": "Tur",
   "header.more": "Mais",
   "header.moreMenu": "Mais ações",
@@ -173,7 +172,6 @@ const ptBR: Record<TranslationKey, string> = {
   "mobile.allIdle": "Tudo calmo",
   "mobile.actions": "Ações",
   "mobile.working": "trabalhando",
-  "mobile.idle": "livre",
 
   // Status Messages
   "status.switchedToSession": "Mudou para sessão {sessionId}...",
@@ -269,6 +267,9 @@ const ptBR: Record<TranslationKey, string> = {
   "eventLog.noMatches": "Nenhum evento corresponde",
   "eventLog.clearFilters": "Limpar filtros",
   "hud.tokens": "Tokens",
+  "sessions.older": "sessões anteriores",
+  "sessions.older_one": "{count} sessão anterior",
+  "sessions.older_other": "{count} sessões anteriores",
 };
 
 export default ptBR;

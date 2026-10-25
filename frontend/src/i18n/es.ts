@@ -148,6 +148,8 @@ const es: Record<TranslationKey, string> = {
   "eventDetail.resultSummary": "Resumen del Resultado",
   "eventDetail.errorType": "Tipo de Error",
   "eventDetail.toolInput": "Entrada de Herramienta",
+  "eventDetail.copyJson": "Copiar JSON",
+  "eventDetail.copied": "Copiado",
   "eventDetail.noDetail":
     "No hay detalles adicionales disponibles para este evento.",
 

@@ -147,6 +147,8 @@ const en = {
   "eventDetail.errorType": "Error Type",
   "eventDetail.toolInput": "Tool Input",
   "eventDetail.noDetail": "No additional detail available for this event.",
+  "eventDetail.copyJson": "Copy JSON",
+  "eventDetail.copied": "Copied",
 
   // Loading Screen
   "loading.office": "Loading office...",

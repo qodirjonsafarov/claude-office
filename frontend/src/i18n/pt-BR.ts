@@ -148,6 +148,8 @@ const ptBR: Record<TranslationKey, string> = {
   "eventDetail.resultSummary": "Resumo do Resultado",
   "eventDetail.errorType": "Tipo de Erro",
   "eventDetail.toolInput": "Entrada da Ferramenta",
+  "eventDetail.copyJson": "Copiar JSON",
+  "eventDetail.copied": "Copiado",
   "eventDetail.noDetail":
     "Nenhum detalhe adicional disponível para este evento.",
 

@@ -281,10 +281,10 @@ export default function SettingsModal({
           </div>
         </div>
 
-        {/* Attention Settings */}
+        {/* Controls: command bar and click-to-focus (not toasts) */}
         <div className="pt-4 border-t border-slate-800">
           <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
-            {t("settings.toastFilters")}
+            {t("settings.controls")}
           </label>
           <div className="space-y-2">
             <SettingsToggle
@@ -297,6 +297,15 @@ export default function SettingsModal({
               checked={clickToFocusEnabled}
               onChange={() => setClickToFocusEnabled(!clickToFocusEnabled)}
             />
+          </div>
+        </div>
+
+        {/* Attention Settings */}
+        <div className="pt-4 border-t border-slate-800">
+          <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
+            {t("settings.toastFilters")}
+          </label>
+          <div className="space-y-2">
             <SettingsToggle
               label={t("settings.filterPermission")}
               checked={toastFilterPermission}

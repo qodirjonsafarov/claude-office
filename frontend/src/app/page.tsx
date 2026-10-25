@@ -370,7 +370,7 @@ export default function V2TestPage(): React.ReactNode {
         /* ----------------------------------------------------------------
             Desktop header: the mark, the counters, the controls
         ---------------------------------------------------------------- */
-        <header className="flex justify-between items-center gap-4 mb-3 px-1 relative h-14">
+        <header className="flex shrink-0 justify-between items-center gap-4 mb-3 px-1 relative h-14">
           <div className="flex items-center gap-4 min-w-0">
             <BrandMark
               size={42}

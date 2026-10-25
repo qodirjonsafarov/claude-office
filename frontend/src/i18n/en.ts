@@ -244,6 +244,7 @@ const en = {
   "attention.popup.agent": "Agent",
   "settings.commandBar": "Command Bar (⌘K)",
   "settings.clickToFocus": "Click to Focus",
+  "settings.controls": "Controls",
   "settings.toastFilters": "Toast Notifications",
   "settings.toastAutoDismiss": "Auto-dismiss Timing",
   "settings.filterPermission": "Permission requests",

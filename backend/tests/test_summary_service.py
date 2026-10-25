@@ -132,6 +132,23 @@ class TestGenerateAgentNameFallback:
         ]
         assert result in generic_names
 
+    @pytest.mark.parametrize("agent_type", ["developer", "qa", "reviewer", "devops", "claude"])
+    def test_team_role_gets_role_pool_name(self, service: SummaryService, agent_type: str) -> None:
+        """Our team roles map to their own pools, case-insensitively."""
+        pool = SummaryService._AGENT_TYPE_NAMES[agent_type]
+        assert 4 <= len(pool) <= 5
+        for variant in (agent_type, agent_type.upper(), agent_type.capitalize()):
+            result = service.generate_agent_name_fallback("Some task", agent_type=variant)
+            assert result in pool
+
+    def test_team_role_names_are_deduped(self, service: SummaryService) -> None:
+        """When the whole pool is taken, the name gets a suffix instead of repeating."""
+        pool = SummaryService._AGENT_TYPE_NAMES["developer"]
+        result = service.generate_agent_name_fallback(
+            "Task", existing_names=set(pool), agent_type="Developer"
+        )
+        assert result not in pool
+
     def test_name_is_not_empty(self, service: SummaryService) -> None:
         """Names should never be empty."""
         result = service.generate_agent_name_fallback("   ")

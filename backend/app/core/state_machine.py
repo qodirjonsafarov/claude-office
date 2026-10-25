@@ -13,6 +13,7 @@ from app.core.prompt_envelope import describe_envelope
 from app.core.quotes import get_random_job_completion_quote
 from app.core.summary_service import get_summary_service
 from app.core.token_tracker import TokenTracker
+from app.core.tool_names import friendly_tool_name
 from app.core.whiteboard_tracker import WhiteboardTracker
 from app.models.agents import (
     Agent,
@@ -845,11 +846,11 @@ class StateMachine:
         icon = _TOOL_ICONS.get(tool_name, "⚙️")
         tool_input = event.data.tool_input or {}
 
-        text: str = tool_name
+        text: str = friendly_tool_name(tool_name, tool_input) if tool_name else ""
 
         if tool_name in ["Read", "Glob", "Grep", "Write", "Edit"]:
             path = tool_input.get("file_path") or tool_input.get("pattern", "")
-            text = compress_path(path, max_len=35) if isinstance(path, str) and path else tool_name
+            text = compress_path(path, max_len=35) if isinstance(path, str) and path else text
 
         elif tool_name == "Bash":
             cmd = tool_input.get("command", "")

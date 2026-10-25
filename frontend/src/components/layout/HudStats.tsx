@@ -1,9 +1,10 @@
 "use client";
 
-import { Users, ListChecks, Wrench, Brain } from "lucide-react";
+import { Users, ListChecks, Wrench, Brain, Coins } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { useGameStore } from "@/stores/gameStore";
 import { useTranslation } from "@/hooks/useTranslation";
+import { formatCost, formatTokens, tokenBreakdown } from "@/utils/tokenUsage";
 
 // ============================================================================
 // COMPONENT
@@ -15,14 +16,16 @@ import { useTranslation } from "@/hooks/useTranslation";
  */
 export function HudStats(): React.ReactNode {
   const { t } = useTranslation();
-  const { agentCount, todos, toolUses, context } = useGameStore(
+  const { agentCount, todos, toolUses, context, usage } = useGameStore(
     useShallow((s) => ({
       agentCount: s.agents.size,
       todos: s.todos,
       toolUses: s.toolUsesSinceCompaction,
       context: s.contextUtilization,
+      usage: s.tokenUsage,
     })),
   );
+  const cost = usage ? formatCost(usage.costUsd) : null;
 
   const doneTodos = todos.filter((todo) => todo.status === "completed").length;
   const contextPct = Math.round(Math.min(1, Math.max(0, context)) * 100);
@@ -67,6 +70,19 @@ export function HudStats(): React.ReactNode {
         </div>
         <span className="min-w-[3ch] text-right">{contextPct}%</span>
       </div>
+      {usage && (
+        <div
+          className="qo-pill"
+          title={`${t("hud.tokens")}: ${tokenBreakdown(usage)}`}
+        >
+          <Coins size={15} className="text-ink-faint" aria-hidden="true" />
+          <span className="hidden 2xl:inline text-ink-faint font-bold">
+            {t("hud.tokens")}
+          </span>
+          <span>{formatTokens(usage.total)}</span>
+          {cost && <span className="text-accent">{cost}</span>}
+        </div>
+      )}
     </div>
   );
 }

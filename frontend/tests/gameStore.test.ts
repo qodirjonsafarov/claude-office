@@ -620,3 +620,29 @@ describe("agent progress", () => {
     expect(useGameStore.getState().agents).toBe(before);
   });
 });
+
+// ---------------------------------------------------------------------------
+// SESSION TOKENS (optional backend field)
+// ---------------------------------------------------------------------------
+
+describe("session token usage", () => {
+  const USAGE = { inputTokens: 10, outputTokens: 20, costUsd: 0.5 };
+
+  it("stores the parsed totals", () => {
+    useGameStore.getState().setTokenUsage(USAGE);
+    expect(useGameStore.getState().tokenUsage?.total).toBe(30);
+  });
+
+  it("keeps the same object when the totals did not change", () => {
+    useGameStore.getState().setTokenUsage(USAGE);
+    const before = useGameStore.getState().tokenUsage;
+    useGameStore.getState().setTokenUsage({ ...USAGE });
+    expect(useGameStore.getState().tokenUsage).toBe(before);
+  });
+
+  it("is cleared on a session switch", () => {
+    useGameStore.getState().setTokenUsage(USAGE);
+    useGameStore.getState().resetForSessionSwitch();
+    expect(useGameStore.getState().tokenUsage).toBeNull();
+  });
+});

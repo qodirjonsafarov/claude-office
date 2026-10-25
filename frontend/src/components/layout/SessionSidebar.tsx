@@ -14,6 +14,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR as dateFnsPtBR, es as dateFnsEs } from "date-fns/locale";
 import { GitStatusPanel } from "@/components/layout/GitStatusPanel";
 import type { Session } from "@/hooks/useSessions";
+import { usageLabel } from "@/utils/tokenUsage";
 import { useDragResize } from "@/hooks/useDragResize";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -349,11 +350,16 @@ export function SessionSidebar({
                           <div className="text-[10px] text-slate-500 font-mono truncate mb-1">
                             {primary.id}
                           </div>
-                          <div className="flex justify-between text-[10px] text-slate-500">
-                            <span>
-                              {t("sessions.events", {
-                                count: primary.eventCount,
-                              })}
+                          <div className="flex justify-between gap-2 text-[10px] text-slate-500">
+                            <span className="truncate">
+                              {[
+                                t("sessions.events", {
+                                  count: primary.eventCount,
+                                }),
+                                usageLabel(primary.tokenUsage),
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
                             </span>
                             <span>
                               {formatDistanceToNow(

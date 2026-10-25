@@ -67,6 +67,7 @@ import { createReplaySlice, initialReplayState } from "./slices/replaySlice";
 import { createDebugSlice, initialDebugState } from "./slices/debugSlice";
 import { createEmptyBubbleState, initialBossState } from "./slices/shared";
 import { parseProgress, sameProgress } from "@/utils/agentActivity";
+import type { TokenTotals } from "@/utils/tokenUsage";
 
 // ============================================================================
 // STORE INTERFACE (the single public contract; impls come from the slices)
@@ -191,6 +192,9 @@ export interface GameStore {
   addEventLog: (event: NonNullable<WebSocketMessage["event"]>) => void;
   conversation: ConversationEntry[];
   setConversation: (conversation: ConversationEntry[]) => void;
+  /** Session token totals and cost (backend `office.tokenUsage`; null = none). */
+  tokenUsage: TokenTotals | null;
+  setTokenUsage: (raw: unknown) => void;
 
   // Whiteboard actions
   whiteboardData: WhiteboardData;
@@ -322,6 +326,7 @@ export const useGameStore = create<GameStore>()(
         replayEvents: [],
         currentReplayIndex: -1,
         conversation: [], // Clear conversation for new session
+        tokenUsage: null,
         // Debug settings are preserved (not reset)
       }),
 

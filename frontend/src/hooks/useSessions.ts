@@ -26,6 +26,8 @@ export interface Session {
   eventCount: number;
   floorId: string | null;
   roomId: string | null;
+  /** Token totals and cost (raw backend TokenUsage; parse with parseTokenUsage). */
+  tokenUsage?: unknown;
 }
 
 // ============================================================================

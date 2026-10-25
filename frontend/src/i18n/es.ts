@@ -317,6 +317,7 @@ const es: Record<TranslationKey, string> = {
   "eventLog.kindPermissions": "Permisos",
   "eventLog.noMatches": "Ningún evento coincide",
   "eventLog.clearFilters": "Quitar filtros",
+  "hud.tokens": "Tokens",
 };
 
 export default es;

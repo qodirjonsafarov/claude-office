@@ -7,6 +7,7 @@ import { ptBR as dateFnsPtBR, es as dateFnsEs } from "date-fns/locale";
 import { GitStatusPanel } from "@/components/layout/GitStatusPanel";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { Session } from "@/hooks/useSessions";
+import { usageLabel } from "@/utils/tokenUsage";
 
 // ============================================================================
 // GROUPING HELPERS
@@ -149,10 +150,17 @@ export function MobileSessionList({
                     </span>
                   </div>
                   <div className="mt-1 pl-[18px] flex justify-between gap-3 text-[12px] font-bold text-ink-faint">
-                    <span>
-                      {t("sessions.events", { count: primary.eventCount })}
+                    <span className="truncate">
+                      {[
+                        t("sessions.events", { count: primary.eventCount }),
+                        usageLabel(primary.tokenUsage),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
-                    <span className="truncate">{ago(primary.updatedAt)}</span>
+                    <span className="truncate flex-shrink-0">
+                      {ago(primary.updatedAt)}
+                    </span>
                   </div>
                 </button>
 

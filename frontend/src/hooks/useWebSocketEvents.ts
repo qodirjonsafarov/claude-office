@@ -111,6 +111,9 @@ export function useWebSocketEvents({
               });
               // Optional todo-list progress (the reconciler does not copy it).
               useGameStore.getState().syncProgress(message.state);
+              useGameStore
+                .getState()
+                .setTokenUsage(message.state.office?.tokenUsage);
             }
             break;
 

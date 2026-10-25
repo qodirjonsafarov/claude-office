@@ -17,6 +17,11 @@ import type {
 } from "@/types";
 import type { EventLogEntry, CompactionAnimationPhase } from "./types";
 import { MIN_DESK_COUNT } from "@/constants/positions";
+import {
+  parseTokenUsage,
+  sameTokenTotals,
+  type TokenTotals,
+} from "@/utils/tokenUsage";
 
 const MAX_EVENT_LOG = 500;
 
@@ -34,6 +39,7 @@ export type OfficeSlice = {
   gitStatus: GitStatus | null;
   eventLog: EventLogEntry[];
   conversation: ConversationEntry[];
+  tokenUsage: TokenTotals | null;
 
   setSessionId: (id: string) => void;
   setElevatorState: (state: ElevatorState) => void;
@@ -49,6 +55,8 @@ export type OfficeSlice = {
   setGitStatus: (status: GitStatus | null) => void;
   addEventLog: (event: NonNullable<WebSocketMessage["event"]>) => void;
   setConversation: (conversation: ConversationEntry[]) => void;
+  /** Store the backend's optional office `tokenUsage` (raw, parsed here). */
+  setTokenUsage: (raw: unknown) => void;
 };
 
 export const initialOfficeState = {
@@ -65,6 +73,7 @@ export const initialOfficeState = {
   gitStatus: null as GitStatus | null,
   eventLog: [] as EventLogEntry[],
   conversation: [] as ConversationEntry[],
+  tokenUsage: null as TokenTotals | null,
 };
 
 export const createOfficeSlice: StateCreator<GameStore, [], [], OfficeSlice> = (
@@ -108,4 +117,12 @@ export const createOfficeSlice: StateCreator<GameStore, [], [], OfficeSlice> = (
     }),
 
   setConversation: (conversation) => set({ conversation }),
+
+  setTokenUsage: (raw) =>
+    set((state) => {
+      const tokenUsage = parseTokenUsage(raw);
+      return sameTokenTotals(state.tokenUsage, tokenUsage)
+        ? state
+        : { tokenUsage };
+    }),
 });

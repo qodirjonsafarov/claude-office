@@ -317,6 +317,7 @@ const ptBR: Record<TranslationKey, string> = {
   "eventLog.kindPermissions": "Permissões",
   "eventLog.noMatches": "Nenhum evento corresponde",
   "eventLog.clearFilters": "Limpar filtros",
+  "hud.tokens": "Tokens",
 };
 
 export default ptBR;

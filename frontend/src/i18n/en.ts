@@ -315,6 +315,7 @@ const en = {
   "eventLog.kindPermissions": "Permissions",
   "eventLog.noMatches": "No events match",
   "eventLog.clearFilters": "Clear filters",
+  "hud.tokens": "Tokens",
 } as const;
 
 export type TranslationKey = keyof typeof en;

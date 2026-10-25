@@ -16,7 +16,7 @@ export function ZoomControls(): ReactNode {
   // Olymp-style round buttons in a capsule; on a phone (.qo-stage-phone) the
   // +/- steps are hidden in CSS, pinch zooms and only the reset stays.
   const button =
-    "w-10 h-10 [@media(pointer:coarse)]:w-11 [@media(pointer:coarse)]:h-11 rounded-full flex items-center justify-center text-ink-soft hover:text-ink hover:bg-panel-3 font-extrabold transition-colors active:scale-95";
+    "w-11 h-11 rounded-full flex items-center justify-center text-ink-soft hover:text-ink hover:bg-panel-3 font-extrabold transition-colors active:scale-95";
 
   return (
     <div className="qo-zoom absolute bottom-4 right-4 z-10 flex flex-row gap-1 p-1 rounded-full qo-glass-panel border border-line-strong shadow-[0_8px_24px_var(--qo-float-shade)] opacity-85 hover:opacity-100 transition-opacity">

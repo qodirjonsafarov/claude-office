@@ -146,7 +146,7 @@ function AgentSpriteComponent({
   sunglassesTexture: _sunglassesTexture,
   renderBubble = true,
   renderLabel = true,
-  isTyping: _isTyping = false,
+  isTyping = false,
 }: AgentSpriteProps): ReactNode {
   const clickToFocusEnabled = usePreferencesStore((s) => s.clickToFocusEnabled);
   const openFocusPopup = useAttentionStore((s) => s.openFocusPopup);
@@ -183,6 +183,7 @@ function AgentSpriteComponent({
         mode={personMode}
         direction={personMode === "sit" ? "down" : motion.direction}
         feetY={personMode === "sit" ? 30 : 22}
+        typing={isTyping}
       />
 
       {/* Agent name if present - hide when in elevator or when renderLabel is false */}

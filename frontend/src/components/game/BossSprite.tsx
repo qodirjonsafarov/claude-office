@@ -16,7 +16,12 @@ import { ICON_MAP } from "./shared/iconMap";
 import { drawBubble, drawIconBadge } from "./shared/drawBubble";
 import { drawRightArm, drawLeftArm } from "./shared/drawArm";
 import { truncateBubbleText } from "@/utils/bubbleText";
-import { PersonSprite, usePersonMotion } from "./PersonSprite";
+import {
+  PersonSprite,
+  useActivityClock,
+  usePersonMotion,
+} from "./PersonSprite";
+import { bossDirectingDirection } from "@/systems/typingPose";
 import { NameTag } from "./NameTag";
 
 // ============================================================================
@@ -47,6 +52,9 @@ export interface BossSpriteProps {
 
 /** Capsule arms/headset from the original art; off with LPC workers. */
 const SHOW_CAPSULE_PARTS = false;
+
+/** Feet offset while the boss stands behind the desk (sitting is 30). */
+const BOSS_STANDING_FEET_Y = 26;
 
 const BOSS_WIDTH = 48; // 1.5 blocks × 32px
 const STROKE_WIDTH = 4;
@@ -181,6 +189,9 @@ function BossSpriteComponent({
   isTyping = false,
   isAway = false,
 }: BossSpriteProps): ReactNode {
+  // Busy boss (tool use, with a short linger) stands up and directs the team
+  const directingElapsed = useActivityClock(isTyping && !isAway);
+
   // Animation state for typing
   const [typingTime, setTypingTime] = useState(0);
 
@@ -243,8 +254,18 @@ function BossSpriteComponent({
       {/* Boss character (body + accessories) - hidden when away from desk */}
       {!isAway && (
         <pixiContainer y={6}>
-          {/* Boss: LPC pixel-art worker in black, sitting at the desk */}
-          <PersonSprite sheet="boss" mode="sit" direction="down" feetY={30} />
+          {/* Boss: LPC pixel-art worker. He doesn't type: while busy he
+              stands behind the desk and looks over the team (directing). */}
+          {directingElapsed === null ? (
+            <PersonSprite sheet="boss" mode="sit" direction="down" feetY={30} />
+          ) : (
+            <PersonSprite
+              sheet="boss"
+              mode="idle"
+              direction={bossDirectingDirection(directingElapsed)}
+              feetY={BOSS_STANDING_FEET_Y}
+            />
+          )}
         </pixiContainer>
       )}
 

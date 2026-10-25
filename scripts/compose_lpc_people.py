@@ -1,4 +1,8 @@
-"""Compose LPC character sheets (walk | sit | idle) with palette recoloring."""
+"""Compose LPC character sheets (walk | sit | idle) with palette recoloring.
+
+After running this, run scripts/make_typing_frames.py to append the typing
+frames the office uses for workers at their desks.
+"""
 import json, sys
 from pathlib import Path
 from PIL import Image

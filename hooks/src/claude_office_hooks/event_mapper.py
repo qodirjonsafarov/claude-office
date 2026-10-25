@@ -401,6 +401,12 @@ def map_event(
     if task_list_id:
         data["task_list_id"] = task_list_id
 
+    # The tmux pane Claude runs in (inherited by hooks); lets the office
+    # paste a prompt typed in the web UI back into this session.
+    tmux_pane = os.environ.get("TMUX_PANE")
+    if tmux_pane:
+        data["tmux_pane"] = tmux_pane
+
     payload: dict[str, Any] = {
         "event_type": event_type,
         "session_id": actual_session_id,

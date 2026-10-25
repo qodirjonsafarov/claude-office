@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
+from app.core.chat_status import chat_status_for
 from app.core.connection_manager import get_manager
 from app.core.state_machine import StateMachine
 from app.models.sessions import GameState, HistoryEntry
@@ -42,6 +43,10 @@ async def broadcast_state(session_id: str, sm: StateMachine) -> None:
     if not get_manager().active_connections.get(session_id):
         return
     game_state: GameState = sm.to_game_state(session_id)
+    # Local import: event_processor imports this module.
+    from app.core.event_processor import get_event_processor
+
+    game_state.chat = await chat_status_for(session_id, sm, get_event_processor().sessions)
     await get_manager().broadcast(
         {
             "type": "state_update",

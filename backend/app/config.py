@@ -115,6 +115,13 @@ class Settings(BaseSettings):
     # so the loopback boundary moves to the host port binding (127.0.0.1:8050).
     LOCALHOST_ONLY: bool = True
 
+    # Chat from the office UI: POST /sessions/{id}/prompt pastes the text into
+    # the session's tmux pane. Off by default; works only with an explicit
+    # CLAUDE_OFFICE_API_KEY (never with the auto token).
+    ENABLE_WEB_PROMPT: bool = False
+    # Append-only JSONL audit of web prompts (hash and length, never the text).
+    WEB_PROMPT_AUDIT_LOG: str = str(_BACKEND_DIR / "logs" / "web_prompts.jsonl")
+
     @property
     def effective_api_key(self) -> str:
         """Return the configured API key, or the per-launch auto-generated token."""

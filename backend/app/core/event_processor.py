@@ -29,6 +29,7 @@ from app.core.broadcast_service import (
     broadcast_room_state,
     broadcast_state,
 )
+from app.core.chat_status import chat_status_for
 from app.core.connection_manager import get_manager
 from app.core.floor_config import get_cached_building_config
 from app.core.handlers import (
@@ -51,7 +52,7 @@ from app.core.jsonl_parser import get_last_assistant_response
 from app.core.product_mapper import get_product_mapper
 from app.core.prompt_envelope import describe_envelope
 from app.core.room_orchestrator import RoomOrchestrator
-from app.core.state_machine import StateMachine, is_phantom_stop
+from app.core.state_machine import WEB_PROMPT_NOTIFICATION, StateMachine, is_phantom_stop
 from app.core.task_file_poller import init_task_file_poller
 from app.core.task_persistence import load_tasks, save_tasks
 from app.core.transcript_poller import init_transcript_poller
@@ -419,7 +420,9 @@ class EventProcessor:
 
         sm = self.sessions.get(session_id)
         if sm:
-            return sm.to_game_state(session_id)
+            state = sm.to_game_state(session_id)
+            state.chat = await chat_status_for(session_id, sm, self.sessions)
+            return state
         return None
 
     async def get_project_root(self, session_id: str) -> str | None:
@@ -1039,6 +1042,10 @@ class EventProcessor:
             if display and not session_rec.display_name:
                 session_rec.display_name = display
 
+            # The latest tmux pane wins (a resumed session may move panes).
+            if event.data.tmux_pane:
+                session_rec.tmux_pane = event.data.tmux_pane
+
             # Sync team fields to DB record.
             if team_name and not session_rec.team_name:
                 session_rec.team_name = team_name
@@ -1270,6 +1277,8 @@ class EventProcessor:
                 return f"Agent {event.data.agent_id} left the building"
             case EventType.NOTIFICATION:
                 assert isinstance(event, LifecycleEvent)
+                if event.data.notification_type == WEB_PROMPT_NOTIFICATION and event.data.message:
+                    return event.data.message
                 return (
                     f"Notification: {event.data.message or event.data.notification_type or 'info'}"
                 )

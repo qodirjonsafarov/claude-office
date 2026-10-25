@@ -159,3 +159,59 @@ export async function apiFetch(
   if (res.status === 401) setAuthRequired(true);
   return res;
 }
+
+export type SendPromptResult =
+  { ok: true } | { ok: false; reason: string | null; message: string };
+
+/**
+ * Send a chat message into the session's Claude Code terminal (the backend
+ * pastes it into the session's tmux pane). Never throws.
+ */
+export async function sendPrompt(
+  sessionId: string,
+  text: string,
+): Promise<SendPromptResult> {
+  let res: Response;
+  try {
+    res = await apiFetch(
+      `/api/v1/sessions/${encodeURIComponent(sessionId)}/prompt`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      },
+    );
+  } catch {
+    return {
+      ok: false,
+      reason: null,
+      message: "Could not reach the office backend",
+    };
+  }
+  if (res.ok) return { ok: true };
+  let detail: unknown = null;
+  try {
+    detail = ((await res.json()) as { detail?: unknown }).detail;
+  } catch {
+    // not JSON
+  }
+  if (detail && typeof detail === "object" && "message" in detail) {
+    const { reason, message } = detail as {
+      reason?: unknown;
+      message?: unknown;
+    };
+    return {
+      ok: false,
+      reason: typeof reason === "string" ? reason : null,
+      message: String(message),
+    };
+  }
+  if (res.status === 401) {
+    return {
+      ok: false,
+      reason: null,
+      message: "The access token is missing or wrong",
+    };
+  }
+  return { ok: false, reason: null, message: `Could not send (${res.status})` };
+}

@@ -295,8 +295,8 @@ const ptBR: Record<TranslationKey, string> = {
   "settings.toastFilters": "Notificações Toast",
   "settings.toastAutoDismiss": "Tempo de Auto-descarte",
   "settings.filterPermission": "Pedidos de permissão",
-  "settings.filterError": "Erros e paradas",
-  "settings.filterTaskComplete": "Tarefas concluídas",
+  "settings.filterError": "Erros",
+  "settings.filterTaskComplete": "Concluído e tarefas concluídas",
   "settings.filterArrival": "Chegadas de agentes",
   "auth.title": "Cole o token de acesso",
   "auth.hint":

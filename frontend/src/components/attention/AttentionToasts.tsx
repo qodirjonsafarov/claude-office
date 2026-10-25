@@ -2,20 +2,29 @@
 
 import { useEffect, useCallback, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  ShieldAlert,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { useAttentionStore, type UrgencyLevel } from "@/stores/attentionStore";
 
-const URGENCY_COLORS: Record<UrgencyLevel, string> = {
-  critical: "border-red-500 bg-red-950/90 text-red-400",
-  high: "border-orange-500 bg-orange-950/90 text-orange-400",
-  low: "border-green-500 bg-green-950/90 text-green-400",
-  info: "border-blue-500 bg-blue-950/90 text-blue-400",
+/** Olymp tones per urgency: the card's left edge and the icon chip. */
+const URGENCY_TONES: Record<UrgencyLevel, { edge: string; chip: string }> = {
+  critical: { edge: "border-l-danger", chip: "bg-danger-dim text-danger" },
+  high: { edge: "border-l-warn", chip: "bg-warn-dim text-warn" },
+  low: { edge: "border-l-accent", chip: "bg-accent-dim text-accent" },
+  info: { edge: "border-l-info", chip: "bg-info-dim text-info" },
 };
 
-const URGENCY_ICONS: Record<UrgencyLevel, string> = {
-  critical: "\u26A0\uFE0F",
-  high: "\uD83D\uDD34",
-  low: "\u2705",
-  info: "\uD83D\uDD35",
+const URGENCY_ICONS: Record<UrgencyLevel, LucideIcon> = {
+  critical: ShieldAlert,
+  high: AlertTriangle,
+  low: CheckCircle2,
+  info: Info,
 };
 
 export default function AttentionToasts(): ReactNode {
@@ -67,9 +76,11 @@ function ToastItem({
   onClick: () => void;
   onDismiss: () => void;
 }): ReactNode {
-  const colorClass = URGENCY_COLORS[toast.urgencyLevel];
-  const icon = URGENCY_ICONS[toast.urgencyLevel];
-  const headline = toast.agentName ?? toast.title;
+  const tone = URGENCY_TONES[toast.urgencyLevel];
+  const Icon = URGENCY_ICONS[toast.urgencyLevel];
+  const headline = toast.agentName
+    ? `${toast.agentName} · ${toast.title}`
+    : toast.title;
 
   useEffect(() => {
     if (toast.autoDismissMs === null) return;
@@ -79,15 +90,23 @@ function ToastItem({
 
   return (
     <div
-      className={`pointer-events-auto flex items-start gap-2 px-3 py-2 rounded-lg border cursor-pointer animate-in slide-in-from-right-2 duration-300 ${colorClass}`}
+      className={`qo-pop pointer-events-auto flex items-center gap-3 p-2.5 pr-2 bg-panel border border-line-strong border-l-4 rounded-xl2 cursor-pointer shadow-[0_8px_24px_var(--qo-float-shade)] ${tone.edge}`}
       onClick={onClick}
       role="alert"
     >
-      <span className="text-sm shrink-0">{icon}</span>
+      <span
+        className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${tone.chip}`}
+      >
+        <Icon size={17} strokeWidth={2.2} aria-hidden="true" />
+      </span>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-bold truncate">{headline}</p>
+        <p className="m-0 text-[13px] font-extrabold text-ink truncate">
+          {headline}
+        </p>
         {toast.description && (
-          <p className="text-[11px] opacity-80 truncate">{toast.description}</p>
+          <p className="m-0 text-[12px] font-semibold text-ink-soft truncate">
+            {toast.description}
+          </p>
         )}
       </div>
       <button
@@ -95,10 +114,10 @@ function ToastItem({
           e.stopPropagation();
           onDismiss();
         }}
-        className="text-xs opacity-50 hover:opacity-100 shrink-0"
+        className="qo-icon-btn !w-8 !h-8 shrink-0"
         aria-label="Dismiss"
       >
-        {"\u2715"}
+        <X size={15} strokeWidth={2.2} />
       </button>
     </div>
   );

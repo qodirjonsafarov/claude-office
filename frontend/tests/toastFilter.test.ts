@@ -62,19 +62,19 @@ describe("shouldShowToast", () => {
   });
 
   describe("stop", () => {
-    // `stop` shares the error pref with `error` — this is the original
-    // `filterMap` mapping, preserved exactly.
-    it("shares toastFilterError with error (true ⇒ shown)", () => {
+    // `stop` means "Claude finished": a completion, not an error. It follows
+    // the task-completion toggle, so turning off error toasts keeps "Done".
+    it("follows toastFilterTaskComplete (true ⇒ shown)", () => {
       expect(shouldShowToast("stop", prefsAll(true))).toBe(true);
     });
-    it("shares toastFilterError with error (false ⇒ suppressed)", () => {
+    it("follows toastFilterTaskComplete (false ⇒ suppressed)", () => {
       const prefs = prefsAll(true);
-      prefs.toastFilterError = false;
+      prefs.toastFilterTaskComplete = false;
       expect(shouldShowToast("stop", prefs)).toBe(false);
     });
-    it("is NOT affected by toastFilterPermission", () => {
+    it("is NOT affected by toastFilterError", () => {
       const prefs = prefsAll(true);
-      prefs.toastFilterPermission = false; // unrelated toggle
+      prefs.toastFilterError = false;
       expect(shouldShowToast("stop", prefs)).toBe(true);
     });
   });

@@ -29,17 +29,17 @@ const ATTENTION_EVENT_TYPES: ReadonlySet<EventType> = new Set<EventType>([
 /**
  * Map each attention event type to the preference that can suppress it.
  *
- * Note the deliberate sharing: `stop` reuses the error-pref toggle and
- * `subagent_start` / `background_task_notification` both reuse the arrival
- * toggle. Mirrors the original inline `filterMap` exactly.
+ * `stop` (Claude finished) is a completion, so it shares the task-completion
+ * toggle; `subagent_start` / `background_task_notification` both reuse the
+ * arrival toggle.
  */
 function filterEnabled(eventType: EventType, prefs: PreferencesState): boolean {
   switch (eventType) {
     case "permission_request":
       return prefs.toastFilterPermission;
     case "error":
-    case "stop":
       return prefs.toastFilterError;
+    case "stop":
     case "task_completed":
       return prefs.toastFilterTaskComplete;
     case "subagent_start":

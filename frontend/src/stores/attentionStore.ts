@@ -79,8 +79,9 @@ function scoreEvent(eventType: EventType): {
     case "permission_request":
       return { urgency: 90, level: "critical", autoDismissMs: null };
     case "error":
-    case "stop":
       return { urgency: 70, level: "high", autoDismissMs: null };
+    // "stop" = Claude finished its turn: good news, not an alarm.
+    case "stop":
     case "task_completed":
       return {
         urgency: 30,
@@ -102,6 +103,16 @@ function scoreEvent(eventType: EventType): {
       };
   }
 }
+
+/** Human titles for the toast headline (falls back to the event type). */
+const TOAST_TITLES: Partial<Record<EventType, string>> = {
+  permission_request: "Needs permission",
+  error: "Error",
+  stop: "Done",
+  task_completed: "Task done",
+  subagent_start: "Agent joined",
+  background_task_notification: "Background task",
+};
 
 // ============================================================================
 // STORE
@@ -125,7 +136,7 @@ export const useAttentionStore = create<AttentionState>()((set, get) => ({
       eventType: event.type,
       urgency,
       urgencyLevel: level,
-      title: event.type.replace(/_/g, " "),
+      title: TOAST_TITLES[event.type] ?? event.type.replace(/_/g, " "),
       description:
         event.taskDescription ?? event.errorType ?? event.message ?? "",
       createdAt: Date.now(),

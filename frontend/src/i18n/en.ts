@@ -293,8 +293,8 @@ const en = {
   "settings.toastFilters": "Toast Notifications",
   "settings.toastAutoDismiss": "Auto-dismiss Timing",
   "settings.filterPermission": "Permission requests",
-  "settings.filterError": "Errors and stops",
-  "settings.filterTaskComplete": "Task completions",
+  "settings.filterError": "Errors",
+  "settings.filterTaskComplete": "Done and finished tasks",
   "settings.filterArrival": "Agent arrivals",
   "auth.title": "Paste access token",
   "auth.hint":

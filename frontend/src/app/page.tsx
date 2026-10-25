@@ -19,6 +19,7 @@ import { useSessions } from "@/hooks/useSessions";
 import { useSessionSwitch } from "@/hooks/useSessionSwitch";
 import { useFloorConfig } from "@/hooks/useFloorConfig";
 import { useLayoutMode } from "@/hooks/useLayoutMode";
+import { useBackgroundAlerts } from "@/hooks/useBackgroundAlerts";
 import {
   useGameStore,
   selectIsConnected,
@@ -199,6 +200,7 @@ export default function V2TestPage(): React.ReactNode {
   // WebSocket connection — reconnects when sessionId changes
   // ------------------------------------------------------------------
   useWebSocketEvents({ sessionId });
+  useBackgroundAlerts();
 
   // ------------------------------------------------------------------
   // One-time initialization effects

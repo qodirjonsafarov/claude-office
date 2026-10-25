@@ -25,6 +25,7 @@ import { TypingTracker } from "@/systems/typingTracker";
 import { reconcileState } from "@/systems/stateReconciler";
 import { shouldShowToast } from "@/systems/toastFilter";
 import { WebSocketController } from "@/systems/webSocketController";
+import { reportBackgroundEvent } from "@/hooks/useBackgroundAlerts";
 import type { EventType, WebSocketMessage } from "@/types";
 
 // ============================================================================
@@ -142,6 +143,19 @@ export function useWebSocketEvents({
               if (message.event.type === "context_compaction") {
                 useGameStore.getState().triggerCompaction();
               }
+
+              // Hidden tab: notification + title badge for stop / permission
+              // requests / a subagent finishing.
+              const eventAgentId = message.event.agentId;
+              reportBackgroundEvent({
+                type: message.event.type,
+                summary: message.event.summary ?? "",
+                agentName:
+                  message.event.detail?.agentName ??
+                  (eventAgentId
+                    ? useGameStore.getState().agents.get(eventAgentId)?.name
+                    : null),
+              });
 
               // Attention toasts — wire event processing into attention store.
               // `shouldShowToast` (pure) owns the type + preference gate.

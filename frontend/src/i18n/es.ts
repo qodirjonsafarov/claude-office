@@ -295,8 +295,8 @@ const es: Record<TranslationKey, string> = {
   "settings.toastFilters": "Notificaciones Toast",
   "settings.toastAutoDismiss": "Tiempo de Auto-descarte",
   "settings.filterPermission": "Solicitudes de permiso",
-  "settings.filterError": "Errores y paradas",
-  "settings.filterTaskComplete": "Tareas completadas",
+  "settings.filterError": "Errores",
+  "settings.filterTaskComplete": "Terminado y tareas completadas",
   "settings.filterArrival": "Llegadas de agentes",
   "auth.title": "Pega el token de acceso",
   "auth.hint":

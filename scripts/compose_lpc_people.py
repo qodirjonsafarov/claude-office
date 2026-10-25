@@ -1,7 +1,19 @@
-"""Compose LPC character sheets (walk | sit | idle) with palette recoloring.
+"""Compose LPC character sheets with palette recoloring.
 
-After running this, run scripts/make_typing_frames.py to append the typing
-frames the office uses for workers at their desks.
+Sheet layout (x offsets, every animation has 4 rows: up, left, down, right):
+    0     walk       (9 frames)
+    576   sit        (3)
+    768   idle       (2)
+    896   typing     (2, left empty here; see make_typing_frames.py)
+    1024  emote      (3)
+    1216  spellcast  (7)  - talking / gesturing / waving
+    1664  thrust     (8)  - handing something over
+    2176  blink      (2: idle frame 0 and the chair sit frame, eyes closed)
+
+After running this, run scripts/make_typing_frames.py to fill in the
+typing frames.
+
+Usage: python scripts/compose_lpc_people.py <lpc-generator-checkout> <out-dir>
 """
 import json, sys
 from pathlib import Path
@@ -26,6 +38,44 @@ def recolor(img, kind, target):
                 px[x, y] = (*mapping[(r, g, b)], a)
     return img
 
+# (animation, width); None = typing slot, filled by make_typing_frames.py
+ANIMS = (
+    ("walk", 576), ("sit", 192), ("idle", 128), (None, 128),
+    ("emote", 192), ("spellcast", 448), ("thrust", 512),
+)
+FRAME = 64
+# Blink frames: (animation, frame index) drawn again with closed eyes
+BLINKS = (("idle", 0), ("sit", 2))
+SHEET_WIDTH = sum(w for _, w in ANIMS) + len(BLINKS) * FRAME
+EYES = "eyes/human/adult/default"
+LASH = (39, 25, 32, 255)  # the head outline color
+
+def close_eyes(frame, eyes):
+    """Paint the eyes shut: skin over each eye, a dark lash line at the bottom.
+
+    `eyes` is the eye layer of the same frame; its pixels mark where the eyes
+    are. Only the sprite's own colors are used (skin and outline).
+    """
+    out = frame.copy()
+    cols = sorted({x for x in range(FRAME) for y in range(FRAME) if eyes.getpixel((x, y))[3]})
+    # Split into one blob per eye (columns next to each other)
+    blobs, run = [], []
+    for x in cols:
+        if run and x != run[-1] + 1:
+            blobs.append(run); run = []
+        run.append(x)
+    if run:
+        blobs.append(run)
+    for blob in blobs:
+        ys = [y for y in range(FRAME) for x in blob if eyes.getpixel((x, y))[3]]
+        y0, y1 = min(ys), max(ys)
+        skin = frame.getpixel((blob[len(blob) // 2], y1 + 2))
+        for x in blob:
+            for y in range(y0, y1):
+                out.putpixel((x, y), skin)
+            out.putpixel((x, y1), LASH)
+    return out
+
 def layer(path, kind, color, anim):
     f = S / path / f"{anim}.png"
     if not f.exists():
@@ -34,8 +84,11 @@ def layer(path, kind, color, anim):
 
 def build(spec):
     parts = []
-    for anim, w in (("walk", 576), ("sit", 192), ("idle", 128)):
+    for anim, w in ANIMS:
         canvas = Image.new("RGBA", (w, 256))
+        if anim is None:
+            parts.append(canvas)
+            continue
         for path, kind, color in [
             ("body/bodies/male", "body", spec["skin"]),
             ("head/heads/human/male", "body", spec["skin"]),
@@ -49,9 +102,19 @@ def build(spec):
             if im is not None:
                 canvas.alpha_composite(im)
         parts.append(canvas)
-    sheet = Image.new("RGBA", (896, 256)); x = 0
-    for p in parts:
+    sheet = Image.new("RGBA", (SHEET_WIDTH, 256)); x = 0
+    offsets = {}
+    for (anim, _), p in zip(ANIMS, parts):
+        offsets[anim] = x
         sheet.alpha_composite(p, (x, 0)); x += p.width
+    for anim, index in BLINKS:
+        eyes = layer(EYES, "eye", spec["eyes"], anim)
+        for row in range(4):
+            fx, fy = offsets[anim] + index * FRAME, row * FRAME
+            frame = sheet.crop((fx, fy, fx + FRAME, fy + FRAME))
+            mask = eyes.crop((index * FRAME, fy, (index + 1) * FRAME, fy + FRAME))
+            sheet.alpha_composite(close_eyes(frame, mask), (x, fy))
+        x += FRAME
     return sheet
 
 SPECS = {

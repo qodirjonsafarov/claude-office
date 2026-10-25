@@ -120,6 +120,31 @@ describe("auth required", () => {
     expect(seen).toEqual([true]);
   });
 
+  it("flags a request the browser blocked while the server is up (401 without CORS headers)", async () => {
+    const api = await freshApi();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.endsWith("/health")) return new Response("{}", { status: 200 });
+        throw new TypeError("NetworkError when attempting to fetch resource.");
+      }),
+    );
+    await expect(api.apiFetch("/api/v1/sessions")).rejects.toThrow(TypeError);
+    expect(api.isAuthRequired()).toBe(true);
+  });
+
+  it("does not flag a server that is down", async () => {
+    const api = await freshApi();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("NetworkError when attempting to fetch resource.");
+      }),
+    );
+    await expect(api.apiFetch("/api/v1/sessions")).rejects.toThrow(TypeError);
+    expect(api.isAuthRequired()).toBe(false);
+  });
+
   it("does not flag other responses", async () => {
     const api = await freshApi();
     stubFetch(200);

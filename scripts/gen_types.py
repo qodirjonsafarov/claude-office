@@ -20,6 +20,7 @@ from app.models.agents import (  # noqa: E402  # type: ignore[import]
     AgentProgress,
     Boss,
     OfficeState,
+    TokenUsage,
 )
 from app.models.common import (  # noqa: E402  # type: ignore[import]
     BubbleContent,
@@ -64,6 +65,7 @@ MODELS = [
     AgentProgress,
     Boss,
     OfficeState,
+    TokenUsage,
     BubbleContent,
     SpeechContent,
     TodoItem,

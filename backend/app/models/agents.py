@@ -15,6 +15,7 @@ __all__ = [
     "ElevatorState",
     "PhoneState",
     "OfficeState",
+    "TokenUsage",
 ]
 
 
@@ -116,6 +117,25 @@ class PhoneState(StrEnum):
     IN_USE = "in_use"
 
 
+class TokenUsage(BaseModel):
+    """Token totals for a whole session (main transcript plus its subagents).
+
+    Each API message is counted once (by ``message.id``). ``model`` is the
+    latest model of the main session. ``cost_usd`` is an estimate from the
+    price table in ``token_tracker.py``; it is ``None`` when any model used
+    in the session has no known price.
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
+    model: str | None = None
+    cost_usd: float | None = None
+
+
 class OfficeState(BaseModel):
     """Represents the overall state of the office environment."""
 
@@ -125,5 +145,9 @@ class OfficeState(BaseModel):
     elevator_state: ElevatorState = ElevatorState.CLOSED
     phone_state: PhoneState = PhoneState.IDLE
     context_utilization: float = 0.0
+    # Tokens in the current context and the window they are measured against.
+    context_tokens: int = 0
+    context_window: int = 200_000
+    token_usage: TokenUsage | None = None  # None until a transcript was read
     tool_uses_since_compaction: int = 0
     print_report: bool = False

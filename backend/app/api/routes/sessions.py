@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.connection_manager import get_manager
 from app.core.event_processor import get_event_processor
+from app.core.token_tracker import usage_for_transcript
 from app.db.database import get_db
 from app.db.models import EventRecord, SessionRecord, TaskRecord, UserPreference
 from app.services.git_service import git_service
@@ -61,6 +62,8 @@ class SessionSummary(TypedDict):
     eventCount: int
     floorId: str | None
     roomId: str | None
+    # Session token totals (TokenUsage, camelCase) or None without a transcript.
+    tokenUsage: dict[str, Any] | None
 
 
 class ReplayEvent(TypedDict):
@@ -146,7 +149,18 @@ async def list_sessions(
     start_result = await db.execute(sessions_with_start_stmt)
     sessions_with_start: set[str] = {row[0] for row in start_result.all()}
 
-    sessions: list[SessionSummary] = []
+    # Sessions that used at least one tool; ended sessions with only a couple
+    # of events and no tool use (opened and closed right away) are hidden.
+    # Their data stays in the DB.
+    tool_sessions_stmt = (
+        select(EventRecord.session_id)
+        .where(EventRecord.event_type.in_(("pre_tool_use", "post_tool_use")))
+        .distinct()
+    )
+    tool_result = await db.execute(tool_sessions_stmt)
+    sessions_with_tools: set[str] = {row[0] for row in tool_result.all()}
+
+    visible: list[tuple[SessionRecord, int]] = []
     for row in rows:
         rec = row[0]
         count = int(row[1])
@@ -155,7 +169,14 @@ async def list_sessions(
         # simulation session which also lacks one but is always valid.
         if rec.id not in sessions_with_start and not rec.id.startswith("sim_"):
             continue
+        if _is_junk_session(rec, count, sessions_with_tools):
+            continue
+        visible.append((rec, count))
 
+    usage_by_session = await _token_usage_for_sessions(db, [rec.id for rec, _ in visible])
+
+    sessions: list[SessionSummary] = []
+    for rec, count in visible:
         created_utc = (
             rec.created_at.astimezone(UTC)
             if rec.created_at.tzinfo
@@ -180,9 +201,60 @@ async def list_sessions(
                 "eventCount": count,
                 "floorId": rec.floor_id,
                 "roomId": rec.room_id,
+                "tokenUsage": usage_by_session.get(rec.id),
             }
         )
     return sessions
+
+
+_JUNK_MAX_EVENTS = 2
+
+
+def _is_junk_session(rec: SessionRecord, event_count: int, sessions_with_tools: set[str]) -> bool:
+    """An ended session with at most a couple of events and no tool use."""
+    return (
+        rec.status != "active"
+        and event_count <= _JUNK_MAX_EVENTS
+        and rec.id not in sessions_with_tools
+    )
+
+
+async def _token_usage_for_sessions(
+    db: AsyncSession, session_ids: list[str]
+) -> dict[str, dict[str, Any] | None]:
+    """Token totals per session: live state when loaded, else its transcript."""
+    result: dict[str, dict[str, Any] | None] = {}
+    processor = get_event_processor()
+    missing: list[str] = []
+    for sid in session_ids:
+        sm = processor.sessions.get(sid)
+        usage = sm.token_tracker.session_usage() if sm else None
+        if usage is not None:
+            result[sid] = usage.model_dump(by_alias=True)
+        else:
+            missing.append(sid)
+    if not missing:
+        return result
+
+    path_stmt = (
+        select(
+            EventRecord.session_id,
+            func.max(func.json_extract(EventRecord.data, "$.transcript_path")),
+        )
+        .where(EventRecord.session_id.in_(missing))
+        .group_by(EventRecord.session_id)
+    )
+    paths = {sid: path for sid, path in (await db.execute(path_stmt)).all() if path}
+
+    def _read_all() -> dict[str, dict[str, Any] | None]:
+        out: dict[str, dict[str, Any] | None] = {}
+        for sid, path in paths.items():
+            usage = usage_for_transcript(str(path))
+            out[sid] = usage.model_dump(by_alias=True) if usage else None
+        return out
+
+    result.update(await asyncio.to_thread(_read_all))
+    return result
 
 
 class LabelUpdate(BaseModel):

@@ -714,6 +714,8 @@ class TestSessionsAPISmoke:
     def test_list_sessions_after_events(self) -> None:
         sid = f"api-smoke-{uuid4()}"
         post_event(sid, "session_start", {"project_name": "SmokeProj"})
+        # A tool call keeps the ended session out of the hidden "junk" group.
+        post_event(sid, "pre_tool_use", {"tool_name": "Read", "agent_id": "main"})
         post_event(sid, "session_end")
 
         resp = client.get("/api/v1/sessions")

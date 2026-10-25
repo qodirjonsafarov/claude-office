@@ -269,6 +269,14 @@ export type ElevatorState1 = "closed" | "arriving" | "open" | "departing";
  */
 export type PhoneState = "idle" | "ringing" | "in_use";
 export type Contextutilization = number;
+export type Contexttokens = number;
+export type Contextwindow = number;
+export type Inputtokens = number;
+export type Outputtokens = number;
+export type Cachereadtokens = number;
+export type Cachewritetokens = number;
+export type Model = string | null;
+export type Costusd = number | null;
 export type Toolusessincecompaction = number;
 export type Printreport = boolean;
 export type Lastupdated = string;
@@ -861,8 +869,31 @@ export interface OfficeState {
   elevatorState?: ElevatorState1;
   phoneState?: PhoneState;
   contextUtilization?: Contextutilization;
+  contextTokens?: Contexttokens;
+  contextWindow?: Contextwindow;
+  tokenUsage?: TokenUsage | null;
   toolUsesSinceCompaction?: Toolusessincecompaction;
   printReport?: Printreport;
+  [k: string]: unknown;
+}
+/**
+ * Token totals for a whole session (main transcript plus its subagents).
+ *
+ * Each API message is counted once (by ``message.id``). ``model`` is the
+ * latest model of the main session. ``cost_usd`` is an estimate from the
+ * price table in ``token_tracker.py``; it is ``None`` when any model used
+ * in the session has no known price.
+ *
+ * This interface was referenced by `ClaudeOfficeBackendTypes`'s JSON-Schema
+ * via the `definition` "TokenUsage".
+ */
+export interface TokenUsage {
+  inputTokens?: Inputtokens;
+  outputTokens?: Outputtokens;
+  cacheReadTokens?: Cachereadtokens;
+  cacheWriteTokens?: Cachewritetokens;
+  model?: Model;
+  costUsd?: Costusd;
   [k: string]: unknown;
 }
 /**

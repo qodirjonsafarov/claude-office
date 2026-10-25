@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from app.models.agents import Agent, AgentState, BossState, OfficeState
+from app.models.agents import Agent, AgentState, BossState
 from app.models.common import TodoStatus
 from app.models.overview import OverviewBucket, OverviewEntry, OverviewState
 from app.models.sessions import GameState, KanbanTask, WhiteboardData
@@ -267,14 +267,7 @@ class RoomOrchestrator:
             room_id=lead_entry.sm.room_id,
             boss=lead_state.boss,
             agents=merged_agents,
-            office=OfficeState(
-                desk_count=desk_count,
-                elevator_state=lead_state.office.elevator_state,
-                phone_state=lead_state.office.phone_state,
-                context_utilization=lead_state.office.context_utilization,
-                tool_uses_since_compaction=lead_state.office.tool_uses_since_compaction,
-                print_report=lead_state.office.print_report,
-            ),
+            office=lead_state.office.model_copy(update={"desk_count": desk_count}),
             last_updated=datetime.now(UTC),
             history=lead_state.history,
             todos=lead_state.todos,

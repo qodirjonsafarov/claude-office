@@ -108,6 +108,17 @@ class TestTeamMerge:
         assert teammate.progress is not None
         assert (teammate.progress.done, teammate.progress.total) == (1, 2)
 
+    def test_team_view_keeps_lead_token_usage(self) -> None:
+        orch = RoomOrchestrator("room-1")
+        lead_sm = _make_sm(team_name="squad", is_lead=True)
+        lead_sm.token_tracker.max_context_tokens = 1_000_000
+        orch.add_session("lead-sess", lead_sm)
+        orch.add_session("tm-sess", _make_sm(team_name="squad", teammate_name="tm"))
+
+        state = orch.merge()
+        assert state is not None
+        assert state.office.context_window == 1_000_000
+
     def test_lead_subagents_have_subagent_type(self) -> None:
         from app.models.agents import Agent
 

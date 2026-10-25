@@ -687,6 +687,9 @@ class StateMachine:
             elevator_state=self.elevator_state,
             phone_state=PhoneState.IDLE,  # Simplified
             context_utilization=context_utilization,
+            context_tokens=self.token_tracker.total_tokens,
+            context_window=self.token_tracker.max_context_tokens,
+            token_usage=self.token_tracker.session_usage(),
             tool_uses_since_compaction=self.tool_uses_since_compaction,
             print_report=self.print_report,
         )
@@ -757,10 +760,11 @@ class StateMachine:
         callers that need full rollback should wrap this in a higher-level
         transaction.
         """
-        # Invariant: token reads inside update_from_event are tail-bounded
-        # (_TOKEN_READ_SIZE = 20_000, see token_tracker.py); offloading them to
-        # a thread would break replay token accounting, which relies on this
-        # call being synchronous and deterministic.
+        # Invariant: token reads inside update_from_event are incremental (each
+        # transcript line is parsed once, see TranscriptUsage in
+        # token_tracker.py); offloading them to a thread would break replay
+        # token accounting, which relies on this call being synchronous and
+        # deterministic.
         self.token_tracker.update_from_event(event)
 
         handler = _DISPATCH_TABLE.get(event.event_type)

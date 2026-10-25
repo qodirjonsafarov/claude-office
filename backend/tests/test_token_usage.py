@@ -125,20 +125,50 @@ class TestCost:
     def test_known_model_cost(self) -> None:
         # Sonnet 4.5: $3 in, $15 out, cache write 1.25x in, cache read 0.1x in.
         cost = estimate_cost_usd(
-            {"claude-sonnet-4-5-20250929": (1_000_000, 1_000_000, 1_000_000, 1_000_000, 0)}
+            [("claude-sonnet-4-5-20250929", (1_000_000, 1_000_000, 1_000_000, 1_000_000, 0))]
         )
         assert cost == pytest.approx(3 + 15 + 0.3 + 3.75)
 
     def test_one_hour_cache_writes_cost_double_input(self) -> None:
-        cost = estimate_cost_usd({"claude-sonnet-4-5": (0, 0, 0, 0, 1_000_000)})
+        cost = estimate_cost_usd([("claude-sonnet-4-5", (0, 0, 0, 0, 1_000_000))])
         assert cost == pytest.approx(6.0)
 
     def test_unknown_model_gives_no_cost(self) -> None:
-        assert estimate_cost_usd({"claude-future-9": (1, 1, 0, 0, 0)}) is None
+        assert estimate_cost_usd([("claude-future-9", (1, 1, 0, 0, 0))]) is None
 
     def test_older_family_price_does_not_leak_to_newer_version(self) -> None:
         # claude-opus-4 is priced, claude-opus-4-9 must not inherit it.
-        assert estimate_cost_usd({"claude-opus-4-9": (1, 1, 0, 0, 0)}) is None
+        assert estimate_cost_usd([("claude-opus-4-9", (1, 1, 0, 0, 0))]) is None
+
+    def test_current_models_are_priced(self) -> None:
+        mtok = (1_000_000, 1_000_000, 1_000_000, 1_000_000, 0)
+        # input + output + cache read + cache write (1.25x input, assumed)
+        assert estimate_cost_usd([("claude-opus-5-5", mtok)]) == pytest.approx(4 + 20 + 0.2 + 5)
+        assert estimate_cost_usd([("claude-sonnet-5-5", mtok)]) == pytest.approx(2 + 10 + 0.2 + 2.5)
+        assert estimate_cost_usd([("claude-fable-5-1", mtok)]) == pytest.approx(
+            10 + 50 + 0.25 + 12.5
+        )
+
+    def test_1m_suffix_still_matches(self) -> None:
+        cost = estimate_cost_usd([("claude-opus-5-5[1m]", (1_000_000, 0, 0, 0, 0))])
+        assert cost == pytest.approx(4.0)
+
+    def test_haiku_short_prompt_uses_base_price(self) -> None:
+        # 60k-token prompt: base tier; cache read assumed 0.1x input.
+        cost = estimate_cost_usd([("claude-haiku-5-5", (50_000, 10_000, 10_000, 0, 0))])
+        assert cost == pytest.approx((50_000 * 0.10 + 10_000 * 0.50 + 10_000 * 0.01) / 1e6)
+
+    def test_haiku_long_prompt_uses_long_tier(self) -> None:
+        # 150k-token prompt (input + cache) is over 100k: 0.50 in / 2.50 out.
+        cost = estimate_cost_usd([("claude-haiku-5-5", (100_000, 10_000, 50_000, 0, 0))])
+        assert cost == pytest.approx((100_000 * 0.50 + 10_000 * 2.50 + 50_000 * 0.05) / 1e6)
+
+    def test_zero_usage_request_of_unknown_model_costs_nothing(self) -> None:
+        # Claude Code writes "<synthetic>" messages with empty usage.
+        cost = estimate_cost_usd(
+            [("unknown", (0, 0, 0, 0, 0)), ("claude-opus-5-5", (1_000_000, 0, 0, 0, 0))]
+        )
+        assert cost == pytest.approx(4.0)
 
     def test_session_usage_has_cost(self, claude_home: Path) -> None:
         f = claude_home / "s1.jsonl"

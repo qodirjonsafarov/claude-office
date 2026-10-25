@@ -121,9 +121,10 @@ class TokenUsage(BaseModel):
     """Token totals for a whole session (main transcript plus its subagents).
 
     Each API message is counted once (by ``message.id``). ``model`` is the
-    latest model of the main session. ``cost_usd`` is an estimate from the
-    price table in ``token_tracker.py``; it is ``None`` when any model used
-    in the session has no known price.
+    latest model of the main session. ``cost_usd`` is an estimated
+    API-equivalent cost (list prices from ``token_tracker.py``, not what a
+    subscription costs); it is ``None`` when any model used in the session
+    has no known price.
     """
 
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)

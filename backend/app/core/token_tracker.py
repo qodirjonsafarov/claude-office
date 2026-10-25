@@ -8,9 +8,10 @@ these concerns instead of embedding file I/O in its dataclass body.
 import json
 import logging
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, NamedTuple, cast
 
 from app.core.path_utils import is_safe_transcript_path
 from app.models.agents import TokenUsage
@@ -32,56 +33,87 @@ _DEFAULT_CONTEXT_WINDOW = 200_000
 _LONG_CONTEXT_WINDOW = 1_000_000
 _LONG_CONTEXT_MARKER = "[1m]"
 
-# Estimated prices in USD per million tokens: (input, output).
-# Keys are model ids without the date suffix; ``claude-x-4-5-20250929``
-# matches ``claude-x-4-5``. Cache writes cost 1.25x input (5 min TTL) or 2x
-# input (1 h TTL), cache reads 0.1x input. Long-context (>200k) surcharges
-# are ignored, so 1M-context sessions are under-estimated.
-# Source: https://docs.claude.com/en/docs/about-claude/pricing
-MODEL_PRICES_USD_PER_MTOK: dict[str, tuple[float, float]] = {
-    "claude-opus-4-5": (5.0, 25.0),
-    "claude-opus-4-1": (15.0, 75.0),
-    "claude-opus-4": (15.0, 75.0),
-    "claude-sonnet-4-5": (3.0, 15.0),
-    "claude-sonnet-4": (3.0, 15.0),
-    "claude-haiku-4-5": (1.0, 5.0),
-    "claude-3-5-haiku": (0.8, 4.0),
-    # TODO: add prices once confirmed, e.g. claude-opus-4-6, claude-sonnet-4-6,
-    # claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5. Until then sessions
-    # using them show no cost (cost_usd = None) instead of a guessed one.
-}
-_CACHE_WRITE_5M_FACTOR = 1.25
-_CACHE_WRITE_1H_FACTOR = 2.0
-_CACHE_READ_FACTOR = 0.1
 
-# Per-model token sums: (input, output, cache_read, cache_write_5m, cache_write_1h).
+class ModelPrice(NamedTuple):
+    """List price in USD per million tokens.
+
+    ``cache_read=None`` means no published figure: 0.1x input is assumed.
+    ``long_*`` is a higher tier for requests whose prompt (input + cache
+    read + cache write) is over ``long_prompt_tokens``.
+    """
+
+    input: float
+    output: float
+    cache_read: float | None = None
+    long_prompt_tokens: int | None = None
+    long_input: float = 0.0
+    long_output: float = 0.0
+
+
+# Prices for the cost estimate. Keys are model ids without suffixes:
+# ``claude-x-4-5-20250929`` and ``claude-x-5-5[1m]`` match ``claude-x-4-5`` /
+# ``claude-x-5-5``. Cache writes are not published for every model; 1.25x
+# input (5 min TTL) and 2x input (1 h TTL) are assumed for all of them.
+# Long-context (>200k) surcharges of the 4.x models are ignored.
+MODEL_PRICES_USD_PER_MTOK: dict[str, ModelPrice] = {
+    "claude-opus-5-5": ModelPrice(4.0, 20.0, cache_read=0.20),
+    "claude-sonnet-5-5": ModelPrice(2.0, 10.0, cache_read=0.20),
+    "claude-haiku-5-5": ModelPrice(
+        0.10, 0.50, long_prompt_tokens=100_000, long_input=0.50, long_output=2.50
+    ),
+    "claude-fable-5-1": ModelPrice(10.0, 50.0, cache_read=0.25),
+    "claude-opus-4-5": ModelPrice(5.0, 25.0),
+    "claude-opus-4-1": ModelPrice(15.0, 75.0),
+    "claude-opus-4": ModelPrice(15.0, 75.0),
+    "claude-sonnet-4-5": ModelPrice(3.0, 15.0),
+    "claude-sonnet-4": ModelPrice(3.0, 15.0),
+    "claude-haiku-4-5": ModelPrice(1.0, 5.0),
+    "claude-3-5-haiku": ModelPrice(0.8, 4.0),
+}
+_CACHE_WRITE_5M_FACTOR = 1.25  # assumption, see above
+_CACHE_WRITE_1H_FACTOR = 2.0  # assumption, see above
+_CACHE_READ_FACTOR = 0.1  # assumption when a model has no cache_read price
+
+# Token counts of one request (or a sum of requests):
+# (input, output, cache_read, cache_write_5m, cache_write_1h).
 ModelTokens = tuple[int, int, int, int, int]
 
 
-def _price_for_model(model: str) -> tuple[float, float] | None:
-    """Look up a model's price; the id may carry a date or ``[1m]`` suffix."""
-    base = model.lower().replace(_LONG_CONTEXT_MARKER, "")
+def _price_for_model(model: str) -> ModelPrice | None:
+    """Look up a model's price; the id may carry a date or ``[...]`` suffix."""
+    base = re.sub(r"\[[^\]]*\]$", "", model.lower())
     base = re.sub(r"-\d{8}$", "", base)
     return MODEL_PRICES_USD_PER_MTOK.get(base)
 
 
-def estimate_cost_usd(tokens_by_model: dict[str, ModelTokens]) -> float | None:
-    """Estimate the cost of a session from per-model token sums.
+def estimate_cost_usd(requests: Iterable[tuple[str, ModelTokens]]) -> float | None:
+    """Estimate the API-equivalent cost in USD of a list of requests.
 
+    This is what the tokens would cost at API list prices, not what a
+    subscription user pays. Each item is one request (model, tokens), so a
+    per-request tier such as Haiku 5.5's long-prompt price applies per call.
     Returns ``None`` when any model has no known price, so a partial sum is
     never shown as the full cost.
     """
     total = 0.0
-    for model, tokens in tokens_by_model.items():
+    for model, tokens in requests:
+        if not any(tokens):
+            continue  # e.g. "<synthetic>" messages with empty usage
         price = _price_for_model(model)
         if price is None:
             return None
         inp, out, cache_read, cache_write_5m, cache_write_1h = tokens
-        price_in, price_out = price
+        price_in, price_out = price.input, price.output
+        price_read = price.cache_read
+        prompt = inp + cache_read + cache_write_5m + cache_write_1h
+        if price.long_prompt_tokens is not None and prompt > price.long_prompt_tokens:
+            price_in, price_out, price_read = price.long_input, price.long_output, None
+        if price_read is None:
+            price_read = price_in * _CACHE_READ_FACTOR
         total += (
             inp * price_in
             + out * price_out
-            + cache_read * price_in * _CACHE_READ_FACTOR
+            + cache_read * price_read
             + cache_write_5m * price_in * _CACHE_WRITE_5M_FACTOR
             + cache_write_1h * price_in * _CACHE_WRITE_1H_FACTOR
         ) / 1_000_000
@@ -215,29 +247,34 @@ class TranscriptUsage:
             return self.last_main.model
         return next((m.model for m in reversed(self.messages.values()) if m.model), None)
 
-    def tokens_by_model(self) -> dict[str, ModelTokens]:
-        sums: dict[str, list[int]] = {}
-        for m in self.messages.values():
-            row = sums.setdefault(m.model or "unknown", [0, 0, 0, 0, 0])
-            row[0] += m.input_tokens
-            row[1] += m.output_tokens
-            row[2] += m.cache_read_tokens
-            row[3] += m.cache_write_5m_tokens
-            row[4] += m.cache_write_1h_tokens
-        return {k: (v[0], v[1], v[2], v[3], v[4]) for k, v in sums.items()}
+    def requests(self) -> list[tuple[str, ModelTokens]]:
+        """One ``(model, tokens)`` entry per API message."""
+        return [
+            (
+                m.model or "unknown",
+                (
+                    m.input_tokens,
+                    m.output_tokens,
+                    m.cache_read_tokens,
+                    m.cache_write_5m_tokens,
+                    m.cache_write_1h_tokens,
+                ),
+            )
+            for m in self.messages.values()
+        ]
 
     def summary(self) -> TokenUsage | None:
         """Session totals, or ``None`` when no usage was read yet."""
         if not self.messages:
             return None
-        by_model = self.tokens_by_model()
+        requests = self.requests()
         return TokenUsage(
-            input_tokens=sum(t[0] for t in by_model.values()),
-            output_tokens=sum(t[1] for t in by_model.values()),
-            cache_read_tokens=sum(t[2] for t in by_model.values()),
-            cache_write_tokens=sum(t[3] + t[4] for t in by_model.values()),
+            input_tokens=sum(t[0] for _, t in requests),
+            output_tokens=sum(t[1] for _, t in requests),
+            cache_read_tokens=sum(t[2] for _, t in requests),
+            cache_write_tokens=sum(t[3] + t[4] for _, t in requests),
             model=self.model,
-            cost_usd=estimate_cost_usd(by_model),
+            cost_usd=estimate_cost_usd(requests),
         )
 
 

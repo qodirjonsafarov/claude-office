@@ -38,6 +38,8 @@ export interface TeamRow {
   isBoss: boolean;
   busy: boolean;
   waiting: boolean;
+  /** Finished and resting in the office (grey dot, "Done · resting 3m"). */
+  resting: boolean;
   action: string;
   task: string | null;
   startedAt: number | null;
@@ -55,7 +57,7 @@ export interface TeamRow {
  * The fields the rows need, flattened to primitives so `useShallow` skips the
  * per-frame position updates of the agents Map (ARC-006).
  */
-const FIELDS = 11;
+const FIELDS = 12;
 
 function useAgentFields(): readonly unknown[] {
   return useGameStore(
@@ -74,6 +76,7 @@ function useAgentFields(): readonly unknown[] {
           a.queueType,
           a.queueIndex,
           a.progress,
+          a.restingSince,
         );
       }
       return flat;
@@ -115,6 +118,7 @@ export function useTeamRows(): TeamRow[] {
       busy: boolean;
       phase: string;
       queue: string | null;
+      restingSince?: number | null;
     }): TeamRow => {
       const action = describeAction({
         state: input.state,
@@ -128,11 +132,18 @@ export function useTeamRows(): TeamRow[] {
         isBoss: input.isBoss,
         busy: input.busy,
         waiting: input.state === "waiting_permission",
+        resting: input.state === "resting",
         action,
         task: input.task ? cleanPromptText(input.task) : null,
         startedAt: input.isBoss ? bossStart : (starts.get(input.id) ?? null),
         toolCount: counts.get(input.key) ?? 0,
-        view: progressView(input.progress, input.state, action, input.isTyping),
+        view: progressView(
+          input.progress,
+          input.state,
+          action,
+          input.isTyping,
+          input.restingSince ?? null,
+        ),
         debug: { state: input.state, phase: input.phase, queue: input.queue },
       };
     };
@@ -151,6 +162,7 @@ export function useTeamRows(): TeamRow[] {
         queueType,
         queueIndex,
         progress,
+        restingSince,
       ] = fields.slice(i, i + FIELDS) as [
         string,
         string | null,
@@ -163,6 +175,7 @@ export function useTeamRows(): TeamRow[] {
         string | null,
         number,
         AgentProgress | null,
+        number | null,
       ];
       agents.push({
         ...row({
@@ -177,6 +190,7 @@ export function useTeamRows(): TeamRow[] {
           progress,
           busy: isAgentBusy(state, isTyping),
           phase,
+          restingSince,
           queue:
             queueType && queueIndex >= 0
               ? t("agentStatus.inQueue", {
@@ -301,7 +315,9 @@ function TeamRowItemComponent({
           className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
             row.busy && !row.waiting ? "qo-live-dot" : ""
           }`}
-          style={{ background: row.color }}
+          style={{
+            background: row.resting ? "var(--qo-ink-faint)" : row.color,
+          }}
         />
         <span
           className={`${md ? "text-[14px]" : "text-[13px]"} font-extrabold text-ink truncate`}

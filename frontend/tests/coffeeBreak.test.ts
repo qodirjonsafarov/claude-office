@@ -169,6 +169,27 @@ describe("CoffeeBreakPlanner and permission prompts", () => {
   });
 });
 
+describe("CoffeeBreakPlanner and resting agents", () => {
+  it("never sends a resting (finished) agent for coffee", () => {
+    const planner = new CoffeeBreakPlanner();
+    const resting = worker({ backendState: "resting" });
+    planner.update(0, [resting]);
+
+    expect(planner.update(COFFEE_IDLE_MS * 3, [resting])).toEqual([]);
+  });
+
+  it("brings an agent that finished at the coffee machine back to its desk", () => {
+    const planner = new CoffeeBreakPlanner();
+    planner.update(0, [worker()]);
+    const [go] = planner.update(COFFEE_IDLE_MS, [worker()]);
+    const finished = worker({ position: go.target, backendState: "resting" });
+
+    expect(planner.update(COFFEE_IDLE_MS + 1000, [finished])).toEqual([
+      { agentId: "a", target: DESK },
+    ]);
+  });
+});
+
 describe("isAtCoffeeSpot", () => {
   it("recognises the coffee spots", () => {
     expect(isAtCoffeeSpot(COFFEE_SPOTS[0])).toBe(true);

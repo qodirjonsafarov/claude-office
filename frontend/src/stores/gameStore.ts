@@ -91,6 +91,8 @@ export interface GameStore {
       backendState: BackendAgentState;
       name: string | null;
       currentTask: string | null;
+      /** ISO time the agent started resting; null = working; omit = keep. */
+      restingSince?: string | null;
     },
   ) => void;
   updateAgentQueueInfo: (

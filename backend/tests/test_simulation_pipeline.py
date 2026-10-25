@@ -578,14 +578,15 @@ class TestSimulationStateVerification:
         agent_ids = [a["id"] for a in state.get("agents", [])]
         assert "worker_1" in agent_ids
 
-    def test_agents_removed_after_subagent_stop(self) -> None:
+    def test_agents_rest_after_subagent_stop(self) -> None:
         sid = f"state-stop-{uuid4()}"
         post_event(sid, "session_start")
         post_event(sid, "subagent_start", {"agent_id": "worker_2", "task_description": "Run tests"})
         post_event(sid, "subagent_stop", {"agent_id": "worker_2", "success": True})
         state = get_replay_state(sid)
-        agent_ids = [a["id"] for a in state.get("agents", [])]
-        assert "worker_2" not in agent_ids
+        states = {a["id"]: a["state"] for a in state.get("agents", [])}
+        # Finished agents rest in the office until resumed or sent home
+        assert states.get("worker_2") == "resting"
 
     def test_todos_updated_by_todo_write(self) -> None:
         sid = f"state-todo-{uuid4()}"

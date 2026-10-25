@@ -54,7 +54,7 @@ class TestStateMachine:
         assert agent.native_id is None
         assert sm.handin_queue == []
 
-    def test_real_stop_removes_the_linked_agent(self, subagents_dir: Path) -> None:
+    def test_real_stop_rests_the_linked_agent(self, subagents_dir: Path) -> None:
         sm = StateMachine()
         _background_agent(sm, "subagent_a")
         _background_agent(sm, "subagent_b")
@@ -62,9 +62,9 @@ class TestStateMachine:
         path = subagents_dir / "agent-nb.jsonl"
         path.write_text("{}\n")
         sm.transition(_native_stop("nb", path))
-        assert sm.agents["subagent_b"].state == AgentState.WAITING
+        # Finished agents rest in the office (test_agent_resting.py)
+        assert sm.agents["subagent_b"].state == AgentState.RESTING
         assert sm.agents["subagent_a"].state == AgentState.WORKING
-        assert sm.handin_queue == ["subagent_b"]
 
     def test_missed_subagent_info_still_late_links(self, subagents_dir: Path) -> None:
         sm = StateMachine()
@@ -74,7 +74,7 @@ class TestStateMachine:
         sm.transition(_native_stop("n1", path))
         agent = sm.agents["subagent_toolu_bg"]
         assert agent.native_id == "n1"
-        assert agent.state == AgentState.WAITING
+        assert agent.state == AgentState.RESTING
 
 
 def _send(session_id: str, event_type: EventType, data: dict[str, Any]) -> None:

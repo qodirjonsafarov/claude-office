@@ -337,3 +337,45 @@ describe("activityLines", () => {
     ).toBe("Waiting for permission · 4m");
   });
 });
+
+describe("resting agents", () => {
+  it("reads 'Done' while resting", () => {
+    expect(
+      describeAction({ state: "resting", isTyping: false, tool: null }),
+    ).toBe("Done");
+  });
+
+  it("shows how long a finished agent has been resting", () => {
+    const view = progressView(null, "resting", "Done", false, 1_000);
+
+    expect(view).toEqual({ kind: "rest", since: 1_000 });
+    expect(
+      activityLines({
+        view,
+        action: "Done",
+        toolCount: 12,
+        startedAt: 0,
+        now: 1_000 + 3 * 60_000,
+      }),
+    ).toEqual({ status: "Done · resting 3m", action: null });
+  });
+
+  it("keeps the final count of a finished todo list", () => {
+    const done = { done: 5, total: 5, current: null, source: "todos" as const };
+
+    expect(progressView(done, "resting", "Done", false, 1_000)).toEqual({
+      kind: "rest",
+      since: 1_000,
+      final: "5/5",
+    });
+    expect(
+      activityLines({
+        view: { kind: "rest", since: 0, final: "5/5" },
+        action: "Done",
+        toolCount: 0,
+        startedAt: null,
+        now: 60_000,
+      }),
+    ).toEqual({ status: "Done 5/5 · resting 1m", action: null });
+  });
+});

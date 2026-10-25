@@ -39,6 +39,8 @@ export type AgentSlice = {
       backendState: BackendAgentState;
       name: string | null;
       currentTask: string | null;
+      /** ISO time the agent started resting; null = working; omit = keep. */
+      restingSince?: string | null;
     },
   ) => void;
   updateAgentQueueInfo: (
@@ -94,6 +96,7 @@ export const createAgentSlice: StateCreator<GameStore, [], [], AgentSlice> = (
           parentSessionId: backendAgent.parentSessionId ?? null,
           parentId: backendAgent.parentId ?? null,
           agentType: backendAgent.agentType ?? null,
+          restingSince: parseTime(backendAgent.restingSince),
           phase: "arriving",
           currentPosition: initialPosition,
           targetPosition: initialPosition,
@@ -155,6 +158,10 @@ export const createAgentSlice: StateCreator<GameStore, [], [], AgentSlice> = (
         // `??` (not `||`) so an explicit empty-string currentTask clears the
         // previous task — only null/undefined fall back. See QA-012.
         currentTask: meta.currentTask ?? agent.currentTask,
+        restingSince:
+          meta.restingSince === undefined
+            ? agent.restingSince
+            : parseTime(meta.restingSince),
       })),
 
     updateAgentQueueInfo: (agentId, queueType, queueIndex) =>
@@ -183,3 +190,10 @@ export const createAgentSlice: StateCreator<GameStore, [], [], AgentSlice> = (
       }),
   };
 };
+
+/** ISO time from the backend as ms since epoch; null when absent or bad. */
+function parseTime(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const ms = Date.parse(value);
+  return Number.isNaN(ms) ? null : ms;
+}

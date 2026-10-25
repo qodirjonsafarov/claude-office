@@ -12,12 +12,28 @@
 
 import { memo, useCallback, useState, type ReactNode } from "react";
 import { useTick } from "@pixi/react";
-import type { Graphics } from "pixi.js";
+import type { Graphics, TextStyle } from "pixi.js";
 import { PIXI_COLORS } from "@/styles/pixiColors";
 import { badgeLook, completionPulse } from "@/utils/progressBadge";
 
 const BAR_W = 32;
 const BAR_H = 4;
+
+// Two fixed label styles, made once: an inline object would be a new style
+// (and a text re-layout) on every frame the badge pulses.
+const LABEL_FONT = {
+  fontFamily: '"DejaVu Sans", Verdana, Arial, sans-serif',
+  fontSize: 20,
+  fontWeight: "bold",
+} as const;
+const LABEL_STYLE: Partial<TextStyle> = {
+  ...LABEL_FONT,
+  fill: PIXI_COLORS.ink,
+};
+const LABEL_STYLE_DONE: Partial<TextStyle> = {
+  ...LABEL_FONT,
+  fill: PIXI_COLORS.accent,
+};
 
 interface AgentProgressBadgeProps {
   progress: { done: number; total: number } | null;
@@ -84,12 +100,7 @@ function AgentProgressBadgeComponent({
         <pixiText
           text={look.label}
           anchor={{ x: 0, y: 0.5 }}
-          style={{
-            fontFamily: '"DejaVu Sans", Verdana, Arial, sans-serif',
-            fontSize: 20,
-            fontWeight: "bold",
-            fill: complete ? PIXI_COLORS.accent : PIXI_COLORS.ink,
-          }}
+          style={complete ? LABEL_STYLE_DONE : LABEL_STYLE}
         />
       </pixiContainer>
     </pixiContainer>

@@ -55,6 +55,7 @@ import { useAnimationSystem } from "@/systems/animationSystem";
 import { wireGameRuntime, unwireGameRuntime } from "@/systems/gameRuntime";
 import { useCompactionAnimation } from "@/systems/compactionAnimation";
 import { CrowdLayoutCache } from "@/systems/crowdLayout";
+import { AgentLookCache } from "@/systems/agentLooks";
 import { useOfficeTextures } from "@/hooks/useOfficeTextures";
 import {
   CANVAS_WIDTH,
@@ -342,6 +343,13 @@ export function OfficeGame(): ReactNode {
 
   // Render-only nudges so people never stand inside each other, and name
   // tag lifts so tags never overlap (systems/crowdLayout.ts)
+  // Character look per agent by role (systems/agentLooks.ts)
+  const [lookCache] = useState(() => new AgentLookCache());
+  const agentLooks = useMemo(
+    () => lookCache.compute(Array.from(agents.values())),
+    [agents, lookCache],
+  );
+
   const [crowdCache] = useState(() => new CrowdLayoutCache());
   const { crowdOffsets, labelPositions } = useMemo(
     () => crowdCache.compute(agents),
@@ -542,6 +550,7 @@ export function OfficeGame(): ReactNode {
                   <Elevator
                     isOpen={isElevatorOpen}
                     agents={agents}
+                    looks={agentLooks}
                     frameTexture={textures.elevatorFrame}
                     doorTexture={textures.elevatorDoor}
                     headsetTexture={textures.headset}
@@ -613,6 +622,7 @@ export function OfficeGame(): ReactNode {
                             isTyping={agent.isTyping}
                             desk={agent.desk}
                             backendState={agent.backendState}
+                            sheet={agentLooks.get(agent.id)}
                             offset={crowdOffsets.get(agent.id)}
                           />
                         </pixiContainer>

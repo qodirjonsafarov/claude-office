@@ -1,24 +1,21 @@
-"""Append typing frames to the LPC people sheets.
+"""Typing frames for the LPC people sheets (used by compose_lpc_people.py).
 
 LPC has no "typing at a desk" animation, so we build it from the seated
 frame (sit frame 3, hands on the lap): the worker's own hands are moved with
 pixel shifts — one hand presses down onto the keys while the other lifts.
 
-Output: two 64x64 frames written into the typing slot at x=896 (typing-left,
-typing-right) in every row; only the "down" row (facing the viewer) is used
-in the office. The rest of the sheet (see compose_lpc_people.py) is kept.
-Idempotent: the slot is cleared before the frames are drawn.
-
-Usage: python scripts/make_typing_frames.py [frontend/public/sprites/people]
+compose_lpc_people.py calls `typing_frame` for the typing slot at x=896
+(typing-left, typing-right) in every row, before the outline goes on; only
+the "down" row (facing the viewer) is used in the office. Don't run this on
+finished sheets: they carry the outline, so rebuild them with
+compose_lpc_people.py instead.
 """
 import sys
-from pathlib import Path
 
 from PIL import Image
 
 FRAME = 64
 TYPING_X = 896  # after walk (576) | sit (192) | idle (128)
-SIT_CHAIR_X = 576 + 2 * FRAME
 # Hand blocks inside the seated frame (frame-local px): rows of the hands
 # plus the outline under them, split down the middle between the two hands.
 HANDS_TOP, HANDS_BOTTOM = 44, 49  # inclusive
@@ -54,20 +51,7 @@ def typing_frame(sit: Image.Image, pressing: str) -> Image.Image:
 
 
 def main() -> None:
-    folder = Path(sys.argv[1] if len(sys.argv) > 1 else "frontend/public/sprites/people")
-    for path in sorted(folder.glob("*.png")):
-        sheet = Image.open(path).convert("RGBA")
-        out = Image.new("RGBA", (max(sheet.width, TYPING_X + 2 * FRAME), 4 * FRAME))
-        out.alpha_composite(sheet)
-        # Clear the typing slot, then draw the frames
-        out.paste((0, 0, 0, 0), (TYPING_X, 0, TYPING_X + 2 * FRAME, 4 * FRAME))
-        for row in range(4):
-            y = row * FRAME
-            sit = sheet.crop((SIT_CHAIR_X, y, SIT_CHAIR_X + FRAME, y + FRAME))
-            for i, hand in enumerate(("left", "right")):
-                out.alpha_composite(typing_frame(sit, hand), (TYPING_X + i * FRAME, y))
-        out.save(path, optimize=True)
-        print("typing frames:", path.name)
+    sys.exit("Typing frames are built by scripts/compose_lpc_people.py now.")
 
 
 if __name__ == "__main__":

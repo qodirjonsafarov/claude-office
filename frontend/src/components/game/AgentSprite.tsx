@@ -76,6 +76,8 @@ export interface AgentSpriteProps {
   backendState?: AgentState;
   /** Todo-list progress for the badge over the name tag (null = none). */
   progress?: { done: number; total: number } | null;
+  /** People sheet (look by role, systems/agentLooks.ts); else by color. */
+  sheet?: string;
 }
 
 // ============================================================================
@@ -188,11 +190,13 @@ function AgentSpriteComponent({
   desk = null,
   backendState = "working",
   progress = null,
+  sheet: sheetProp,
 }: AgentSpriteProps): ReactNode {
   const clickToFocusEnabled = usePreferencesStore((s) => s.clickToFocusEnabled);
   const openFocusPopup = useAttentionStore((s) => s.openFocusPopup);
 
-  const sheet = useMemo(() => sheetForColor(color, id), [color, id]);
+  const colorSheet = useMemo(() => sheetForColor(color, id), [color, id]);
+  const sheet = sheetProp ?? colorSheet;
   const seed = useMemo(() => seedFromId(id), [id]);
   const motion = usePersonMotion(position);
   // Wave hello once the agent stands still in the queue (the timer must not

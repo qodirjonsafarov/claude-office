@@ -19,6 +19,8 @@ interface ElevatorProps {
   isOpen: boolean;
   /** Map of all agents to filter those inside elevator */
   agents: Map<string, AgentAnimationState>;
+  /** People sheet per agent id (look by role) */
+  looks?: Map<string, string>;
   /** Elevator frame texture */
   frameTexture: Texture | null;
   /** Elevator door texture */
@@ -82,6 +84,7 @@ function useDoorAnimation(isOpen: boolean): number {
 export function Elevator({
   isOpen,
   agents,
+  looks,
   frameTexture,
   doorTexture,
   headsetTexture,
@@ -125,6 +128,7 @@ export function Elevator({
           isTyping={agent.isTyping}
           desk={agent.desk}
           backendState={agent.backendState}
+          sheet={looks?.get(agent.id)}
         />
       ))}
 

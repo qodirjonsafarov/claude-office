@@ -859,6 +859,9 @@ class EventProcessor:
                             rec.event_type,
                         )
                         continue
+                    # Old hidden side-agent stops still in the DB: not real.
+                    if is_phantom_stop(sm, evt):
+                        continue
                     sm.transition(evt)
 
                     agent_id = evt.data.agent_id or "main"

@@ -178,3 +178,20 @@ def test_history_entry_reads_naive_time_as_utc() -> None:
     assert entry["id"] == str(naive.replace(tzinfo=UTC).timestamp())
     assert entry["timestamp"].endswith("+00:00")
 
+
+@pytest.mark.asyncio
+async def test_restore_skips_phantom_stops() -> None:
+    sid = f"restore-ph-{uuid4().hex[:8]}"
+    async with AsyncSessionLocal() as db:
+        db.add(
+            EventRecord(
+                session_id=sid,
+                timestamp=datetime.now(UTC),
+                event_type="subagent_stop",
+                data={"native_agent_id": "a0000000000000000"},
+            )
+        )
+        await db.commit()
+    sm = await EventProcessor()._build_restored_state_machine(sid)
+    assert sm is not None
+    assert all(e["type"] != "subagent_stop" for e in sm.history)

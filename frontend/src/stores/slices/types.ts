@@ -70,6 +70,8 @@ export interface AgentAnimationState {
   parentId: string | null;
   /** Subagent type ("developer", "qa", "Explore", ...): picks the look. */
   agentType: string | null;
+  /** When a finished agent started resting (ms), null while it works. */
+  restingSince: number | null;
 
   // Phase tracking (frontend owned)
   phase: AgentPhase;

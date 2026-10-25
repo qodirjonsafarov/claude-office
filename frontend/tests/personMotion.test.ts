@@ -239,3 +239,15 @@ describe("walkStepPx", () => {
     expect(nearEnd).toBeLessThan((150 / 60) * 0.6);
   });
 });
+
+describe("walkStepPx with reduced motion", () => {
+  it("covers the whole path at once (the character fades in there)", () => {
+    const path = [
+      { x: 0, y: 0 },
+      { x: 400, y: 0 },
+    ];
+    expect(walkStepPx(path, 0, 0, 1 / 60, 150, { instant: true })).toBe(
+      Number.POSITIVE_INFINITY,
+    );
+  });
+});

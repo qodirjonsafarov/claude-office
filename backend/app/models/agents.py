@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
@@ -34,6 +35,8 @@ class AgentState(StrEnum):
     LEAVING = "leaving"
     IN_ELEVATOR = "in_elevator"
     IDLE = "idle"
+    # Finished, but stays in the office in case the manager resumes it
+    RESTING = "resting"
 
 
 class BossState(StrEnum):
@@ -89,6 +92,8 @@ class Agent(BaseModel):
     # Agent tool's subagent_type ("developer", "qa", "Explore", ...); the
     # office picks the character's look by it
     agent_type: str | None = None
+    # When a RESTING agent finished; it leaves after Settings.AGENT_REST_MINUTES
+    resting_since: datetime | None = None
 
 
 class Boss(BaseModel):

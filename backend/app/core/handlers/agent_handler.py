@@ -156,6 +156,10 @@ async def handle_subagent_info(
     poller = get_transcript_poller()
     if poller:
         for agent_id, agent in sm.agents.items():
+            # Only this native agent's own character (or a not yet linked one):
+            # resting agents of other transcripts must not pick it up.
+            if agent.native_id not in (None, native_agent_id):
+                continue
             # Link and enrich agents that have not yet been assigned a native_id.
             if agent.native_id is None:
                 agent.native_id = native_agent_id
@@ -244,12 +248,9 @@ async def handle_subagent_stop(
 
     await extract_and_set_agent_speech(sm, resolved_agent_id, event.data.agent_transcript_path)
 
-    await broadcast_state(event.session_id, sm)
-
-    sm.remove_agent(resolved_agent_id)
-    # Persist CLEANUP with the resolved agent_id so replay can also remove the agent.
-    cleanup_data = AgentEventData(agent_id=resolved_agent_id)
-    await persist_synthetic_event_fn(event.session_id, EventType.CLEANUP, cleanup_data)
+    # The agent stays in the office RESTING (state_machine._handle_subagent_stop):
+    # it leaves later via EventProcessor.send_rested_agents_home, on desk
+    # pressure or at session end, which is when CLEANUP gets persisted.
     await broadcast_state(event.session_id, sm)
 
 

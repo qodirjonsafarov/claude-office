@@ -95,6 +95,10 @@ class Settings(BaseSettings):
     # catching zombies quickly.
     ZOMBIE_SUBAGENT_TIMEOUT_SECONDS: int = 90
 
+    # A finished subagent rests in the office (the manager may resume it)
+    # and walks out after resting this many minutes.
+    AGENT_REST_MINUTES: float = 20
+
     # API key for authenticating hook requests. When set, all requests
     # must include this value in the X-API-Key header. When empty, a
     # per-launch random token is generated for state-changing endpoints

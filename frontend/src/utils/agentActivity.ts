@@ -56,6 +56,7 @@ export type ProgressView =
   | { kind: "bar"; percent: number; label: string } // real numbers
   | { kind: "busy" } // working, no numbers: striped "working" pulse
   | { kind: "wait" } // waiting for the user's permission
+  | { kind: "rest"; since: number | null; final?: string } // finished, resting
   | { kind: "none" }; // idle, nothing to show
 
 const BUSY_STATES = new Set([
@@ -78,8 +79,18 @@ export function progressView(
   state: string,
   action: string,
   isTyping = false,
+  restingSince: number | null = null,
 ): ProgressView {
   if (state === "waiting_permission") return { kind: "wait" };
+  if (state === "resting") {
+    return progress
+      ? {
+          kind: "rest",
+          since: restingSince,
+          final: `${progress.done}/${progress.total}`,
+        }
+      : { kind: "rest", since: restingSince };
+  }
   if (progress) {
     return {
       kind: "bar",
@@ -166,6 +177,7 @@ const STATE_ACTIONS: Record<string, string> = {
   reporting: "Reporting back",
   reporting_done: "Done",
   completed: "Done",
+  resting: "Done",
   waiting: "Waiting",
   leaving: "Leaving",
   in_elevator: "Leaving",
@@ -274,6 +286,14 @@ export function activityLines(input: {
       };
     case "wait":
       return { status: join([action, time]), action: null };
+    case "rest": {
+      const done = view.final ? `${action} ${view.final}` : action;
+      const rested =
+        view.since !== null
+          ? `resting ${formatDuration(now - view.since)}`
+          : "resting";
+      return { status: join([done, rested]), action: null };
+    }
     default:
       return { status: join([action, tools]), action: null };
   }

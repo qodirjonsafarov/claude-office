@@ -15,6 +15,7 @@ import { useTick } from "@pixi/react";
 import type { Graphics, TextStyle } from "pixi.js";
 import { PIXI_COLORS } from "@/styles/pixiColors";
 import { badgeLook, completionPulse } from "@/utils/progressBadge";
+import { SCENE_RED } from "./shared/sceneColors";
 
 const BAR_W = 32;
 const BAR_H = 4;
@@ -41,6 +42,8 @@ interface AgentProgressBadgeProps {
   color: number;
   x?: number;
   y?: number;
+  /** The latest tool call failed: a red tick at the end of the bar. */
+  failing?: boolean;
 }
 
 function AgentProgressBadgeComponent({
@@ -48,6 +51,7 @@ function AgentProgressBadgeComponent({
   color,
   x = 0,
   y = 0,
+  failing = false,
 }: AgentProgressBadgeProps): ReactNode {
   const look = badgeLook(progress);
   const complete = look?.complete ?? false;
@@ -82,8 +86,13 @@ function AgentProgressBadgeComponent({
         g.roundRect(-BAR_W / 2, -BAR_H / 2, BAR_W * fraction, BAR_H, 2);
         g.fill({ color: fill });
       }
+      if (failing) {
+        // Red is used for errors only (shared/sceneColors.ts)
+        g.rect(BAR_W / 2 - 2, -BAR_H / 2 - 3, 3, BAR_H + 6);
+        g.fill({ color: SCENE_RED });
+      }
     },
-    [fraction, fill],
+    [fraction, fill, failing],
   );
 
   if (!look || pulse?.hidden) return null;

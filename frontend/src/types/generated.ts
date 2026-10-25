@@ -28,7 +28,8 @@ export type AgentState =
   | "reporting_done"
   | "leaving"
   | "in_elevator"
-  | "idle";
+  | "idle"
+  | "resting";
 export type Desk = number | null;
 /**
  * Type of speech/thought bubble content.
@@ -49,6 +50,7 @@ export type Total = number;
 export type Current = string | null;
 export type Source = "todos" | "tasks";
 export type Agenttype = string | null;
+export type Restingsince = string | null;
 export type ProjectName = string | null;
 export type ProjectDir = string | null;
 export type WorkingDir = string | null;
@@ -529,6 +531,7 @@ export interface Agent {
   parentId?: Parentid;
   progress?: AgentProgress | null;
   agentType?: Agenttype;
+  restingSince?: Restingsince;
   [k: string]: unknown;
 }
 /**

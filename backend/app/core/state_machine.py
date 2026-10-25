@@ -271,10 +271,72 @@ def _handle_context_compaction(sm: "StateMachine", event: AnyEvent) -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# Resting agents: a finished subagent stays in the office in case the
+# manager resumes it (SendMessage → SUBAGENT_INFO for the same native id).
+# ---------------------------------------------------------------------------
+
+
+def _rest_minutes_setting() -> float:
+    from app.config import get_settings  # local import to avoid cycles
+
+    return float(get_settings().AGENT_REST_MINUTES)
+
+
+_TRANSCRIPT_NATIVE_RE = re.compile(r"agent-([0-9a-zA-Z]+)\.jsonl$")
+
+
+def native_id_from_transcript(path: str | None) -> str | None:
+    """Native agent id from a subagent transcript path (``.../agent-<id>.jsonl``)."""
+    if not path:
+        return None
+    match = _TRANSCRIPT_NATIVE_RE.search(path)
+    return match.group(1) if match else None
+
+
+def _recall(agent: Agent) -> None:
+    """Wake a resting agent: it works again at its own desk."""
+    if agent.state == AgentState.RESTING:
+        agent.state = AgentState.WORKING
+        agent.resting_since = None
+
+
+def _resting_by_native(sm: "StateMachine", native_id: str | None) -> Agent | None:
+    if not native_id:
+        return None
+    for agent in sm.agents.values():
+        if agent.native_id == native_id and agent.state == AgentState.RESTING:
+            return agent
+    return None
+
+
+def _as_utc(ts: datetime) -> datetime:
+    """Event timestamps may be naive (UTC) or aware; compare them as aware."""
+    return ts if ts.tzinfo else ts.replace(tzinfo=UTC)
+
+
+def _handle_subagent_info(sm: "StateMachine", event: AnyEvent) -> None:
+    """Handle SUBAGENT_INFO: a resumed agent (same native id) wakes up."""
+    assert isinstance(event, AgentEvent)
+    native = event.data.native_agent_id or native_id_from_transcript(
+        event.data.agent_transcript_path
+    )
+    agent = _resting_by_native(sm, native)
+    if agent is not None:
+        _recall(agent)
+
+
 def _handle_pre_tool_use(sm: "StateMachine", event: AnyEvent) -> None:
     """Handle PRE_TOOL_USE: update boss/agent state and process TodoWrite events."""
     assert isinstance(event, ToolEvent)
     tool_name = event.data.tool_name
+
+    # Any activity of a resting agent recalls it
+    resting = _resting_by_native(sm, event.data.native_agent_id)
+    if resting is not None:
+        _recall(resting)
+    if event.data.agent_id in sm.agents:
+        _recall(sm.agents[event.data.agent_id])
 
     progress_owner = _progress_owner(event)
     if progress_owner is not None:
@@ -399,6 +461,16 @@ def _handle_subagent_start(sm: "StateMachine", event: AnyEvent) -> None:
             f"SUBAGENT_START guard failed: missing agent_id (agent_id={event.data.agent_id})"
         )
         return
+    # Resumed agent (same id or same transcript): wake it, no second arrival
+    existing = sm.agents.get(event.data.agent_id) or _resting_by_native(
+        sm,
+        event.data.native_agent_id or native_id_from_transcript(event.data.agent_transcript_path),
+    )
+    if existing is not None:
+        _recall(existing)
+        return
+    if len(sm.agents) >= sm.MAX_AGENTS:
+        sm.send_longest_resting_home()
     if len(sm.agents) >= sm.MAX_AGENTS:
         logger.warning(
             f"SUBAGENT_START guard failed: MAX_AGENTS reached "
@@ -434,9 +506,14 @@ def _handle_subagent_stop(sm: "StateMachine", event: AnyEvent) -> None:
     if resolved:
         agent_id = resolved.agent_id
         stopping_agent = resolved.agent
-        stopping_agent.state = AgentState.WAITING
-        if agent_id not in sm.handin_queue:
-            sm.handin_queue.append(agent_id)
+        # Rest in the office: the manager may resume this agent later
+        stopping_agent.state = AgentState.RESTING
+        stopping_agent.resting_since = event.timestamp
+        stopping_agent.bubble = None
+        if stopping_agent.native_id is None:
+            stopping_agent.native_id = event.data.native_agent_id or native_id_from_transcript(
+                event.data.agent_transcript_path
+            )
 
         sm.boss_state = BossState.IDLE
 
@@ -484,7 +561,9 @@ def _handle_stop(sm: "StateMachine", event: AnyEvent) -> None:
 
 
 def _handle_session_end(sm: "StateMachine", event: AnyEvent) -> None:
-    """Handle SESSION_END: mark session as ended."""
+    """Handle SESSION_END: mark session as ended; resting agents go home."""
+    for agent_id in [a.id for a in sm.agents.values() if a.state == AgentState.RESTING]:
+        sm.remove_agent(agent_id)
     sm.phase = OfficePhase.ENDED
     sm.boss_state = BossState.IDLE
     sm.boss_current_task = None
@@ -572,6 +651,7 @@ _DISPATCH_TABLE: dict[EventType, Callable[["StateMachine", AnyEvent], None]] = {
     EventType.POST_TOOL_USE: _handle_post_tool_use,
     EventType.SUBAGENT_START: _handle_subagent_start,
     EventType.SUBAGENT_STOP: _handle_subagent_stop,
+    EventType.SUBAGENT_INFO: _handle_subagent_info,
     EventType.CLEANUP: _handle_cleanup,
     EventType.STOP: _handle_stop,
     EventType.SESSION_END: _handle_session_end,
@@ -690,6 +770,8 @@ class StateMachine:
     # remains the source of truth, so an evicted session replays on next access.
     # Not part of ``to_game_state`` output — internal eviction metadata only.
     last_event_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    # Minutes a finished agent rests in the office before it walks out
+    rest_minutes: float = field(default_factory=lambda: _rest_minutes_setting())
 
     # ---------------------------------------------------------------------------
     # Core methods
@@ -800,6 +882,31 @@ class StateMachine:
             room_id=self.room_id,
         )
 
+    def expire_resting(self, now: datetime) -> list[str]:
+        """Send home resting agents that rested ``rest_minutes`` or longer."""
+        limit = _as_utc(now)
+        gone = [
+            a.id
+            for a in self.agents.values()
+            if a.state == AgentState.RESTING
+            and a.resting_since is not None
+            and (limit - _as_utc(a.resting_since)).total_seconds() >= self.rest_minutes * 60
+        ]
+        for agent_id in gone:
+            self.remove_agent(agent_id)
+        return gone
+
+    def send_longest_resting_home(self) -> str | None:
+        """Free a desk: the agent resting the longest leaves. None if nobody rests."""
+        resting = [
+            a for a in self.agents.values() if a.state == AgentState.RESTING and a.resting_since
+        ]
+        if not resting:
+            return None
+        oldest = min(resting, key=lambda a: _as_utc(a.resting_since or datetime.now(UTC)))
+        self.remove_agent(oldest.id)
+        return oldest.id
+
     def remove_agent(self, agent_id: str) -> None:
         """Remove an agent from the office and all queues.
 
@@ -835,6 +942,8 @@ class StateMachine:
         # token accounting, which relies on this call being synchronous and
         # deterministic.
         self.token_tracker.update_from_event(event)
+        # Resting agents past the limit leave (event time keeps replay exact)
+        self.expire_resting(event.timestamp)
 
         if event.data.tmux_pane:
             self.tmux_pane = event.data.tmux_pane
@@ -910,7 +1019,8 @@ class StateMachine:
             A new Agent instance ready to be added to the office.
         """
         agent_id = data.agent_id or "unknown"
-        count = len(self.agents) + 1
+        # Resting agents keep their desks: take the first free desk / color
+        count = max((a.number for a in self.agents.values()), default=0) + 1
         colors = [
             "#3B82F6",
             "#22C55E",
@@ -921,7 +1031,10 @@ class StateMachine:
             "#EAB308",
             "#EF4444",
         ]
-        color = colors[(count - 1) % len(colors)]
+        used_colors = {a.color.upper() for a in self.agents.values()}
+        color = next((c for c in colors if c not in used_colors), colors[(count - 1) % len(colors)])
+        used_desks = {a.desk for a in self.agents.values()}
+        desk = next(d for d in range(1, len(self.agents) + 2) if d not in used_desks)
 
         # Generate short name from description using fallback
         name_source = data.agent_name or data.task_description or ""
@@ -939,7 +1052,7 @@ class StateMachine:
             color=color,
             number=count,
             state=AgentState.ARRIVING,
-            desk=count,
+            desk=desk,
             bubble=None,
             current_task=task,
             agent_type=data.agent_type or None,

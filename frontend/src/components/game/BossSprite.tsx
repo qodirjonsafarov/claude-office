@@ -9,13 +9,10 @@
 
 import { memo, useMemo, useState, useCallback, type ReactNode } from "react";
 import { useTick } from "@pixi/react";
-import { Graphics, TextStyle, Texture } from "pixi.js";
+import { Graphics, Texture } from "pixi.js";
 import type { BossState, BubbleContent, Position } from "@/types";
 import { MarqueeText } from "./MarqueeText";
-import { ICON_MAP } from "./shared/iconMap";
-import { drawBubble, drawIconBadge } from "./shared/drawBubble";
 import { drawRightArm, drawLeftArm } from "./shared/drawArm";
-import { truncateBubbleText } from "@/utils/bubbleText";
 import {
   PersonSprite,
   useActivityClock,
@@ -33,6 +30,18 @@ import {
 import { useGameStore } from "@/stores/gameStore";
 import type { AgentPhase } from "@/stores/gameStore";
 import { NameTag } from "./NameTag";
+import {
+  Celebration,
+  NeedsYouRing,
+  StatusMark,
+  useClock,
+  useSince,
+  type StatusKind,
+} from "./CharacterEffects";
+import { SceneBubble } from "./shared/SceneBubble";
+import { characterMood, type PersonSignals } from "@/systems/sceneSignals";
+import { SHAKE_MS, shakeOffset } from "@/systems/sceneMotion";
+import { useReducedMotion } from "@/systems/reducedMotion";
 import { AgentProgressBadge } from "./AgentProgressBadge";
 
 // ============================================================================
@@ -57,6 +66,8 @@ export interface BossSpriteProps {
   isAway?: boolean; // Whether boss is away from desk (hides body, shows only furniture)
   /** Todo-list progress for the badge over the name tag (null = none). */
   progress?: { done: number; total: number } | null;
+  /** Boss's last activity / error / tool from the event log. */
+  signals?: PersonSignals;
 }
 
 // ============================================================================
@@ -137,72 +148,7 @@ interface BubbleProps {
 }
 
 function Bubble({ content, yOffset }: BubbleProps): ReactNode {
-  const { type = "thought", icon } = content;
-  const text = truncateBubbleText(content.text);
-
-  // Convert icon name to emoji if needed
-  const iconEmoji = icon ? (ICON_MAP[icon] ?? icon) : undefined;
-
-  // Icon badge constants
-  const badgeRadius = 16; // Radius of the circular badge
-
-  // Calculate bubble dimensions (at display scale) - icon is outside bubble now
-  const charWidth = 11.5;
-  const paddingH = 34;
-  const maxW = 340;
-  const rawWidth = text.length * charWidth + paddingH;
-  const bWidth = Math.min(maxW, Math.max(90, rawWidth));
-  const capacity = (bWidth - paddingH) / charWidth;
-  const lines = Math.max(1, Math.ceil(text.length / capacity));
-  const bHeight = 30 + lines * 21;
-
-  // Text style at 2x for sharp rendering
-  const textStyle = useMemo<Partial<TextStyle>>(
-    () => ({
-      fontFamily:
-        '"DejaVu Sans", Verdana, Arial, "Noto Color Emoji", sans-serif',
-      fontSize: 34,
-      fill: "#0f172a",
-      fontWeight: "bold",
-      wordWrap: true,
-      wordWrapWidth: (bWidth - 34) * 2,
-      breakWords: true,
-      align: "left",
-      lineHeight: 42,
-      stroke: { width: 0, color: 0x000000 },
-    }),
-    [bWidth],
-  );
-
-  // Icon style - larger emoji
-  const iconStyle = useMemo<Partial<TextStyle>>(
-    () => ({
-      fontFamily:
-        '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
-      fontSize: 40, // Large emoji for badge
-      fill: "#000000",
-    }),
-    [],
-  );
-
-  return (
-    <pixiContainer y={yOffset} x={45}>
-      <pixiGraphics draw={(g) => drawBubble(g, bWidth, bHeight, type)} />
-      {/* Icon badge on top-left corner of bubble */}
-      {iconEmoji && (
-        <pixiContainer x={-bWidth / 2 - 6} y={-bHeight + 6}>
-          <pixiGraphics draw={(g) => drawIconBadge(g, badgeRadius)} />
-          <pixiContainer scale={0.5} x={0} y={1}>
-            <pixiText text={iconEmoji} anchor={0.5} style={iconStyle} />
-          </pixiContainer>
-        </pixiContainer>
-      )}
-      {/* Text rendered at 2x and scaled down for sharpness */}
-      <pixiContainer x={-bWidth / 2 + 17} y={-bHeight / 2} scale={0.5}>
-        <pixiText text={text} anchor={{ x: 0, y: 0.5 }} style={textStyle} />
-      </pixiContainer>
-    </pixiContainer>
-  );
+  return <SceneBubble content={content} yOffset={yOffset} />;
 }
 
 // ============================================================================
@@ -226,6 +172,7 @@ function BossSpriteComponent({
   isTyping = false,
   isAway = false,
   progress = null,
+  signals,
 }: BossSpriteProps): ReactNode {
   // Busy boss (tool use, with a short linger) stands up and directs the team
   const directingElapsed = useActivityClock(
@@ -239,7 +186,44 @@ function BossSpriteComponent({
     isTyping: directingElapsed !== null,
     backendState: state,
   });
-  const sprite = STANCE_SPRITE[stance];
+  // Mood: needs you > error > sleeping (5 quiet minutes) > normal
+  const reduced = useReducedMotion();
+  const now = useClock(1000);
+  const mood = characterMood({
+    backendState: state,
+    now,
+    lastEventAt: signals?.lastEventAt ?? null,
+    lastErrorAt: signals?.lastErrorAt ?? null,
+  });
+  const sleeping = mood === "sleeping" && stance === "sit";
+  const sprite = sleeping
+    ? { mode: "sleep" as const, feetY: 30, glance: false }
+    : STANCE_SPRITE[stance];
+  const shakeMs = useSince(
+    mood === "error" ? (signals?.lastErrorAt ?? null) : null,
+    SHAKE_MS,
+  );
+  const shakeX = reduced ? 0 : shakeOffset(shakeMs);
+  // Turn finished ("completing"): confetti and a check mark
+  const [finished, setFinished] = useState({ state, n: 0 });
+  if (finished.state !== state) {
+    setFinished({
+      state,
+      n: state === "completing" ? finished.n + 1 : finished.n,
+    });
+  }
+  const doneMs = useSince(finished.n > 0 ? finished.n : null, 1800);
+  const showDone = finished.n > 0 && doneMs < 1800;
+  const mark: StatusKind | null =
+    mood === "needs_you"
+      ? "needs_you"
+      : mood === "error"
+        ? "error"
+        : showDone
+          ? "done"
+          : sleeping
+            ? "sleeping"
+            : null;
   const direction =
     stance === "sit"
       ? "down"
@@ -308,7 +292,9 @@ function BossSpriteComponent({
 
       {/* Boss character (body + accessories) - hidden when away from desk */}
       {!isAway && (
-        <pixiContainer y={6}>
+        <pixiContainer y={6} x={shakeX} alpha={sleeping ? 0.7 : 1}>
+          {/* Waiting for the user: amber ring behind him */}
+          {mood === "needs_you" && <NeedsYouRing y={14} width={30} />}
           {/* Boss: LPC pixel-art worker. He doesn't type: while busy he
               stands behind the desk and looks over the team (directing). */}
           {/* One sprite for every stance: switching stance must not
@@ -385,6 +371,12 @@ function BossSpriteComponent({
       {!isAway && <NameTag name="Claude" accent={0xff8a3d} y={-60} />}
       {!isAway && (
         <AgentProgressBadge progress={progress} color={0xff8a3d} y={-76} />
+      )}
+
+      {/* Needs you / error / done / zzz, next to his head */}
+      {!isAway && mark && <StatusMark kind={mark} y={-34} />}
+      {!isAway && showDone && (
+        <Celebration key={finished.n} seed={BOSS_SEED + finished.n} y={-30} />
       )}
 
       {/* Task marquee on desk - scrolling user prompt */}

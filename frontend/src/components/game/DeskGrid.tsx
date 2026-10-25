@@ -8,7 +8,7 @@
  */
 
 import { type ReactNode, useMemo } from "react";
-import { Texture } from "pixi.js";
+import { Graphics, Texture } from "pixi.js";
 import { DeskMarquee } from "./DeskMarquee";
 
 // ============================================================================
@@ -183,6 +183,21 @@ interface DeskSurfacesTopProps {
   rubiksCubeTexture: Texture | null;
   rubberDuckTexture: Texture | null;
   thermosTexture: Texture | null;
+  /** Desks (1-based) whose worker runs a shell command: green screen glow. */
+  terminalDesks?: ReadonlySet<number>;
+}
+
+/**
+ * Soft green light spilling from a monitor running a terminal. Stacked
+ * translucent ellipses in "add" blend: a glow without any Pixi filter.
+ */
+function drawTerminalGlow(g: Graphics): void {
+  g.clear();
+  // Wider than the monitor, so the light shows around its edges
+  for (let i = 0; i < 5; i++) {
+    g.ellipse(0, 0, 50 - i * 7, 34 - i * 5);
+    g.fill({ color: 0x5cff8a, alpha: 0.06 + i * 0.025 });
+  }
 }
 
 /**
@@ -201,6 +216,7 @@ export function DeskSurfacesTop({
   rubiksCubeTexture,
   rubberDuckTexture,
   thermosTexture,
+  terminalDesks,
 }: DeskSurfacesTopProps): ReactNode {
   const desks = useDeskPositions(deskCount, occupiedDesks);
 
@@ -208,6 +224,15 @@ export function DeskSurfacesTop({
     <>
       {desks.map((desk, i) => (
         <pixiContainer key={i} x={desk.x} y={desk.y}>
+          {/* Terminal running: the screen lights up the desk */}
+          {terminalDesks?.has(i + 1) && (
+            <pixiGraphics
+              draw={drawTerminalGlow}
+              x={-45}
+              y={20}
+              blendMode="add"
+            />
+          )}
           {/* Monitor - back of desk surface (far from chair) */}
           {monitorTexture && (
             <pixiSprite

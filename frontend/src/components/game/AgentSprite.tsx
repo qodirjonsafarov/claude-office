@@ -16,7 +16,7 @@ import {
   type ReactNode,
 } from "react";
 import { useTick } from "@pixi/react";
-import { Graphics, TextStyle, Texture } from "pixi.js";
+import { Graphics, Texture } from "pixi.js";
 import type { Position, BubbleContent, AgentState } from "@/types";
 import type { AgentPhase } from "@/stores/gameStore";
 import { useAttentionStore } from "@/stores/attentionStore";
@@ -37,10 +37,7 @@ import {
   type AgentStance,
 } from "@/systems/personPoses";
 import { isAtCoffeeSpot } from "@/systems/coffeeBreak";
-import { ICON_MAP } from "./shared/iconMap";
-import { drawBubble, drawIconBadge } from "./shared/drawBubble";
 import { drawRightArm, drawLeftArm } from "./shared/drawArm";
-import { truncateBubbleText } from "@/utils/bubbleText";
 import {
   PersonSprite,
   sheetForColor,
@@ -48,6 +45,25 @@ import {
   type PersonMode,
 } from "./PersonSprite";
 import { ThinkingDots } from "./ThinkingDots";
+import {
+  Celebration,
+  NeedsYouRing,
+  StatusMark,
+  useClock,
+  useSince,
+  type StatusKind,
+} from "./CharacterEffects";
+import { SceneBubble } from "./shared/SceneBubble";
+import { characterMood, type PersonSignals } from "@/systems/sceneSignals";
+import {
+  FADE_MS,
+  SHAKE_MS,
+  SQUASH_MS,
+  fadeIn,
+  shakeOffset,
+  squashScale,
+} from "@/systems/sceneMotion";
+import { useReducedMotion } from "@/systems/reducedMotion";
 import { NameTag, accentFromHex } from "./NameTag";
 import { AgentProgressBadge } from "./AgentProgressBadge";
 
@@ -78,6 +94,8 @@ export interface AgentSpriteProps {
   progress?: { done: number; total: number } | null;
   /** People sheet (look by role, systems/agentLooks.ts); else by color. */
   sheet?: string;
+  /** Last activity / error / tool from the event log (sceneSignals.ts). */
+  signals?: PersonSignals;
 }
 
 // ============================================================================
@@ -101,72 +119,7 @@ interface BubbleProps {
 }
 
 function Bubble({ content, yOffset }: BubbleProps): ReactNode {
-  const { type = "thought", icon } = content;
-  const text = truncateBubbleText(content.text);
-
-  // Convert icon name to emoji if needed
-  const iconEmoji = icon ? (ICON_MAP[icon] ?? icon) : undefined;
-
-  // Icon badge constants
-  const badgeRadius = 16; // Radius of the circular badge
-
-  // Calculate bubble dimensions (at display scale) - icon is outside bubble now
-  const charWidth = 11.5;
-  const paddingH = 34;
-  const maxW = 340;
-  const rawWidth = text.length * charWidth + paddingH;
-  const bWidth = Math.min(maxW, Math.max(90, rawWidth));
-  const capacity = (bWidth - paddingH) / charWidth;
-  const lines = Math.max(1, Math.ceil(text.length / capacity));
-  const bHeight = 30 + lines * 21;
-
-  // Text style at 2x for sharp rendering
-  const textStyle = useMemo<Partial<TextStyle>>(
-    () => ({
-      fontFamily:
-        '"DejaVu Sans", Verdana, Arial, "Noto Color Emoji", sans-serif',
-      fontSize: 34,
-      fill: "#0f172a",
-      fontWeight: "bold",
-      wordWrap: true,
-      wordWrapWidth: (bWidth - 34) * 2,
-      breakWords: true,
-      align: "left",
-      lineHeight: 42,
-      stroke: { width: 0, color: 0x000000 },
-    }),
-    [bWidth],
-  );
-
-  // Icon style - larger emoji
-  const iconStyle = useMemo<Partial<TextStyle>>(
-    () => ({
-      fontFamily:
-        '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
-      fontSize: 40, // Large emoji for badge
-      fill: "#000000",
-    }),
-    [],
-  );
-
-  return (
-    <pixiContainer y={yOffset} x={45}>
-      <pixiGraphics draw={(g) => drawBubble(g, bWidth, bHeight, type)} />
-      {/* Icon badge on top-left corner of bubble */}
-      {iconEmoji && (
-        <pixiContainer x={-bWidth / 2 - 6} y={-bHeight + 6}>
-          <pixiGraphics draw={(g) => drawIconBadge(g, badgeRadius)} />
-          <pixiContainer scale={0.5} x={0} y={1}>
-            <pixiText text={iconEmoji} anchor={0.5} style={iconStyle} />
-          </pixiContainer>
-        </pixiContainer>
-      )}
-      {/* Text rendered at 2x and scaled down for sharpness */}
-      <pixiContainer x={-bWidth / 2 + 17} y={-bHeight / 2} scale={0.5}>
-        <pixiText text={text} anchor={{ x: 0, y: 0.5 }} style={textStyle} />
-      </pixiContainer>
-    </pixiContainer>
-  );
+  return <SceneBubble content={content} yOffset={yOffset} />;
 }
 
 // ============================================================================
@@ -191,6 +144,7 @@ function AgentSpriteComponent({
   backendState = "working",
   progress = null,
   sheet: sheetProp,
+  signals,
 }: AgentSpriteProps): ReactNode {
   const clickToFocusEnabled = usePreferencesStore((s) => s.clickToFocusEnabled);
   const openFocusPopup = useAttentionStore((s) => s.openFocusPopup);
@@ -218,7 +172,63 @@ function AgentSpriteComponent({
     msInPhase: greeting ? 0 : GREET_MS,
   });
   const look = facingFor(stance, phase, position, motion.direction);
-  const personMode = MODE_FOR_STANCE[stance];
+
+  // Mood: needs you > error > sleeping (resting / 5 quiet minutes) > normal
+  const reduced = useReducedMotion();
+  const now = useClock(1000);
+  const mood = characterMood({
+    backendState,
+    now,
+    lastEventAt: signals?.lastEventAt ?? null,
+    lastErrorAt: signals?.lastErrorAt ?? null,
+  });
+  const seated = stance === "sit";
+  const sleeping = mood === "sleeping" && seated;
+  // Read / Grep: head bowed over the desk instead of typing
+  const reading = seated && isTyping && signals?.tool === "read";
+  const personMode: PersonMode = sleeping ? "sleep" : MODE_FOR_STANCE[stance];
+
+  // Error: a 150 ms shake by whole pixels
+  const shakeMs = useSince(
+    mood === "error" ? (signals?.lastErrorAt ?? null) : null,
+    SHAKE_MS,
+  );
+  const shakeX = reduced ? 0 : shakeOffset(shakeMs);
+  // Arrival at the desk: a 160 ms squash
+  const squashMs = useSince(seated ? `desk-${desk}` : null, SQUASH_MS);
+  const squash = reduced ? { x: 1, y: 1 } : squashScale(squashMs);
+  // Finished a task: confetti and a check mark for a moment
+  const [finished, setFinished] = useState({ state: backendState, n: 0 });
+  if (finished.state !== backendState) {
+    setFinished({
+      state: backendState,
+      n: backendState === "resting" ? finished.n + 1 : finished.n,
+    });
+  }
+  const doneMs = useSince(finished.n > 0 ? finished.n : null, DONE_MARK_MS);
+  const showDone = finished.n > 0 && doneMs < DONE_MARK_MS;
+  const mark: StatusKind | null =
+    mood === "needs_you"
+      ? "needs_you"
+      : mood === "error"
+        ? "error"
+        : showDone
+          ? "done"
+          : sleeping
+            ? "sleeping"
+            : null;
+  const feetY = personMode === "sit" || personMode === "sleep" ? 30 : 22;
+
+  // Reduced motion: no walking, so fade in wherever the agent lands
+  const [landed, setLanded] = useState({ x: position.x, y: position.y, n: 0 });
+  if (
+    reduced &&
+    Math.hypot(landed.x - position.x, landed.y - position.y) > 0.5
+  ) {
+    setLanded({ x: position.x, y: position.y, n: landed.n + 1 });
+  }
+  const landedMs = useSince(reduced && landed.n > 0 ? landed.n : null, FADE_MS);
+  const landAlpha = reduced && landed.n > 0 ? fadeIn(landedMs) : 1;
 
   // Click handler for focus popup
   const handlePointerTap = useCallback(() => {
@@ -242,26 +252,50 @@ function AgentSpriteComponent({
       onPointerTap={handlePointerTap}
       interactive={clickToFocusEnabled}
     >
-      {/* Pixel-art office worker */}
-      <PersonSprite
-        sheet={sheet}
-        mode={personMode}
-        direction={look}
-        feetY={personMode === "sit" ? 30 : 22}
-        typing={isTyping}
-        walkDistance={motion.distance}
-        gesture={
-          stance === "walk" || stance === "sit" || stance === "stand"
-            ? undefined
-            : stance
-        }
-        seed={seed}
-        glance={stance === "stand" || (stance === "sit" && !isTyping)}
-      />
+      {/* Waiting for the user: amber ring on the floor */}
+      {/* (seated: around the waist, the desk hides the floor) */}
+      {mood === "needs_you" && (
+        <NeedsYouRing y={seated ? 4 : feetY} width={seated ? 30 : 26} />
+      )}
+
+      {/* Pixel-art office worker: squash pivots at the feet, dims asleep */}
+      <pixiContainer
+        x={shakeX}
+        y={feetY}
+        scale={squash}
+        alpha={(sleeping ? 0.7 : 1) * landAlpha}
+      >
+        <pixiContainer y={-feetY}>
+          <PersonSprite
+            sheet={sheet}
+            mode={personMode}
+            direction={look}
+            feetY={feetY}
+            typing={isTyping && !reading && !sleeping}
+            reading={reading}
+            walkDistance={motion.distance}
+            gesture={
+              stance === "walk" || stance === "sit" || stance === "stand"
+                ? undefined
+                : stance
+            }
+            seed={seed}
+            glance={stance === "stand" || (seated && !isTyping && !sleeping)}
+          />
+        </pixiContainer>
+      </pixiContainer>
 
       {/* Seated and not typing: the agent is thinking */}
-      {stance === "sit" && !bubble && (
+      {seated && !bubble && !sleeping && !mark && (
         <ThinkingDots active={!isTyping && showsThinking(backendState)} />
+      )}
+
+      {/* Needs you / error / done / zzz, next to the head */}
+      {mark && !isInElevatorZone(position) && (
+        <StatusMark kind={mark} y={seated || sleeping ? -44 : -52} />
+      )}
+      {finished.n > 0 && showDone && (
+        <Celebration key={finished.n} seed={seed + finished.n} />
       )}
 
       {/* Agent name if present - hide when in elevator or when renderLabel is false */}
@@ -287,6 +321,9 @@ function AgentSpriteComponent({
 // ============================================================================
 // STANCE HELPERS
 // ============================================================================
+
+/** How long the check mark stays after finishing a task. */
+const DONE_MARK_MS = 1800;
 
 const MODE_FOR_STANCE: Record<AgentStance, PersonMode> = {
   walk: "walk",
@@ -429,6 +466,8 @@ export interface AgentLabelProps {
   color?: string;
   /** Todo-list progress for the badge over the name tag (null = none). */
   progress?: { done: number; total: number } | null;
+  /** The latest tool call failed (red tick on the badge). */
+  failing?: boolean;
 }
 
 function AgentLabelComponent({
@@ -436,6 +475,7 @@ function AgentLabelComponent({
   position,
   color,
   progress = null,
+  failing = false,
 }: AgentLabelProps): ReactNode {
   const accent = color ? accentFromHex(color) : undefined;
   return (
@@ -446,6 +486,7 @@ function AgentLabelComponent({
         color={accent ?? 0x8b5cf6}
         x={position.x}
         y={position.y - 88}
+        failing={failing}
       />
     </>
   );

@@ -95,8 +95,11 @@ export class CoffeeBreakPlanner {
       }
       // Work wins over coffee: typing, or the user being asked to approve
       // something (the worker must be at the desk for that)
+      // Finished agents rest at their desks (asleep), never at the machine
       const working =
-        agent.isTyping || agent.backendState === "waiting_permission";
+        agent.isTyping ||
+        agent.backendState === "waiting_permission" ||
+        agent.backendState === "resting";
       if (working) rec.lastTypingAt = now;
 
       const goDesk = () => {

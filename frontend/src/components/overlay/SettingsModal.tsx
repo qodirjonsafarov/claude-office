@@ -8,7 +8,6 @@ import {
   type ClockFormat,
 } from "@/stores/preferencesStore";
 import { useTranslation } from "@/hooks/useTranslation";
-import { locales, type Locale } from "@/i18n";
 
 // ============================================================================
 // TYPES
@@ -78,8 +77,6 @@ export default function SettingsModal({
   );
   const setClockType = usePreferencesStore((s) => s.setClockType);
   const setClockFormat = usePreferencesStore((s) => s.setClockFormat);
-  const language = usePreferencesStore((s) => s.language);
-  const setLanguage = usePreferencesStore((s) => s.setLanguage);
   const setAutoFollowNewSessions = usePreferencesStore(
     (s) => s.setAutoFollowNewSessions,
   );
@@ -114,10 +111,6 @@ export default function SettingsModal({
 
   const { t } = useTranslation();
 
-  const handleLanguageChange = (locale: Locale) => {
-    setLanguage(locale);
-  };
-
   const handleClockTypeChange = (type: ClockType) => {
     setClockType(type);
   };
@@ -143,56 +136,6 @@ export default function SettingsModal({
       }
     >
       <div className="space-y-6">
-        {/* Language */}
-        <div>
-          <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
-            {t("settings.language")}
-          </label>
-          <div
-            className="flex gap-3"
-            role="radiogroup"
-            aria-label={t("settings.language")}
-          >
-            {(Object.entries(locales) as [Locale, string][]).map(
-              ([locale, label]) => (
-                <button
-                  key={locale}
-                  type="button"
-                  role="radio"
-                  aria-checked={language === locale}
-                  tabIndex={language === locale ? 0 : -1}
-                  onClick={() => handleLanguageChange(locale)}
-                  onKeyDown={(e) => {
-                    const items = Object.keys(locales) as Locale[];
-                    const idx = items.indexOf(locale);
-                    let next: number | null = null;
-                    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-                      e.preventDefault();
-                      next = (idx + 1) % items.length;
-                    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-                      e.preventDefault();
-                      next = (idx - 1 + items.length) % items.length;
-                    }
-                    if (next !== null) {
-                      handleLanguageChange(items[next]);
-                      const parent = e.currentTarget.parentElement;
-                      if (parent)
-                        (parent.children[next] as HTMLElement)?.focus();
-                    }
-                  }}
-                  className={`flex-1 px-4 py-3 rounded-lg border text-sm font-bold transition-colors focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 outline-none ${
-                    language === locale
-                      ? "bg-purple-500/20 border-purple-500 text-purple-300"
-                      : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600"
-                  }`}
-                >
-                  {label}
-                </button>
-              ),
-            )}
-          </div>
-        </div>
-
         {/* Clock Type */}
         <div>
           <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">

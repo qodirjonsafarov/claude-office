@@ -222,6 +222,7 @@ class RoomOrchestrator:
                     desk=desk_number,
                     bubble=tm_state.boss.bubble,
                     current_task=tm_state.boss.current_task,
+                    progress=tm_state.boss.progress,
                     character_type="teammate",
                     parent_session_id=session_id,
                 )

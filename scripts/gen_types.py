@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 from app.models.agents import (  # noqa: E402  # type: ignore[import]
     Agent,
+    AgentProgress,
     Boss,
     OfficeState,
 )
@@ -60,6 +61,7 @@ from pydantic.json_schema import models_json_schema  # noqa: E402
 # manually in index.ts)
 MODELS = [
     Agent,
+    AgentProgress,
     Boss,
     OfficeState,
     BubbleContent,

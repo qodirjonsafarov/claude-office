@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
@@ -6,6 +7,7 @@ from pydantic.alias_generators import to_camel
 from app.models.common import BubbleContent
 
 __all__ = [
+    "AgentProgress",
     "AgentState",
     "BossState",
     "Agent",
@@ -47,6 +49,22 @@ class BossState(StrEnum):
     COMPLETING = "completing"
 
 
+class AgentProgress(BaseModel):
+    """Work progress of one character, from its own todo list or Task* tools.
+
+    ``source`` is ``"todos"`` for TodoWrite / task-file / beads lists and
+    ``"tasks"`` for items tracked from TaskCreate / TaskUpdate tool calls.
+    ``current`` is the active form (or subject) of the item in progress.
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    done: int
+    total: int
+    current: str | None = None
+    source: Literal["todos", "tasks"]
+
+
 class Agent(BaseModel):
     """Represents a subagent in the office visualization."""
 
@@ -66,6 +84,7 @@ class Agent(BaseModel):
     character_type: str | None = None  # "lead" | "teammate" | "subagent"
     parent_session_id: str | None = None  # session that owns this character
     parent_id: str | None = None  # for subagents: parent lead/teammate id
+    progress: AgentProgress | None = None  # None = agent has no todo list
 
 
 class Boss(BaseModel):
@@ -77,6 +96,7 @@ class Boss(BaseModel):
     current_task: str | None = None
     bubble: BubbleContent | None = None
     position: dict[str, int] = {"x": 640, "y": 830}
+    progress: AgentProgress | None = None  # None = boss has no todo list
 
 
 class ElevatorState(StrEnum):

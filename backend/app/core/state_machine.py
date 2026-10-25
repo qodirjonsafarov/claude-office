@@ -7,6 +7,7 @@ from enum import Enum, auto
 from typing import Any, cast
 
 from app.core.path_utils import compress_path, compress_paths_in_text, truncate_long_words
+from app.core.progress_tracker import ProgressTracker, progress_from_todos
 from app.core.quotes import get_random_job_completion_quote
 from app.core.summary_service import get_summary_service
 from app.core.token_tracker import TokenTracker
@@ -234,10 +235,20 @@ def _handle_pre_tool_use(sm: "StateMachine", event: AnyEvent) -> None:
     assert isinstance(event, ToolEvent)
     tool_name = event.data.tool_name
 
-    if tool_name == "TodoWrite":
-        parsed = parse_todos_from_event(event)
-        if parsed:
-            sm.todos = parsed
+    progress_owner = _progress_owner(event)
+    if progress_owner is not None:
+        tool_input = event.data.tool_input or {}
+        if tool_name == "TodoWrite":
+            parsed = parse_todos_from_event(event)
+            if parsed:
+                if progress_owner == "main":
+                    sm.todos = parsed
+                else:
+                    sm.agent_progress.set_todos(progress_owner, parsed)
+        elif tool_name == "TaskCreate":
+            sm.agent_progress.task_created(progress_owner, event.data.tool_use_id or "", tool_input)
+        elif tool_name == "TaskUpdate":
+            sm.agent_progress.task_updated(tool_input)
 
     if tool_name in ("Task", "Agent"):
         sm.phase = OfficePhase.DELEGATING
@@ -267,6 +278,20 @@ def _handle_pre_tool_use(sm: "StateMachine", event: AnyEvent) -> None:
                 sm.agents[agent_id].state = AgentState.WORKING
                 if agent_id in sm.arrival_queue:
                     sm.arrival_queue.remove(agent_id)
+
+
+def _progress_owner(event: ToolEvent) -> str | None:
+    """Return the agent whose progress a todo/task tool call belongs to.
+
+    Hooks report a subagent's own tool calls as agent ``"main"`` with the
+    subagent's ``native_agent_id``; the transcript poller sends the same calls
+    again under the real subagent id. The hook copy is skipped (``None``) so
+    a subagent's list never lands on the boss.
+    """
+    agent_id = event.data.agent_id or "main"
+    if agent_id == "main" and event.data.native_agent_id:
+        return None
+    return agent_id
 
 
 def _handle_user_prompt_submit(sm: "StateMachine", event: AnyEvent) -> None:
@@ -318,6 +343,9 @@ def _handle_post_tool_use(sm: "StateMachine", event: AnyEvent) -> None:
 
     sm.tool_uses_since_compaction += 1
     sm.whiteboard.track_tool_use(event)
+
+    if event.data.created_task_id and event.data.tool_use_id:
+        sm.agent_progress.task_id_known(event.data.tool_use_id, event.data.created_task_id)
 
 
 def _handle_subagent_start(sm: "StateMachine", event: AnyEvent) -> None:
@@ -564,6 +592,9 @@ class StateMachine:
     handin_queue: list[str] = field(default_factory=_empty_str_list)
     history: list[HistoryEntry] = field(default_factory=_empty_history_list)
     todos: list[TodoItem] = field(default_factory=_empty_todo_list)
+    # Subagent todo lists and Task* tool progress per agent id; the boss's
+    # own todo list stays in ``todos``.
+    agent_progress: ProgressTracker = field(default_factory=ProgressTracker)
     token_tracker: TokenTracker = field(default_factory=TokenTracker)
     tool_uses_since_compaction: int = 0
     print_report: bool = False
@@ -632,6 +663,7 @@ class StateMachine:
             state=self.boss_state,
             current_task=self.boss_current_task,
             bubble=self.boss_bubble,
+            progress=progress_from_todos(self.todos) or self.agent_progress.progress_for("main"),
         )
 
         desk_count = min(
@@ -643,7 +675,10 @@ class StateMachine:
             ),
         )
 
-        agents_list: list[Agent] = list(self.agents.values())
+        agents_list: list[Agent] = [
+            agent.model_copy(update={"progress": self.agent_progress.progress_for(aid)})
+            for aid, agent in self.agents.items()
+        ]
 
         context_utilization = self.token_tracker.context_utilization
 
@@ -704,6 +739,7 @@ class StateMachine:
         """
         if agent_id in self.agents:
             del self.agents[agent_id]
+        self.agent_progress.forget_agent(agent_id)
         if agent_id in self.arrival_queue:
             self.arrival_queue.remove(agent_id)
         if agent_id in self.handin_queue:

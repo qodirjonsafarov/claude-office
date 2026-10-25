@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -35,6 +36,24 @@ def _zombie_timeout() -> timedelta:
     return timedelta(seconds=get_settings().ZOMBIE_SUBAGENT_TIMEOUT_SECONDS)
 
 
+_TASK_ID_TEXT = re.compile(r"Task #(\w+) created")
+
+
+def _created_task_id(content: Any) -> str | None:
+    """Return the task id from a TaskCreate tool_result content, if present."""
+    if isinstance(content, list):
+        texts = [
+            str(cast(dict[str, Any], c).get("text", ""))
+            for c in cast(list[Any], content)
+            if isinstance(c, dict)
+        ]
+        content = "\n".join(texts)
+    if not isinstance(content, str):
+        return None
+    match = _TASK_ID_TEXT.search(content)
+    return match.group(1) if match else None
+
+
 @dataclass
 class PolledAgent:
     """Tracks state for a polled subagent transcript."""
@@ -45,6 +64,8 @@ class PolledAgent:
     file_position: int = 0
     last_activity: datetime = field(default_factory=lambda: datetime.now(UTC))
     active_tool_ids: set[str] = field(default_factory=lambda: set[str]())
+    # TaskCreate calls still waiting for their result (which holds the task id).
+    task_create_ids: set[str] = field(default_factory=lambda: set[str]())
     last_thinking_hash: int = 0
     last_text_hash: int = 0
 
@@ -226,6 +247,8 @@ class TranscriptPoller(BasePoller[PolledAgent]):
                             events.append(event)
                             tool_id: str = block.get("id", "")
                             agent.active_tool_ids.add(tool_id)
+                            if block.get("name") == "TaskCreate":
+                                agent.task_create_ids.add(tool_id)
 
                     elif block_type == "thinking":
                         thinking_text: str = block.get("thinking", "")
@@ -257,8 +280,13 @@ class TranscriptPoller(BasePoller[PolledAgent]):
                         if tool_use_id in agent.active_tool_ids:
                             event = self._create_post_tool_use_event(agent, block)
                             if event:
+                                if tool_use_id in agent.task_create_ids:
+                                    event.data.created_task_id = _created_task_id(
+                                        block.get("content")
+                                    )
                                 events.append(event)
                             agent.active_tool_ids.discard(tool_use_id)
+                            agent.task_create_ids.discard(tool_use_id)
 
         return events
 

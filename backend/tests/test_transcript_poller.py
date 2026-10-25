@@ -6,13 +6,14 @@ import asyncio
 import json
 import tempfile
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from app.config import get_settings
 from app.core.transcript_poller import TranscriptPoller
-from app.models.events import EventType
+from app.models.events import AnyEvent, EventType, ToolEvent
 
 # Use shorter poll interval for tests
 TEST_POLL_INTERVAL = 0.1
@@ -276,3 +277,51 @@ class TestTranslatedPathPolling:
                 assert state.transcript_path == translated
             finally:
                 await poller.stop_polling("agentX")
+
+
+class TestTaskCreateResult:
+    """Poller passes the created task id of a subagent's TaskCreate on."""
+
+    def _events(self, result_content: object) -> list[AnyEvent]:
+        from app.core.transcript_poller import PolledAgent
+
+        poller = TranscriptPoller(AsyncMock())
+        agent = PolledAgent(agent_id="subagent_x", session_id="s1", transcript_path=Path("/x"))
+        lines: list[dict[str, Any]] = [
+            {
+                "type": "assistant",
+                "message": {
+                    "role": "assistant",
+                    "content": [
+                        {"type": "tool_use", "id": "tu_1", "name": "TaskCreate", "input": {}}
+                    ],
+                },
+            },
+            {
+                "type": "user",
+                "message": {
+                    "role": "user",
+                    "content": [
+                        {"type": "tool_result", "tool_use_id": "tu_1", "content": result_content}
+                    ],
+                },
+            },
+        ]
+        return poller._parse_content(agent, "\n".join(json.dumps(x) for x in lines))
+
+    def test_text_result_sets_created_task_id(self) -> None:
+        events = self._events("Task #4 created successfully: Write tests")
+        post = events[-1]
+        assert isinstance(post, ToolEvent)
+        assert post.event_type == EventType.POST_TOOL_USE
+        assert post.data.created_task_id == "4"
+
+    def test_block_list_result_sets_created_task_id(self) -> None:
+        post = self._events([{"type": "text", "text": "Task #5 created successfully: x"}])[-1]
+        assert isinstance(post, ToolEvent)
+        assert post.data.created_task_id == "5"
+
+    def test_other_results_have_no_task_id(self) -> None:
+        post = self._events("file contents")[-1]
+        assert isinstance(post, ToolEvent)
+        assert post.data.created_task_id is None

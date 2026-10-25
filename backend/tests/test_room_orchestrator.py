@@ -92,6 +92,22 @@ class TestTeamMerge:
         assert len(teammate_agents) == 1
         assert teammate_agents[0].name == "implementer"
 
+    def test_teammate_carries_its_todo_progress(self) -> None:
+        orch = RoomOrchestrator("room-1")
+        orch.add_session("lead-sess", _make_sm(team_name="squad", is_lead=True))
+        tm_sm = _make_sm(team_name="squad", teammate_name="implementer")
+        tm_sm.todos = [
+            TodoItem(content="a", status=TodoStatus.COMPLETED),
+            TodoItem(content="b", status=TodoStatus.PENDING),
+        ]
+        orch.add_session("tm-sess", tm_sm)
+
+        state = orch.merge()
+        assert state is not None
+        teammate = next(a for a in state.agents if a.character_type == "teammate")
+        assert teammate.progress is not None
+        assert (teammate.progress.done, teammate.progress.total) == (1, 2)
+
     def test_lead_subagents_have_subagent_type(self) -> None:
         from app.models.agents import Agent
 

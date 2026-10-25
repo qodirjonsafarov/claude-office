@@ -178,3 +178,49 @@ class TestNativeSubagentStop:
         }
         result = map_event("subagent_stop", raw, SESSION_ID)
         assert result is None
+
+
+class TestProgressTools:
+    """TodoWrite / TaskCreate / TaskUpdate carry what per-agent progress needs."""
+
+    def _raw(self, tool_name: str, **extra: object) -> dict:
+        raw: dict = {
+            "tool_name": tool_name,
+            "tool_use_id": "tu_task",
+            "tool_input": {"subject": "Write tests"},
+            "session_id": SESSION_ID,
+            "transcript_path": TRANSCRIPT,
+        }
+        raw.update(extra)
+        return raw
+
+    def test_task_create_response_keeps_only_task_id(self) -> None:
+        raw = self._raw("TaskCreate", tool_response={"task": {"id": "7", "subject": "x"}})
+        result = map_event("post_tool_use", raw, SESSION_ID)
+        assert result is not None
+        assert result["data"]["created_task_id"] == "7"
+        assert "tool_response" not in result["data"]
+
+    def test_task_create_text_response_yields_task_id(self) -> None:
+        raw = self._raw("TaskCreate", tool_response="Task #12 created successfully: Write tests")
+        result = map_event("post_tool_use", raw, SESSION_ID)
+        assert result is not None
+        assert result["data"]["created_task_id"] == "12"
+
+    def test_task_create_without_id_has_no_created_task_id(self) -> None:
+        raw = self._raw("TaskCreate", tool_response={"ok": True})
+        result = map_event("post_tool_use", raw, SESSION_ID)
+        assert result is not None
+        assert "created_task_id" not in result["data"]
+
+    def test_subagent_todo_write_keeps_native_agent_id(self) -> None:
+        raw = self._raw("TodoWrite", agent_id="a5a60c7")
+        result = map_event("pre_tool_use", raw, SESSION_ID)
+        assert result is not None
+        assert result["data"]["agent_id"] == "main"
+        assert result["data"]["native_agent_id"] == "a5a60c7"
+
+    def test_boss_todo_write_has_no_native_agent_id(self) -> None:
+        result = map_event("pre_tool_use", self._raw("TodoWrite"), SESSION_ID)
+        assert result is not None
+        assert "native_agent_id" not in result["data"]

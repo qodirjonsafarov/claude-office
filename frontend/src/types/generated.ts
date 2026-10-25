@@ -44,10 +44,14 @@ export type Currenttask = string | null;
 export type Charactertype = string | null;
 export type Parentsessionid = string | null;
 export type Parentid = string | null;
+export type Done = number;
+export type Total = number;
+export type Current = string | null;
+export type Source = "todos" | "tasks";
 export type ProjectName = string | null;
 export type ProjectDir = string | null;
 export type WorkingDir = string | null;
-export type Source = string | null;
+export type Source1 = string | null;
 export type AgentId = string | null;
 export type NativeAgentId = string | null;
 export type TranscriptPath = string | null;
@@ -86,7 +90,7 @@ export type Completedat = string | null;
 export type ProjectName1 = string | null;
 export type ProjectDir1 = string | null;
 export type WorkingDir1 = string | null;
-export type Source1 = string | null;
+export type Source2 = string | null;
 export type AgentId1 = string | null;
 export type NativeAgentId1 = string | null;
 export type TranscriptPath1 = string | null;
@@ -194,7 +198,7 @@ export type Timestamp2 = string;
 export type ProjectName2 = string | null;
 export type ProjectDir2 = string | null;
 export type WorkingDir2 = string | null;
-export type Source2 = string | null;
+export type Source3 = string | null;
 export type ToolName = string | null;
 export type ToolUseId1 = string | null;
 export type ToolInput = {
@@ -231,10 +235,11 @@ export type TeamName2 = string | null;
 export type TeammateName2 = string | null;
 export type TaskId = string | null;
 export type TaskSubject = string | null;
+export type CreatedTaskId = string | null;
 export type ProjectName3 = string | null;
 export type ProjectDir3 = string | null;
 export type WorkingDir3 = string | null;
-export type Source3 = string | null;
+export type Source4 = string | null;
 export type AgentId3 = string | null;
 export type NativeAgentId3 = string | null;
 export type TranscriptPath3 = string | null;
@@ -343,7 +348,7 @@ export type RepoPath = string;
 export type ProjectName4 = string | null;
 export type ProjectDir4 = string | null;
 export type WorkingDir4 = string | null;
-export type Source4 = string | null;
+export type Source5 = string | null;
 export type AgentId4 = string | null;
 export type NativeAgentId4 = string | null;
 export type TranscriptPath4 = string | null;
@@ -380,7 +385,7 @@ export type PhoneState1 = "idle" | "ringing" | "in_use";
 export type ProjectName5 = string | null;
 export type ProjectDir5 = string | null;
 export type WorkingDir5 = string | null;
-export type Source5 = string | null;
+export type Source6 = string | null;
 export type AgentId5 = string | null;
 export type NativeAgentId5 = string | null;
 export type TranscriptPath5 = string | null;
@@ -406,7 +411,7 @@ export type AgentCount = number;
 export type ProjectName6 = string | null;
 export type ProjectDir6 = string | null;
 export type WorkingDir6 = string | null;
-export type Source6 = string | null;
+export type Source7 = string | null;
 export type AgentId6 = string | null;
 export type NativeAgentId6 = string | null;
 export type TranscriptPath6 = string | null;
@@ -426,7 +431,7 @@ export type Reason2 = string | null;
 export type ProjectName7 = string | null;
 export type ProjectDir7 = string | null;
 export type WorkingDir7 = string | null;
-export type Source7 = string | null;
+export type Source8 = string | null;
 export type AgentId7 = string | null;
 export type NativeAgentId7 = string | null;
 export type TranscriptPath7 = string | null;
@@ -447,7 +452,7 @@ export type TaskSubject1 = string | null;
 export type ProjectName8 = string | null;
 export type ProjectDir8 = string | null;
 export type WorkingDir8 = string | null;
-export type Source8 = string | null;
+export type Source9 = string | null;
 export type AgentId8 = string | null;
 export type NativeAgentId8 = string | null;
 export type TranscriptPath8 = string | null;
@@ -472,6 +477,7 @@ export type Success2 = boolean | null;
 export type ResultSummary2 = string | null;
 export type ErrorType2 = string | null;
 export type Thinking2 = string | null;
+export type CreatedTaskId1 = string | null;
 
 export interface ClaudeOfficeBackendTypes {
   [k: string]: unknown;
@@ -496,6 +502,7 @@ export interface Agent {
   characterType?: Charactertype;
   parentSessionId?: Parentsessionid;
   parentId?: Parentid;
+  progress?: AgentProgress | null;
   [k: string]: unknown;
 }
 /**
@@ -515,6 +522,23 @@ export interface Position {
   [k: string]: number;
 }
 /**
+ * Work progress of one character, from its own todo list or Task* tools.
+ *
+ * ``source`` is ``"todos"`` for TodoWrite / task-file / beads lists and
+ * ``"tasks"`` for items tracked from TaskCreate / TaskUpdate tool calls.
+ * ``current`` is the active form (or subject) of the item in progress.
+ *
+ * This interface was referenced by `ClaudeOfficeBackendTypes`'s JSON-Schema
+ * via the `definition` "AgentProgress".
+ */
+export interface AgentProgress {
+  done: Done;
+  total: Total;
+  current?: Current;
+  source: Source;
+  [k: string]: unknown;
+}
+/**
  * Payload for SUBAGENT_START, SUBAGENT_INFO, SUBAGENT_STOP, AGENT_UPDATE, CLEANUP.
  *
  * Note: `agent_transcript_path` is inherited from EventDataBase because
@@ -529,7 +553,7 @@ export interface AgentEventData {
   project_name?: ProjectName;
   project_dir?: ProjectDir;
   working_dir?: WorkingDir;
-  source?: Source;
+  source?: Source1;
   agent_id?: AgentId;
   native_agent_id?: NativeAgentId;
   transcript_path?: TranscriptPath;
@@ -606,7 +630,7 @@ export interface BackgroundTaskEventData {
   project_name?: ProjectName1;
   project_dir?: ProjectDir1;
   working_dir?: WorkingDir1;
-  source?: Source1;
+  source?: Source2;
   agent_id?: AgentId1;
   native_agent_id?: NativeAgentId1;
   transcript_path?: TranscriptPath1;
@@ -639,6 +663,7 @@ export interface Boss1 {
   currentTask?: Currenttask1;
   bubble?: BubbleContent | null;
   position?: Position1;
+  progress?: AgentProgress | null;
   [k: string]: unknown;
 }
 export interface Position1 {
@@ -721,7 +746,7 @@ export interface EventData {
   project_name?: ProjectName2;
   project_dir?: ProjectDir2;
   working_dir?: WorkingDir2;
-  source?: Source2;
+  source?: Source3;
   tool_name?: ToolName;
   tool_use_id?: ToolUseId1;
   tool_input?: ToolInput;
@@ -758,6 +783,7 @@ export interface EventData {
   teammate_name?: TeammateName2;
   task_id?: TaskId;
   task_subject?: TaskSubject;
+  created_task_id?: CreatedTaskId;
   [k: string]: unknown;
 }
 /**
@@ -773,7 +799,7 @@ export interface EventDataBase {
   project_name?: ProjectName3;
   project_dir?: ProjectDir3;
   working_dir?: WorkingDir3;
-  source?: Source3;
+  source?: Source4;
   agent_id?: AgentId3;
   native_agent_id?: NativeAgentId3;
   transcript_path?: TranscriptPath3;
@@ -959,7 +985,7 @@ export interface LifecycleEventData {
   project_name?: ProjectName4;
   project_dir?: ProjectDir4;
   working_dir?: WorkingDir4;
-  source?: Source4;
+  source?: Source5;
   agent_id?: AgentId4;
   native_agent_id?: NativeAgentId4;
   transcript_path?: TranscriptPath4;
@@ -1019,7 +1045,7 @@ export interface PromptEventData {
   project_name?: ProjectName5;
   project_dir?: ProjectDir5;
   working_dir?: WorkingDir5;
-  source?: Source5;
+  source?: Source6;
   agent_id?: AgentId5;
   native_agent_id?: NativeAgentId5;
   transcript_path?: TranscriptPath5;
@@ -1063,7 +1089,7 @@ export interface SessionEventData {
   project_name?: ProjectName6;
   project_dir?: ProjectDir6;
   working_dir?: WorkingDir6;
-  source?: Source6;
+  source?: Source7;
   agent_id?: AgentId6;
   native_agent_id?: NativeAgentId6;
   transcript_path?: TranscriptPath6;
@@ -1092,7 +1118,7 @@ export interface TaskEventData {
   project_name?: ProjectName7;
   project_dir?: ProjectDir7;
   working_dir?: WorkingDir7;
-  source?: Source7;
+  source?: Source8;
   agent_id?: AgentId7;
   native_agent_id?: NativeAgentId7;
   transcript_path?: TranscriptPath7;
@@ -1122,7 +1148,7 @@ export interface ToolEventData {
   project_name?: ProjectName8;
   project_dir?: ProjectDir8;
   working_dir?: WorkingDir8;
-  source?: Source8;
+  source?: Source9;
   agent_id?: AgentId8;
   native_agent_id?: NativeAgentId8;
   transcript_path?: TranscriptPath8;
@@ -1145,5 +1171,6 @@ export interface ToolEventData {
   result_summary?: ResultSummary2;
   error_type?: ErrorType2;
   thinking?: Thinking2;
+  created_task_id?: CreatedTaskId1;
   [k: string]: unknown;
 }

@@ -124,6 +124,8 @@ class EventData(BaseModel):
     # Task-specific fields
     task_id: str | None = None
     task_subject: str | None = None
+    # Task id returned by a TaskCreate call (POST_TOOL_USE only).
+    created_task_id: str | None = None
 
 
 class Event(BaseModel):
@@ -235,6 +237,8 @@ class ToolEventData(EventDataBase):
     result_summary: str | None = None
     error_type: str | None = None
     thinking: str | None = None
+    # Task id returned by a TaskCreate call (POST_TOOL_USE only).
+    created_task_id: str | None = None
 
 
 class PromptEventData(EventDataBase):

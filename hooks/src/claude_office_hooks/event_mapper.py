@@ -90,6 +90,43 @@ def _build_agent_transcript_path(main_transcript: str | None, native_agent_id: s
     return f"{session_dir}/subagents/agent-{native_agent_id}.jsonl"
 
 
+# Tools whose calls feed per-agent work progress in the backend.
+_PROGRESS_TOOLS = ("TodoWrite", "TaskCreate", "TaskUpdate")
+
+_TASK_ID_TEXT = re.compile(r"Task #(\w+) created")
+
+
+def _created_task_id(tool_response: Any) -> str | None:
+    """Return the task id from a TaskCreate tool response, if it has one."""
+    if isinstance(tool_response, dict):
+        response = cast(dict[str, Any], tool_response)
+        task = response.get("task")
+        if isinstance(task, dict):
+            task_id = cast(dict[str, Any], task).get("id")
+            if task_id is not None:
+                return str(task_id)
+        for key in ("taskId", "id"):
+            if response.get(key) is not None:
+                return str(response[key])
+        return None
+    if isinstance(tool_response, str):
+        match = _TASK_ID_TEXT.search(tool_response)
+        return match.group(1) if match else None
+    return None
+
+
+def _mark_progress_tool(raw_data: dict[str, Any], data: dict[str, Any]) -> None:
+    """Keep the subagent id on progress tools fired inside a subagent.
+
+    Such calls are still sent as agent ``"main"`` (the transcript poller
+    reports them for the subagent), so the backend uses ``native_agent_id``
+    to keep them off the boss's todo list.
+    """
+    native_agent_id = raw_data.get("agent_id")
+    if data.get("tool_name") in _PROGRESS_TOOLS and native_agent_id:
+        data["native_agent_id"] = native_agent_id
+
+
 def _handle_session_start(raw_data: dict[str, Any], data: dict[str, Any]) -> None:
     """Populate *data* for a session_start event."""
     source = raw_data.get("source", "unknown")
@@ -133,6 +170,7 @@ def _handle_pre_tool_use(
         data.pop("tool_input", None)
     else:
         data["agent_id"] = "main"
+        _mark_progress_tool(raw_data, data)
 
 
 def _handle_post_tool_use(
@@ -195,6 +233,11 @@ def _handle_post_tool_use(
                         data["agent_transcript_path"] = agent_path
     else:
         data["agent_id"] = "main"
+        _mark_progress_tool(raw_data, data)
+        if data["tool_name"] == "TaskCreate":
+            task_id = _created_task_id(raw_data.get("tool_response"))
+            if task_id:
+                data["created_task_id"] = task_id
 
 
 def _handle_native_subagent_start(

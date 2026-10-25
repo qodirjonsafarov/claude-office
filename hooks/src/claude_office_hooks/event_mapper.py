@@ -274,8 +274,7 @@ def _handle_native_subagent_stop(
 ) -> dict[str, Any] | None:
     """Handle a native SubagentStop hook.
 
-    Returns None when the event should be skipped (no agent_id present, or
-    no agent transcript on disk).
+    Returns None when the event should be skipped (no agent_id present).
     """
     native_agent_id = raw_data.get("agent_id")
     if not native_agent_id:
@@ -284,12 +283,9 @@ def _handle_native_subagent_stop(
     agent_transcript = raw_data.get("agent_transcript_path") or _build_agent_transcript_path(
         transcript_path, native_agent_id
     )
-    # Claude Code's hidden side-agents (e.g. the auto-mode permission
-    # classifier) fire SubagentStop on every tool call but never write a
-    # transcript. Real subagents always have one by the time they stop.
-    if not agent_transcript or not Path(agent_transcript).expanduser().is_file():
-        return None
-
+    # Hidden side-agents (e.g. the permission classifier) also fire
+    # SubagentStop. The backend drops those (is_phantom_stop): it knows which
+    # agents exist, the hook does not, so every stop is forwarded.
     data["native_agent_id"] = native_agent_id
     data["agent_transcript_path"] = agent_transcript
     return data  # Sentinel: non-None means "do not skip"

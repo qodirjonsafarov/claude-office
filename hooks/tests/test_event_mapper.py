@@ -177,15 +177,20 @@ class TestNativeSubagentStop:
         assert result["event_type"] == "subagent_stop"
         assert result["data"]["native_agent_id"] == "a5a60c7"
 
-    def test_stop_without_agent_transcript_is_dropped(self, tmp_path: Path) -> None:
-        """Hidden side-agents (e.g. the permission classifier) leave no transcript."""
+    def test_stop_without_agent_transcript_is_still_sent(self, tmp_path: Path) -> None:
+        """The backend drops hidden side-agent stops (is_phantom_stop); the hook
+        forwards every stop so a real one is never lost to a path layout change."""
+        missing = tmp_path / "missing" / "agent-ab99.jsonl"
         raw = {
             "agent_id": "ab99ecb9afdc4eb66",
             "session_id": SESSION_ID,
             "transcript_path": str(tmp_path / "session.jsonl"),
-            "agent_transcript_path": str(tmp_path / "missing" / "agent-ab99.jsonl"),
+            "agent_transcript_path": str(missing),
         }
-        assert map_event("subagent_stop", raw, SESSION_ID) is None
+        result = map_event("subagent_stop", raw, SESSION_ID)
+        assert result is not None
+        assert result["data"]["native_agent_id"] == "ab99ecb9afdc4eb66"
+        assert result["data"]["agent_transcript_path"] == str(missing)
 
     def test_native_subagent_stop_without_agent_id_returns_none(self) -> None:
         raw = {

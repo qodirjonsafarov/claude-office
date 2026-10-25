@@ -1,6 +1,5 @@
 "use client";
 
-import { Users } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { useTranslation } from "@/hooks/useTranslation";
 import {
@@ -8,6 +7,7 @@ import {
   selectAgents,
   type BossAnimationState,
 } from "@/stores/gameStore";
+import { isAgentBusy, isBossBusy } from "@/utils/workStatus";
 
 // ============================================================================
 // TYPES
@@ -15,6 +15,17 @@ import {
 
 interface MobileAgentActivityProps {
   boss: BossAnimationState;
+  className?: string;
+}
+
+interface Row {
+  id: string;
+  name: string;
+  color: string;
+  busy: boolean;
+  state: string;
+  task: string | null;
+  says: string | null;
 }
 
 // ============================================================================
@@ -22,12 +33,13 @@ interface MobileAgentActivityProps {
 // ============================================================================
 
 /**
- * Mobile-only panel that shows the boss state and all active agents with
- * their current tasks and speech bubbles. Displayed below the game canvas
- * in the stacked mobile layout.
+ * Phone-only list of who is in the office: the boss first, then the agents,
+ * busy people before idle ones. Each row: a colour dot that breathes while the
+ * person works, the name, the task and what they are saying.
  */
 export function MobileAgentActivity({
   boss,
+  className = "",
 }: MobileAgentActivityProps): React.ReactNode {
   const { t } = useTranslation();
   // Subscribe here (mobile-only) so the root page no longer holds the whole
@@ -35,79 +47,90 @@ export function MobileAgentActivity({
   // per-frame animation re-render path (ARC-006).
   const agents = useGameStore(useShallow(selectAgents));
 
+  const agentRows: Row[] = Array.from(agents.values())
+    .map((agent) => ({
+      id: agent.id,
+      name: agent.name ?? `Agent ${agent.number}`,
+      color: agent.color,
+      busy: isAgentBusy(agent.backendState, agent.isTyping),
+      state: agent.backendState.replace(/_/g, " "),
+      task: agent.currentTask,
+      says: agent.bubble.content?.text ?? null,
+    }))
+    .sort((a, b) => Number(b.busy) - Number(a.busy));
+
+  const rows: Row[] = [
+    {
+      id: "boss",
+      name: t("mobile.boss"),
+      color: "var(--qo-max)",
+      busy: isBossBusy(boss.backendState),
+      state: boss.backendState.replace(/_/g, " "),
+      task: boss.currentTask,
+      says: boss.bubble.content?.text ?? null,
+    },
+    ...agentRows,
+  ];
+
   return (
-    <div className="flex-[2] bg-slate-950 border border-slate-800 rounded-lg overflow-hidden min-h-0">
-      <div className="bg-slate-900 px-3 py-2 border-b border-slate-800 flex items-center gap-2">
-        <Users size={14} className="text-blue-500" />
-        <span className="text-slate-300 font-bold uppercase tracking-wider text-xs">
-          {t("mobile.agentActivity")}
+    <section
+      aria-label={t("mobile.agentActivity")}
+      className={`qo-card flex flex-col min-h-0 overflow-hidden ${className}`}
+    >
+      <div className="flex items-center justify-between px-4 pt-3 pb-2 flex-shrink-0">
+        <span className="qo-eyebrow">{t("mobile.agentActivity")}</span>
+        <span className="text-[12px] font-bold text-ink-faint tabular-nums">
+          {agents.size + 1}
         </span>
-        <span className="text-slate-600 text-xs">({agents.size})</span>
       </div>
 
-      <div className="overflow-y-auto h-[calc(100%-36px)] p-2">
-        {/* Boss Status */}
-        <div className="mb-3 p-2 bg-slate-900/50 rounded-lg border border-amber-500/30">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-2 h-2 rounded-full bg-amber-500" />
-            <span className="text-amber-400 font-bold text-xs">
-              {t("mobile.boss")}
-            </span>
-            <span className="text-slate-500 text-[10px] font-mono ml-auto">
-              {boss.backendState}
-            </span>
-          </div>
-          {boss.currentTask && (
-            <p className="text-slate-400 text-[11px] truncate">
-              {boss.currentTask}
-            </p>
-          )}
-          {boss.bubble.content && (
-            <p className="text-blue-400 text-[11px] mt-1 truncate italic">
-              &quot;{boss.bubble.content.text}&quot;
-            </p>
-          )}
-        </div>
-
-        {/* Agent List */}
-        {agents.size === 0 ? (
-          <div className="text-center text-slate-600 text-xs italic py-4">
-            {t("mobile.noActiveAgents")}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {Array.from(agents.values()).map((agent) => (
-              <div
-                key={agent.id}
-                className="p-2 bg-slate-900/50 rounded-lg border border-slate-800"
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: agent.color }}
-                  />
-                  <span className="text-slate-300 font-bold text-xs">
-                    {agent.name}
-                  </span>
-                  <span className="text-slate-600 text-[10px] font-mono ml-auto">
-                    {agent.phase}
-                  </span>
-                </div>
-                {agent.currentTask && (
-                  <p className="text-slate-400 text-[11px] truncate">
-                    {agent.currentTask}
-                  </p>
-                )}
-                {agent.bubble.content && (
-                  <p className="text-emerald-400 text-[11px] mt-1 truncate italic">
-                    &quot;{agent.bubble.content.text}&quot;
-                  </p>
-                )}
+      <ul className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2 pb-2 flex flex-col gap-1">
+        {rows.map((row) => (
+          <li
+            key={row.id}
+            className={`flex items-start gap-3 px-2.5 py-2 rounded-xl2 ${
+              row.busy ? "bg-panel-2" : ""
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className={`mt-1.5 w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                row.busy ? "qo-live-dot" : ""
+              }`}
+              style={{ background: row.color }}
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[14px] font-extrabold text-ink truncate">
+                  {row.name}
+                </span>
+                <span
+                  className={`ml-auto flex-shrink-0 text-[11px] font-extrabold ${
+                    row.busy ? "text-accent" : "text-ink-faint"
+                  }`}
+                >
+                  {row.busy ? t("mobile.working") : row.state}
+                </span>
               </div>
-            ))}
-          </div>
+              {row.task && (
+                <p className="m-0 text-[12.5px] text-ink-soft truncate">
+                  {row.task}
+                </p>
+              )}
+              {row.says && (
+                <p className="m-0 text-[12.5px] text-ink-faint truncate">
+                  &ldquo;{row.says}&rdquo;
+                </p>
+              )}
+            </div>
+          </li>
+        ))}
+        {agents.size === 0 && (
+          <li className="px-3 py-3 text-[12.5px] font-bold text-ink-faint text-center">
+            {t("mobile.noActiveAgents")}
+          </li>
         )}
-      </div>
-    </div>
+      </ul>
+    </section>
   );
 }

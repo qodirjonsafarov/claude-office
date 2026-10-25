@@ -3,7 +3,6 @@
 import { useState, useCallback, useRef } from "react";
 import {
   History,
-  Radio,
   PlayCircle,
   Trash2,
   PanelLeftClose,
@@ -119,7 +118,7 @@ function EditableName({
         value={draft}
         autoFocus
         maxLength={64}
-        className="text-xs font-bold flex-1 bg-slate-700 text-white px-1 py-0 rounded outline-none border border-purple-500"
+        className="text-xs font-bold flex-1 bg-panel-3 text-ink px-1.5 py-0.5 rounded-lg outline-none border border-accent"
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
@@ -233,7 +232,7 @@ export function SessionSidebar({
       {/* Collapse Toggle */}
       <button
         onClick={onToggleCollapsed}
-        className="flex items-center justify-center p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+        className="flex items-center justify-center h-10 bg-panel hover:bg-panel-2 border border-line rounded-xl2 text-ink-soft hover:text-ink transition-colors"
         title={
           isCollapsed
             ? t("sessions.expandSidebar")
@@ -255,7 +254,7 @@ export function SessionSidebar({
             style={{ height: sessionsHeight }}
           >
             <div className="bg-slate-900 px-3 py-2 border-b border-slate-800 flex items-center gap-2 flex-shrink-0">
-              <History size={14} className="text-purple-500" />
+              <History size={14} className="text-ink-faint" />
               <span className="text-slate-300 font-bold uppercase tracking-wider text-xs">
                 {t("sessions.title")}
               </span>
@@ -308,14 +307,14 @@ export function SessionSidebar({
                         >
                           <div className="flex items-center gap-2 mb-1">
                             {hasActive ? (
-                              <Radio
-                                size={10}
-                                className="text-emerald-400 animate-pulse flex-shrink-0"
+                              <span
+                                aria-hidden="true"
+                                className="qo-live-dot flex-shrink-0"
                               />
                             ) : (
-                              <PlayCircle
-                                size={10}
-                                className="text-slate-500 flex-shrink-0"
+                              <span
+                                aria-hidden="true"
+                                className="qo-live-dot qo-live-dot-idle flex-shrink-0"
                               />
                             )}
                             <EditableName
@@ -344,7 +343,7 @@ export function SessionSidebar({
                               className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition-colors opacity-0 group-hover:opacity-100"
                               aria-label={`${t("sessions.deleteSession")} ${primary.id}`}
                             >
-                              <Trash2 size={12} />
+                              <Trash2 size={15} />
                             </button>
                           </div>
                           <div className="text-[10px] text-slate-500 font-mono truncate mb-1">
@@ -431,7 +430,7 @@ export function SessionSidebar({
                                       className="p-0.5 text-slate-600 hover:text-rose-400 rounded transition-colors opacity-0 group-hover:opacity-100"
                                       aria-label={`${t("sessions.deleteSession")} ${session.id}`}
                                     >
-                                      <Trash2 size={10} />
+                                      <Trash2 size={13} />
                                     </button>
                                   </div>
                                 </div>
@@ -452,7 +451,7 @@ export function SessionSidebar({
             onMouseDown={handleHeightDragStart}
             title={t("sessions.dragToResize")}
           >
-            <div className="w-10 h-1 rounded-full bg-slate-700 group-hover:bg-purple-500 group-active:bg-purple-400 transition-colors" />
+            <div className="w-10 h-1 rounded-full bg-line-strong group-hover:bg-accent group-active:bg-accent-dark transition-colors" />
           </div>
 
           {/* Git Status Panel */}
@@ -465,7 +464,7 @@ export function SessionSidebar({
       {/* Horizontal Resize Handle (right edge) */}
       {!isCollapsed && (
         <div
-          className="absolute right-0 top-0 w-1.5 h-full cursor-ew-resize z-10 hover:bg-purple-500/40 active:bg-purple-500/60 transition-colors"
+          className="absolute right-0 top-0 w-1.5 h-full cursor-ew-resize z-10 hover:bg-accent/40 active:bg-accent/60 transition-colors"
           onMouseDown={handleWidthDragStart}
           title={t("sessions.dragToResize")}
         />

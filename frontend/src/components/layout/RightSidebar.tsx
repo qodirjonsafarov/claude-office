@@ -70,7 +70,7 @@ export function RightSidebar(): React.ReactNode {
     >
       {/* Horizontal Resize Handle (left edge) */}
       <div
-        className="absolute left-0 top-0 w-1.5 h-full cursor-ew-resize z-10 hover:bg-purple-500/40 active:bg-purple-500/60 transition-colors"
+        className="absolute left-0 top-0 w-1.5 h-full cursor-ew-resize z-10 hover:bg-accent/40 active:bg-accent/60 transition-colors"
         onMouseDown={handleWidthDragStart}
         title={t("sessions.dragToResize")}
       />
@@ -89,30 +89,24 @@ export function RightSidebar(): React.ReactNode {
         onMouseDown={handleHeightDragStart}
         title={t("sessions.dragToResize")}
       >
-        <div className="w-10 h-1 rounded-full bg-slate-700 group-hover:bg-purple-500 group-active:bg-purple-400 transition-colors" />
+        <div className="w-10 h-1 rounded-full bg-line-strong group-hover:bg-accent group-active:bg-accent-dark transition-colors" />
       </div>
 
       {/* Events / Conversation tab panel */}
       <div className="min-h-0 flex flex-col flex-grow">
-        {/* Tab header */}
-        <div className="flex border-b border-slate-700 bg-slate-900 rounded-t-lg flex-shrink-0">
+        {/* Tab header: an Olymp segmented switch */}
+        <div role="tablist" className="qo-segmented mb-2 flex-shrink-0">
           <button
+            role="tab"
+            aria-selected={activeTab === "events"}
             onClick={() => setActiveTab("events")}
-            className={`flex-1 px-3 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors rounded-tl-lg ${
-              activeTab === "events"
-                ? "text-orange-400 border-b-2 border-orange-500 bg-slate-950/50"
-                : "text-slate-500 hover:text-slate-300"
-            }`}
           >
             {t("sidebar.events")}
           </button>
           <button
+            role="tab"
+            aria-selected={activeTab === "conversation"}
             onClick={() => setActiveTab("conversation")}
-            className={`flex-1 px-3 py-2 text-[11px] font-bold uppercase tracking-wider transition-colors rounded-tr-lg ${
-              activeTab === "conversation"
-                ? "text-cyan-400 border-b-2 border-cyan-500 bg-slate-950/50"
-                : "text-slate-500 hover:text-slate-300"
-            }`}
           >
             {t("sidebar.conversation")}
           </button>

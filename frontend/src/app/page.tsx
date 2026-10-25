@@ -18,6 +18,7 @@ import { useWebSocketEvents } from "@/hooks/useWebSocketEvents";
 import { useSessions } from "@/hooks/useSessions";
 import { useSessionSwitch } from "@/hooks/useSessionSwitch";
 import { useFloorConfig } from "@/hooks/useFloorConfig";
+import { useLayoutMode } from "@/hooks/useLayoutMode";
 import {
   useGameStore,
   selectIsConnected,
@@ -27,10 +28,10 @@ import {
 import { useNavigationStore } from "@/stores/navigationStore";
 import { useTourStore } from "@/stores/tourStore";
 import { apiFetch, initApiKeyFromBrowser } from "@/utils/api";
-import { Menu, X, Map } from "lucide-react";
+import { Map } from "lucide-react";
 import { SessionSidebar } from "@/components/layout/SessionSidebar";
-import { MobileDrawer } from "@/components/layout/MobileDrawer";
-import { MobileAgentActivity } from "@/components/layout/MobileAgentActivity";
+import { MobileOffice } from "@/components/layout/MobileOffice";
+import { BrandMark } from "@/components/layout/BrandMark";
 import { RightSidebar } from "@/components/layout/RightSidebar";
 import { HudStats } from "@/components/layout/HudStats";
 import { HeaderControls } from "@/components/layout/HeaderControls";
@@ -61,8 +62,11 @@ import type { Session } from "@/hooks/useSessions";
 function LoadingFallback() {
   const { t } = useTranslation();
   return (
-    <div className="w-full h-full bg-slate-900 animate-pulse flex items-center justify-center text-white font-mono text-center">
-      {t("app.initializingSystems")}
+    <div className="w-full h-full qo-studio flex flex-col items-center justify-center gap-3 text-center">
+      <span className="qo-spinner !w-10 !h-10 !border-4" aria-hidden="true" />
+      <span className="text-[13px] font-bold text-ink-soft">
+        {t("app.initializingSystems")}
+      </span>
     </div>
   );
 }
@@ -101,8 +105,8 @@ export default function V2TestPage(): React.ReactNode {
     null,
   );
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const layoutMode = useLayoutMode();
+  const isMobile = layoutMode !== "desktop";
   const [aiSummaryEnabled, setAiSummaryEnabled] = useState<boolean | null>(
     null,
   );
@@ -142,11 +146,6 @@ export default function V2TestPage(): React.ReactNode {
   // ------------------------------------------------------------------
   const isConnected = useGameStore(selectIsConnected);
   const debugMode = useGameStore(selectDebugMode);
-  // ARC-006: subscribe only to the count, not the whole agents Map. The page
-  // uses just `agents.size` (badge) — selecting a primitive means this root
-  // component re-renders only when an agent is added/removed, not every frame
-  // agents move (which was cascading re-renders through header/sidebar/modals).
-  const agentCount = useGameStore((s) => s.agents.size);
   const boss = useGameStore(selectBoss);
   const loadPersistedDebugSettings = useGameStore(
     (state) => state.loadPersistedDebugSettings,
@@ -226,16 +225,6 @@ export default function V2TestPage(): React.ReactNode {
   }, [language]);
 
   // ------------------------------------------------------------------
-  // Mobile breakpoint detection
-  // ------------------------------------------------------------------
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  // ------------------------------------------------------------------
   // Cmd+K / Ctrl+K command bar toggle
   // ------------------------------------------------------------------
   useEffect(() => {
@@ -280,7 +269,7 @@ export default function V2TestPage(): React.ReactNode {
   // Render
   // ------------------------------------------------------------------
   return (
-    <main className="qo-bg flex h-screen flex-col bg-neutral-950 p-3 overflow-hidden relative">
+    <main className="qo-bg flex h-screen h-[100dvh] flex-col p-3 overflow-hidden relative">
       {/* ----------------------------------------------------------------
           Modals
       ---------------------------------------------------------------- */}
@@ -292,13 +281,13 @@ export default function V2TestPage(): React.ReactNode {
           <>
             <button
               onClick={() => setIsClearModalOpen(false)}
-              className="px-4 py-2 text-slate-400 hover:text-white text-sm font-bold transition-colors"
+              className="qo-btn qo-btn-lg qo-btn-ghost"
             >
               {t("modal.cancel")}
             </button>
             <button
               onClick={handleConfirmClearDB}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold rounded-lg transition-colors shadow-lg shadow-rose-900/20"
+              className="qo-btn qo-btn-lg qo-btn-danger"
             >
               {t("modal.wipeAllData")}
             </button>
@@ -316,14 +305,14 @@ export default function V2TestPage(): React.ReactNode {
           <>
             <button
               onClick={handleStartTour}
-              className="flex items-center gap-2 px-4 py-2 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/30 text-sm font-bold rounded-lg transition-colors"
+              className="qo-btn qo-btn-lg qo-btn-secondary"
             >
               <Map size={16} />
               {t("help.tour")}
             </button>
             <button
               onClick={() => setIsHelpModalOpen(false)}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold rounded-lg transition-colors"
+              className="qo-btn qo-btn-lg qo-btn-primary"
             >
               {t("modal.close")}
             </button>
@@ -332,25 +321,25 @@ export default function V2TestPage(): React.ReactNode {
       >
         <div className="space-y-3 font-mono text-sm">
           <div className="flex justify-between items-center py-2 border-b border-slate-700">
-            <kbd className="px-2 py-1 bg-slate-800 rounded text-white font-bold">
+            <kbd className="min-w-8 px-2 py-1 bg-panel-3 border border-line-strong rounded-lg text-ink font-extrabold text-center">
               D
             </kbd>
             <span className="text-slate-300">{t("modal.toggleDebug")}</span>
           </div>
           <div className="flex justify-between items-center py-2 border-b border-slate-700">
-            <kbd className="px-2 py-1 bg-slate-800 rounded text-white font-bold">
+            <kbd className="min-w-8 px-2 py-1 bg-panel-3 border border-line-strong rounded-lg text-ink font-extrabold text-center">
               P
             </kbd>
             <span className="text-slate-300">{t("modal.showAgentPaths")}</span>
           </div>
           <div className="flex justify-between items-center py-2 border-b border-slate-700">
-            <kbd className="px-2 py-1 bg-slate-800 rounded text-white font-bold">
+            <kbd className="min-w-8 px-2 py-1 bg-panel-3 border border-line-strong rounded-lg text-ink font-extrabold text-center">
               Q
             </kbd>
             <span className="text-slate-300">{t("modal.showQueueSlots")}</span>
           </div>
           <div className="flex justify-between items-center py-2">
-            <kbd className="px-2 py-1 bg-slate-800 rounded text-white font-bold">
+            <kbd className="min-w-8 px-2 py-1 bg-panel-3 border border-line-strong rounded-lg text-ink font-extrabold text-center">
               L
             </kbd>
             <span className="text-slate-300">{t("modal.showPhaseLabels")}</span>
@@ -372,13 +361,13 @@ export default function V2TestPage(): React.ReactNode {
           <>
             <button
               onClick={() => setSessionPendingDelete(null)}
-              className="px-4 py-2 text-slate-400 hover:text-white text-sm font-bold transition-colors"
+              className="qo-btn qo-btn-lg qo-btn-ghost"
             >
               {t("modal.cancel")}
             </button>
             <button
               onClick={handleConfirmDeleteSession}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold rounded-lg transition-colors shadow-lg shadow-rose-900/20"
+              className="qo-btn qo-btn-lg qo-btn-danger"
             >
               {t("modal.delete")}
             </button>
@@ -387,7 +376,7 @@ export default function V2TestPage(): React.ReactNode {
       >
         <p>
           {t("modal.deleteSessionConfirm")}{" "}
-          <span className="font-mono text-purple-400">
+          <span className="font-mono text-accent">
             {sessionPendingDelete?.projectName ||
               sessionPendingDelete?.id.slice(0, 8)}
           </span>
@@ -400,50 +389,48 @@ export default function V2TestPage(): React.ReactNode {
         </p>
       </Modal>
 
-      {/* ----------------------------------------------------------------
-          Header
-      ---------------------------------------------------------------- */}
-      <header className="flex justify-between items-center mb-3 px-1 relative h-14">
-        <div className="flex items-center gap-3">
-          {isMobile && (
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label={mobileMenuOpen ? t("modal.close") : t("mobile.menu")}
-              aria-expanded={mobileMenuOpen}
-              className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-white transition-colors"
-            >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-          )}
-          <div className="flex items-center gap-3">
-            <div className="qo-logo" aria-hidden="true">
-              Q
-            </div>
-            <div className="flex flex-col leading-tight">
-              <h1
-                className={`qo-title flex items-center gap-2 ${
-                  isMobile ? "text-lg" : "text-2xl"
-                }`}
-              >
-                Qodirjon {!isMobile && t("app.title")}
-              </h1>
-              {!isMobile && (
-                <span className="qo-subtitle">{t("app.subtitle")}</span>
-              )}
-            </div>
+      {isMobile ? (
+        /* ----------------------------------------------------------------
+            Phone: the office with a tab bar (portrait) or a rail (landscape)
+        ---------------------------------------------------------------- */
+        <MobileOffice
+          orientation={layoutMode === "landscape" ? "landscape" : "portrait"}
+          scene={<OfficeGame />}
+          boss={boss}
+          isConnected={isConnected}
+          debugMode={debugMode}
+          aiSummaryEnabled={aiSummaryEnabled}
+          activeSessionCount={activeSessionCount}
+          sessions={sessions}
+          sessionsLoading={sessionsLoading}
+          sessionId={sessionId}
+          onSessionSelect={handleSessionSelect}
+          onSimulate={handleSimulate}
+          onReset={handleReset}
+          onClearDB={() => setIsClearModalOpen(true)}
+          onToggleDebug={handleToggleDebug}
+          onOpenSettings={() => setIsSettingsModalOpen(true)}
+          onOpenHelp={() => setIsHelpModalOpen(true)}
+        />
+      ) : (
+        /* ----------------------------------------------------------------
+            Desktop header: the mark, the counters, the controls
+        ---------------------------------------------------------------- */
+        <header className="flex justify-between items-center gap-4 mb-3 px-1 relative h-14">
+          <div className="flex items-center gap-4 min-w-0">
+            <BrandMark
+              size={42}
+              title={`Qodirjon ${t("app.title")}`}
+              subtitle={t("app.subtitle")}
+            />
+            {/* Breadcrumb — only when in building/floor view */}
+            <Breadcrumb />
           </div>
 
-          {/* Breadcrumb — only when in building/floor view */}
-          {!isMobile && <Breadcrumb />}
-        </div>
-
-        {!isMobile && (
-          <div className="hidden xl:flex flex-1 justify-center min-w-0 px-4">
+          <div className="hidden xl:flex flex-1 justify-center min-w-0">
             <HudStats />
           </div>
-        )}
 
-        {!isMobile && (
           <HeaderControls
             isConnected={isConnected}
             debugMode={debugMode}
@@ -456,51 +443,13 @@ export default function V2TestPage(): React.ReactNode {
             onOpenSettings={() => setIsSettingsModalOpen(true)}
             onOpenHelp={() => setIsHelpModalOpen(true)}
           />
-        )}
-
-        {isMobile && (
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-2 h-2 rounded-full ${
-                isConnected ? "bg-emerald-400 animate-pulse" : "bg-rose-500"
-              }`}
-            />
-            <span className="text-xs text-slate-400 font-mono">
-              {agentCount} {t("header.agents")}
-            </span>
-          </div>
-        )}
-      </header>
-
-      {/* ----------------------------------------------------------------
-          Mobile Drawer
-      ---------------------------------------------------------------- */}
-      <MobileDrawer
-        isOpen={isMobile && mobileMenuOpen}
-        sessions={sessions}
-        sessionsLoading={sessionsLoading}
-        sessionId={sessionId}
-        onClose={() => setMobileMenuOpen(false)}
-        onSessionSelect={handleSessionSelect}
-        onSimulate={handleSimulate}
-        onReset={handleReset}
-        onClearDB={() => {
-          setIsClearModalOpen(true);
-          setMobileMenuOpen(false);
-        }}
-      />
+        </header>
+      )}
 
       {/* ----------------------------------------------------------------
           Main Content
       ---------------------------------------------------------------- */}
-      {isMobile ? (
-        <div className="flex-grow flex flex-col gap-1.5 overflow-hidden min-h-0">
-          <div className="flex-[3] border border-slate-800 rounded-lg shadow-2xl bg-slate-900 overflow-hidden relative min-h-0">
-            <OfficeGame />
-          </div>
-          <MobileAgentActivity boss={boss} />
-        </div>
-      ) : view === "single" ? (
+      {isMobile ? null : view === "single" ? (
         /* ----------------------------------------------------------------
             Single View (default, original layout)
         ---------------------------------------------------------------- */
@@ -520,7 +469,7 @@ export default function V2TestPage(): React.ReactNode {
 
           <div
             data-tour-id="game-canvas"
-            className="qo-stage flex-grow border border-slate-800 rounded-lg shadow-2xl bg-slate-900 overflow-hidden relative"
+            className="qo-stage qo-studio flex-grow overflow-hidden relative"
           >
             {/* Keep the 1280x1024 scene's aspect ratio and center it, so the
                 canvas fills its box exactly (no letterbox, clicks stay aligned) */}
@@ -588,7 +537,13 @@ export default function V2TestPage(): React.ReactNode {
       {/* ----------------------------------------------------------------
           Status Toast — pinned bottom-center so it never covers the header
       ---------------------------------------------------------------- */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center pointer-events-none">
+      <div
+        className={`fixed left-1/2 -translate-x-1/2 z-50 flex items-center pointer-events-none ${
+          layoutMode === "portrait"
+            ? "bottom-[calc(var(--qo-bar-h)+env(safe-area-inset-bottom)+12px)]"
+            : "bottom-[max(24px,env(safe-area-inset-bottom))]"
+        }`}
+      >
         <StatusToast message={statusMessage} />
       </div>
     </main>

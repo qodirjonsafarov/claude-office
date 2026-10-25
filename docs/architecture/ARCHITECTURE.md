@@ -196,7 +196,10 @@ graph LR
 | `components/layout/HeaderControls.tsx` | Header with session controls |
 | `components/layout/RightSidebar.tsx` | Right sidebar container |
 | `components/layout/SessionSidebar.tsx` | Session list and switcher |
-| `components/layout/MobileDrawer.tsx` | Mobile-friendly drawer component |
+| `components/layout/MobileOffice.tsx` | Phone layout: tab bar (portrait) / rail (landscape), sheets for events, sessions, actions |
+| `components/layout/MobileSheet.tsx` | Bottom sheet used by the phone layout |
+| `components/layout/MobileTabBar.tsx` | Phone tab bar / side rail |
+| `components/layout/MobileSessionList.tsx` | Session browser inside the phone "Sessions" sheet |
 | `components/layout/MobileAgentActivity.tsx` | Mobile agent activity display |
 | `components/layout/StatusToast.tsx` | Toast notification component |
 | `components/attention/CommandBar.tsx` | Fuzzy-search command bar for filtering events |

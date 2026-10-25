@@ -55,7 +55,7 @@ export function HeaderMoreMenu({
   }, [open]);
 
   const itemClass =
-    "flex w-full items-center gap-2 px-3 py-2 text-xs font-bold rounded transition-colors text-left";
+    "flex w-full items-center gap-2.5 h-10 px-3 text-[13px] font-bold rounded-xl transition-colors text-left";
 
   return (
     <div ref={ref} className="relative">
@@ -65,20 +65,16 @@ export function HeaderMoreMenu({
         aria-expanded={open}
         aria-label={t("header.moreMenu")}
         title={t("header.more")}
-        className={`flex items-center gap-2 px-3 py-1.5 border rounded text-xs font-bold transition-colors ${
-          open
-            ? "bg-slate-700 text-white border-slate-600"
-            : "bg-slate-500/10 text-slate-400 border-slate-500/30 hover:bg-slate-500/20"
-        }`}
+        className="qo-btn qo-btn-secondary"
       >
-        <MoreHorizontal size={14} />
+        <MoreHorizontal size={15} />
         {t("header.more")}
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-1 z-50 min-w-[11rem] p-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl"
+          className="qo-pop absolute right-0 top-full mt-2 z-50 min-w-[12rem] p-1.5 bg-panel border border-line-strong rounded-xl3 shadow-[0_8px_24px_var(--qo-float-shade)]"
         >
           <button
             role="menuitem"

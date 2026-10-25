@@ -91,15 +91,15 @@ export function AgentStatus() {
   agentArray.sort((a, b) => a.number - b.number);
 
   return (
-    <div className="flex flex-col bg-slate-950 border border-slate-800 rounded-lg overflow-hidden font-mono text-xs h-full">
+    <div className="flex flex-col bg-slate-950 border border-slate-800 rounded-lg overflow-hidden text-xs h-full">
       {/* Header */}
       <div className="bg-slate-900 px-3 py-2 border-b border-slate-800 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2 text-slate-300 font-bold uppercase tracking-wider text-[11px]">
-          <Users size={14} className="text-blue-400" />
+          <Users size={14} className="text-ink-faint" />
           {t("agentStatus.title")}
         </div>
         <div className="flex items-center gap-1">
-          <span className="text-2xl font-bold text-slate-200 tabular-nums">
+          <span className="text-[15px] font-extrabold text-ink tabular-nums">
             {agentArray.length}
           </span>
           <span className="text-slate-500 text-[10px]">
@@ -118,7 +118,7 @@ export function AgentStatus() {
           agentArray.map((agent) => (
             <div
               key={agent.id}
-              className="bg-slate-900/60 border border-slate-800 rounded-md overflow-hidden hover:border-slate-700 transition-colors"
+              className="bg-panel-2 border border-line rounded-xl2 overflow-hidden hover:border-line-strong transition-colors"
             >
               {/* Agent header with name and color */}
               <div
@@ -135,7 +135,7 @@ export function AgentStatus() {
                 </div>
                 {agent.desk && (
                   <span className="text-slate-500 text-[10px] flex items-center gap-1 flex-shrink-0">
-                    <MapPin size={10} />
+                    <MapPin size={13} />
                     {t("agentStatus.desk")} {agent.desk}
                   </span>
                 )}
@@ -146,8 +146,8 @@ export function AgentStatus() {
                 {/* Task/Prompt Summary */}
                 <div className="flex items-start gap-2">
                   <Briefcase
-                    size={11}
-                    className="text-slate-500 mt-0.5 flex-shrink-0"
+                    size={14}
+                    className="text-ink-faint mt-0.5 flex-shrink-0"
                   />
                   <div className="text-slate-300 text-[11px] leading-tight min-w-0">
                     {agent.currentTask ? (
@@ -163,8 +163,8 @@ export function AgentStatus() {
                 {/* Last Tool Call */}
                 <div className="flex items-start gap-2">
                   <Terminal
-                    size={11}
-                    className="text-slate-500 mt-0.5 flex-shrink-0"
+                    size={14}
+                    className="text-ink-faint mt-0.5 flex-shrink-0"
                   />
                   <div className="text-[11px] leading-tight min-w-0">
                     {agent.bubble.content ? (
@@ -186,9 +186,9 @@ export function AgentStatus() {
                 <div className="flex items-center gap-2 pt-1">
                   {/* Backend State */}
                   <div className="flex items-center gap-1">
-                    <Activity size={10} className="text-slate-500" />
+                    <Activity size={13} className="text-ink-faint" />
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[9px] uppercase font-semibold border ${getBackendStateColor(agent.backendState)}`}
+                      className={`px-2 py-0.5 rounded-full text-[9px] uppercase font-extrabold border ${getBackendStateColor(agent.backendState)}`}
                     >
                       {formatState(agent.backendState)}
                     </span>
@@ -196,9 +196,9 @@ export function AgentStatus() {
 
                   {/* Frontend Phase */}
                   <div className="flex items-center gap-1">
-                    <Layers size={10} className="text-slate-500" />
+                    <Layers size={13} className="text-ink-faint" />
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[9px] font-medium border ${getPhaseColor(agent.phase)}`}
+                      className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${getPhaseColor(agent.phase)}`}
                     >
                       {formatPhase(agent.phase)}
                     </span>

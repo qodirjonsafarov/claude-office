@@ -10,7 +10,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 // ============================================================================
 
 /**
- * Game-style HUD counters in the header: agents on shift, todo progress,
+ * HUD counters (Olymp pills) in the header: agents on shift, todo progress,
  * tool uses and a context "energy" bar for the current session.
  */
 export function HudStats(): React.ReactNode {
@@ -26,38 +26,46 @@ export function HudStats(): React.ReactNode {
 
   const doneTodos = todos.filter((todo) => todo.status === "completed").length;
   const contextPct = Math.round(Math.min(1, Math.max(0, context)) * 100);
-  const contextTone =
-    contextPct >= 80 ? "qo-bar-danger" : contextPct >= 55 ? "qo-bar-warn" : "";
+  const contextFill =
+    contextPct >= 80 ? "bg-danger" : contextPct >= 55 ? "bg-warn" : "bg-accent";
 
   return (
-    <div className="qo-hud flex items-center gap-2">
-      <div className="qo-chip" title={t("hud.agents")}>
-        <Users size={14} className="text-orange-400" />
-        <span className="qo-chip-label">{t("hud.agents")}</span>
-        <span className="qo-chip-value">{agentCount + 1}</span>
+    <div className="flex items-center gap-2">
+      <div className="qo-pill" title={t("hud.agents")}>
+        <Users size={15} className="text-ink-faint" aria-hidden="true" />
+        <span className="hidden 2xl:inline text-ink-faint font-bold">
+          {t("hud.agents")}
+        </span>
+        <span>{agentCount + 1}</span>
       </div>
-      <div className="qo-chip" title={t("hud.tasks")}>
-        <ListChecks size={14} className="text-emerald-400" />
-        <span className="qo-chip-label">{t("hud.tasks")}</span>
-        <span className="qo-chip-value">
+      <div className="qo-pill" title={t("hud.tasks")}>
+        <ListChecks size={15} className="text-ink-faint" aria-hidden="true" />
+        <span className="hidden 2xl:inline text-ink-faint font-bold">
+          {t("hud.tasks")}
+        </span>
+        <span>
           {doneTodos}/{todos.length}
         </span>
       </div>
-      <div className="qo-chip" title={t("hud.tools")}>
-        <Wrench size={14} className="text-sky-400" />
-        <span className="qo-chip-label">{t("hud.tools")}</span>
-        <span className="qo-chip-value">{toolUses}</span>
+      <div className="qo-pill" title={t("hud.tools")}>
+        <Wrench size={15} className="text-ink-faint" aria-hidden="true" />
+        <span className="hidden 2xl:inline text-ink-faint font-bold">
+          {t("hud.tools")}
+        </span>
+        <span>{toolUses}</span>
       </div>
-      <div className="qo-chip qo-chip-wide" title={t("hud.context")}>
-        <Brain size={14} className="text-violet-400" />
-        <span className="qo-chip-label">{t("hud.context")}</span>
-        <div className="qo-bar">
+      <div className="qo-pill" title={t("hud.context")}>
+        <Brain size={15} className="text-ink-faint" aria-hidden="true" />
+        <span className="hidden 2xl:inline text-ink-faint font-bold">
+          {t("hud.context")}
+        </span>
+        <div className="w-16 2xl:w-24 h-2 rounded-full bg-panel-3 overflow-hidden">
           <div
-            className={`qo-bar-fill ${contextTone}`}
+            className={`h-full rounded-full transition-[width] duration-500 ${contextFill}`}
             style={{ width: `${contextPct}%` }}
           />
         </div>
-        <span className="qo-chip-value">{contextPct}%</span>
+        <span className="min-w-[3ch] text-right">{contextPct}%</span>
       </div>
     </div>
   );

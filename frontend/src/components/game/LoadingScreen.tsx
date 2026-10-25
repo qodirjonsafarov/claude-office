@@ -15,11 +15,11 @@ export function LoadingScreen(): ReactNode {
   const { t } = useTranslation();
   return (
     <pixiContainer>
-      {/* Dark background */}
+      {/* The Olymp panel colour, so the scene loads in the app's look */}
       <pixiGraphics
         draw={(g) => {
           g.clear();
-          g.fill({ color: 0x1a1a2e });
+          g.fill({ color: 0x0f1715 });
           g.rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         }}
       />
@@ -29,10 +29,11 @@ export function LoadingScreen(): ReactNode {
           text={t("loading.office")}
           anchor={0.5}
           style={{
-            fontFamily: "monospace",
+            fontFamily: "Manrope, system-ui, sans-serif",
             fontSize: 48,
-            fill: 0x4ade80,
-            letterSpacing: 2,
+            fontWeight: "800",
+            fill: 0xa9b8b0,
+            letterSpacing: 1,
           }}
         />
       </pixiContainer>
@@ -44,7 +45,7 @@ export function LoadingScreen(): ReactNode {
             x={(i - 1) * 20}
             draw={(g) => {
               g.clear();
-              g.fill({ color: 0x4ade80, alpha: 0.6 });
+              g.fill({ color: 0xa7f36a, alpha: 0.8 });
               g.circle(0, 0, 4);
             }}
           />

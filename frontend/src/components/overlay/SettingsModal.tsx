@@ -170,10 +170,7 @@ export default function SettingsModal({
       dismissible={false}
       title={t("settings.title")}
       footer={
-        <button
-          onClick={onClose}
-          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold rounded-lg transition-colors"
-        >
+        <button onClick={onClose} className="qo-btn qo-btn-lg qo-btn-primary">
           {t("modal.close")}
         </button>
       }

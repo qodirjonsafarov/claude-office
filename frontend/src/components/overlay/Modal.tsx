@@ -39,41 +39,41 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-scrim qo-fade-in"
       onClick={dismissible ? onClose : undefined}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+        className="qo-pop bg-panel border border-line rounded-t-xl3 sm:rounded-xl3 shadow-[0_16px_48px_var(--qo-float-shade)] w-full sm:max-w-md max-h-[85svh] sm:max-h-[80vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/50 flex-shrink-0">
+        <div className="flex items-center justify-between pl-5 pr-3 py-3 border-b border-line flex-shrink-0">
           <h2
             id={titleId}
-            className="text-lg font-bold text-white tracking-tight"
+            className="text-[18px] font-extrabold text-ink tracking-tight"
           >
             {title}
           </h2>
           <button
             onClick={onClose}
             aria-label={t("modal.close")}
-            className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+            className="qo-icon-btn"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Content */}
-        <div className="px-6 py-6 text-slate-300 text-sm leading-relaxed overflow-y-auto flex-1 min-h-0">
+        <div className="px-5 py-5 text-ink-soft text-sm leading-relaxed overflow-y-auto flex-1 min-h-0">
           {children}
         </div>
 
         {/* Footer */}
         {footer && (
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-800 bg-slate-900/50 flex-shrink-0">
+          <div className="flex items-center justify-end gap-2 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] sm:pb-3 border-t border-line flex-shrink-0">
             {footer}
           </div>
         )}

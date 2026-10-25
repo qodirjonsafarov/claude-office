@@ -13,25 +13,30 @@ export function ZoomControls(): ReactNode {
   const { zoomIn, zoomOut, resetTransform } = useControls();
   const { t } = useTranslation();
 
+  // Olymp-style round buttons in a capsule; on a phone (.qo-stage-phone) the
+  // +/- steps are hidden in CSS, pinch zooms and only the reset stays.
+  const button =
+    "w-10 h-10 rounded-full flex items-center justify-center text-ink-soft hover:text-ink hover:bg-panel-3 font-extrabold transition-colors active:scale-95";
+
   return (
-    <div className="absolute bottom-14 right-4 flex flex-row gap-1 z-10">
+    <div className="qo-zoom absolute bottom-4 right-4 z-10 flex flex-row gap-1 p-1 rounded-full qo-glass-panel border border-line-strong shadow-[0_8px_24px_var(--qo-float-shade)] opacity-85 hover:opacity-100 transition-opacity">
       <button
         onClick={() => zoomIn()}
-        className="w-10 h-10 bg-slate-800/90 hover:bg-slate-700 text-white rounded-lg flex items-center justify-center text-xl font-bold border border-slate-600 shadow-lg active:scale-95 transition-transform"
+        className={`qo-zoom-step ${button} text-xl`}
         aria-label={t("zoom.in")}
       >
         +
       </button>
       <button
         onClick={() => zoomOut()}
-        className="w-10 h-10 bg-slate-800/90 hover:bg-slate-700 text-white rounded-lg flex items-center justify-center text-xl font-bold border border-slate-600 shadow-lg active:scale-95 transition-transform"
+        className={`qo-zoom-step ${button} text-xl`}
         aria-label={t("zoom.out")}
       >
         −
       </button>
       <button
         onClick={() => resetTransform()}
-        className="w-10 h-10 bg-slate-800/90 hover:bg-slate-700 text-white rounded-lg flex items-center justify-center text-xs font-bold border border-slate-600 shadow-lg active:scale-95 transition-transform"
+        className={`${button} text-xs`}
         aria-label={t("zoom.reset")}
       >
         1:1

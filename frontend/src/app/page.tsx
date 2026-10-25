@@ -82,7 +82,7 @@ export default function V2TestPage(): React.ReactNode {
   // ------------------------------------------------------------------
   // i18n
   // ------------------------------------------------------------------
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
 
   // ------------------------------------------------------------------
   // UI-only state
@@ -174,8 +174,8 @@ export default function V2TestPage(): React.ReactNode {
   }, [loadPreferences]);
 
   useEffect(() => {
-    document.documentElement.lang = language;
-  }, [language]);
+    document.documentElement.lang = "en";
+  }, []);
 
   // Phone styles (44px touch targets) key off this, portaled dialogs too.
   useEffect(() => {

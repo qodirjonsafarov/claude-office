@@ -68,7 +68,6 @@ const en = {
     "Automatically switch to new sessions in the current project",
   "settings.clockTip":
     "Tip: Click the clock in the office to quickly cycle between modes.",
-  "settings.language": "Language",
 
   // Sessions
   "sessions.title": "Sessions",

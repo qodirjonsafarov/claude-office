@@ -3,7 +3,6 @@
 import { useState, useCallback } from "react";
 import { ChevronDown, ChevronRight, Inbox } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { ptBR as dateFnsPtBR, es as dateFnsEs } from "date-fns/locale";
 import { GitStatusPanel } from "@/components/layout/GitStatusPanel";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { Session } from "@/hooks/useSessions";
@@ -37,13 +36,7 @@ export function MobileSessionList({
   sessionId,
   onSessionSelect,
 }: MobileSessionListProps): React.ReactNode {
-  const { t, language } = useTranslation();
-  const dateFnsLocale =
-    language === "pt-BR"
-      ? dateFnsPtBR
-      : language === "es"
-        ? dateFnsEs
-        : undefined;
+  const { t } = useTranslation();
 
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
@@ -60,7 +53,6 @@ export function MobileSessionList({
   const ago = (iso: string) =>
     formatDistanceToNow(new Date(iso), {
       addSuffix: true,
-      locale: dateFnsLocale,
     });
 
   return (

@@ -11,7 +11,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { ptBR as dateFnsPtBR, es as dateFnsEs } from "date-fns/locale";
 import { GitStatusPanel } from "@/components/layout/GitStatusPanel";
 import type { Session } from "@/hooks/useSessions";
 import { getProjectKey, groupSessionsByProject } from "@/utils/sessionGroups";
@@ -136,13 +135,7 @@ export function SessionSidebar({
   onDeleteSession,
   onRenameSession,
 }: SessionSidebarProps): React.ReactNode {
-  const { t, language } = useTranslation();
-  const dateFnsLocale =
-    language === "pt-BR"
-      ? dateFnsPtBR
-      : language === "es"
-        ? dateFnsEs
-        : undefined;
+  const { t } = useTranslation();
 
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
@@ -320,7 +313,6 @@ export function SessionSidebar({
                                 new Date(primary.updatedAt),
                                 {
                                   addSuffix: true,
-                                  locale: dateFnsLocale,
                                 },
                               )}
                             </span>
@@ -398,7 +390,6 @@ export function SessionSidebar({
                                         new Date(session.updatedAt),
                                         {
                                           addSuffix: true,
-                                          locale: dateFnsLocale,
                                         },
                                       )}
                                     </span>

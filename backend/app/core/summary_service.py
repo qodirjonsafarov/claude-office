@@ -59,6 +59,12 @@ class SummaryService:
         "fix-documentation": ["Doc Brown", "The Scribe", "Note Taker"],
         "markdown-docs-writer": ["The Scribe", "Doc Brown", "Word Wizard"],
         "webgl-shader-expert": ["Pixel Pete", "Shader Sam", "GPU Guru"],
+        # Our own team roles.
+        "developer": ["Builder", "Coder", "Forge", "Code Smith", "Dev Dynamo"],
+        "qa": ["Validator", "Hawkeye", "Test Pilot", "Bug Buster", "Edge Case Ed"],
+        "reviewer": ["The Critic", "Inspector", "Judge", "Nitpick Nick", "Eagle Eye"],
+        "devops": ["Pipeline Pat", "Deploy Dan", "Ship It Sam", "Docker Dave", "Uptime Ursula"],
+        "claude": ["Claude", "The Manager", "Conductor", "Chief", "Orchestrator"],
     }
     _MAPPED_AGENT_TYPES: frozenset[str] = frozenset(_AGENT_TYPE_NAMES.keys())
 

@@ -7,34 +7,20 @@ vi.mock("@/utils/api", () => ({
 
 import { usePreferencesStore } from "../src/stores/preferencesStore";
 
-function respondWith(prefs: Record<string, string>): void {
-  apiFetch.mockResolvedValue({ ok: true, json: async () => prefs });
-}
-
-describe("preferencesStore language", () => {
+describe("preferencesStore legacy language", () => {
   beforeEach(() => {
     apiFetch.mockReset();
   });
 
-  it("defaults to English before preferences load", () => {
-    expect(usePreferencesStore.getState().language).toBe("en");
-  });
-
-  it("uses English when no language is saved", async () => {
-    respondWith({});
+  it("ignores a saved language preference from before English-only", async () => {
+    apiFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ language: "es", clock_format: "24h" }),
+    });
     await usePreferencesStore.getState().loadPreferences();
-    expect(usePreferencesStore.getState().language).toBe("en");
-  });
-
-  it("falls back to English when the saved language is no longer offered", async () => {
-    respondWith({ language: "ru" });
-    await usePreferencesStore.getState().loadPreferences();
-    expect(usePreferencesStore.getState().language).toBe("en");
-  });
-
-  it("keeps a supported saved language", async () => {
-    respondWith({ language: "es" });
-    await usePreferencesStore.getState().loadPreferences();
-    expect(usePreferencesStore.getState().language).toBe("es");
+    const state = usePreferencesStore.getState();
+    expect(state.isLoaded).toBe(true);
+    expect(state.clockFormat).toBe("24h");
+    expect("language" in state).toBe(false);
   });
 });

@@ -257,6 +257,8 @@ const en = {
   "team.tools_other": "{count} tools",
   "team.needsYou": "Needs you",
   "team.progress": "Progress",
+  "eventLog.tool": "Tool",
+  "eventLog.toolRunning": "Tool · running",
   "eventLog.search": "Search events",
   "eventLog.filters": "Event filters",
   "eventLog.all": "All",

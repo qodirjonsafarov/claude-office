@@ -260,6 +260,8 @@ const ptBR: Record<TranslationKey, string> = {
   "team.tools_other": "{count} ferramentas",
   "team.needsYou": "Precisa de você",
   "team.progress": "Progresso",
+  "eventLog.tool": "Ferramenta",
+  "eventLog.toolRunning": "Ferramenta · em execução",
   "eventLog.search": "Buscar eventos",
   "eventLog.filters": "Filtros de eventos",
   "eventLog.all": "Todos",

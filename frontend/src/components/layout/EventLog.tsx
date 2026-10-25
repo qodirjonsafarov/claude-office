@@ -21,7 +21,6 @@ import { ChevronRight, Search, Terminal, X } from "lucide-react";
 import { EventDetailModal } from "@/components/game/EventDetailModal";
 import { useTranslation } from "@/hooks/useTranslation";
 import { getEventTypeTextColor } from "@/utils/event-type-styles";
-import { personKey } from "@/utils/agentActivity";
 import {
   FILTER_KINDS,
   agentNames,
@@ -30,6 +29,8 @@ import {
   personLabel,
 } from "@/utils/eventFilter";
 import type { TranslationKey } from "@/i18n";
+import { eventText, groupToolCalls } from "@/utils/eventRows";
+import { toolRowText } from "@/utils/toolNames";
 
 const KIND_LABELS: Record<(typeof FILTER_KINDS)[number], TranslationKey> = {
   tools: "eventLog.kindTools",
@@ -137,6 +138,8 @@ export function EventLog({
     () => filterEvents(eventLog, { query, person, kinds }, names),
     [eventLog, query, person, kinds, names],
   );
+  const rows = useMemo(() => groupToolCalls(shown), [shown]);
+  const allRows = useMemo(() => groupToolCalls(eventLog).length, [eventLog]);
   const filtering = query.trim() !== "" || person !== "all" || kinds.size > 0;
 
   const toggleKind = (kind: string) =>
@@ -167,8 +170,8 @@ export function EventLog({
           </div>
           <div className="text-[12px] font-bold text-ink-faint tabular-nums">
             {filtering
-              ? `${shown.length}/${eventLog.length}`
-              : t("eventLog.events", { count: eventLog.length })}
+              ? `${rows.length}/${allRows}`
+              : t("eventLog.events", { count: allRows })}
           </div>
         </div>
 
@@ -263,56 +266,89 @@ export function EventLog({
               </button>
             </div>
           ) : (
-            shown.map((event, index) => (
-              <div
-                key={`${event.id}-${index}`}
-                role="button"
-                tabIndex={0}
-                className="hover:bg-panel-2 px-2.5 py-1.5 rounded-xl transition-colors group cursor-pointer"
-                onClick={() => setSelectedEvent(event)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setSelectedEvent(event);
-                  }
-                }}
-              >
-                {/* Line 1: Time, Event Type, Person, Detail indicator */}
-                <div className="flex gap-2 items-center min-w-0">
-                  <span className="text-ink-faint flex-shrink-0 font-mono tabular-nums text-[11px]">
-                    {format(event.timestamp, "HH:mm:ss")}
-                  </span>
-                  <span
-                    className={`flex-shrink-0 font-extrabold text-[10px] uppercase tracking-wide ${getEventTypeTextColor(event.type)}`}
-                  >
-                    {event.type.replace(/_/g, " ")}
-                  </span>
-                  {personKey(event.agentId) !== "boss" && (
+            rows.map((row) => {
+              const event =
+                row.kind === "tool" ? (row.pre ?? row.post)! : row.event;
+              const toolName =
+                row.kind === "tool"
+                  ? (row.pre?.detail?.toolName ?? row.post?.detail?.toolName)
+                  : undefined;
+              const running = row.kind === "tool" && row.post === null;
+              const failed =
+                row.kind === "tool" && !!row.post?.detail?.errorType;
+              const label =
+                row.kind === "tool"
+                  ? running
+                    ? t("eventLog.toolRunning")
+                    : t("eventLog.tool")
+                  : event.type.replace(/_/g, " ");
+              const labelColor =
+                row.kind === "tool"
+                  ? failed
+                    ? "text-danger"
+                    : running
+                      ? "text-warn"
+                      : "text-accent"
+                  : getEventTypeTextColor(event.type);
+              const text =
+                row.kind === "tool"
+                  ? toolName
+                    ? toolRowText(toolName, row.pre?.detail?.toolInput ?? {})
+                    : event.summary
+                  : eventText(event);
+              const withDetail =
+                row.kind === "tool"
+                  ? [row.pre, row.post].some((e) => e && hasNonEmptyDetail(e))
+                  : hasNonEmptyDetail(event);
+              return (
+                <div
+                  key={row.key}
+                  role="button"
+                  tabIndex={0}
+                  className="hover:bg-panel-2 px-2.5 py-1.5 rounded-xl transition-colors group cursor-pointer"
+                  onClick={() => setSelectedEvent(event)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedEvent(event);
+                    }
+                  }}
+                >
+                  {/* Line 1: time, kind, person, detail indicator */}
+                  <div className="flex gap-2 items-center min-w-0">
+                    <span className="text-ink-faint flex-shrink-0 font-mono tabular-nums text-[11px]">
+                      {format(event.timestamp, "HH:mm:ss")}
+                    </span>
+                    <span
+                      className={`flex-shrink-0 font-extrabold text-[10px] uppercase tracking-wide ${labelColor}`}
+                    >
+                      {label}
+                    </span>
                     <span
                       className="min-w-0 truncate text-[11px] font-extrabold text-ink-soft"
                       title={event.agentId ?? undefined}
                     >
                       @{personLabel(event.agentId, names)}
                     </span>
-                  )}
-                  {hasNonEmptyDetail(event) && (
-                    <ChevronRight
-                      size={13}
-                      strokeWidth={2.2}
-                      aria-hidden="true"
-                      className="ml-auto flex-shrink-0 text-ink-faint group-hover:text-ink-soft transition-colors"
-                    />
-                  )}
+                    {withDetail && (
+                      <ChevronRight
+                        size={13}
+                        strokeWidth={2.2}
+                        aria-hidden="true"
+                        className="ml-auto flex-shrink-0 text-ink-faint group-hover:text-ink-soft transition-colors"
+                      />
+                    )}
+                  </div>
+                  {/* Line 2: what happened */}
+                  <div
+                    className="text-ink truncate text-[12px] font-semibold"
+                    title={text}
+                  >
+                    {text}
+                  </div>
                 </div>
-                {/* Line 2: Details/Summary */}
-                <div
-                  className="text-ink truncate text-[12px] font-semibold"
-                  title={event.summary}
-                >
-                  {event.summary}
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

@@ -260,6 +260,8 @@ const es: Record<TranslationKey, string> = {
   "team.tools_other": "{count} herramientas",
   "team.needsYou": "Te necesita",
   "team.progress": "Progreso",
+  "eventLog.tool": "Herramienta",
+  "eventLog.toolRunning": "Herramienta · en curso",
   "eventLog.search": "Buscar eventos",
   "eventLog.filters": "Filtros de eventos",
   "eventLog.all": "Todos",

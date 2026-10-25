@@ -49,6 +49,7 @@ import {
 } from "./PersonSprite";
 import { ThinkingDots } from "./ThinkingDots";
 import { NameTag, accentFromHex } from "./NameTag";
+import { AgentProgressBadge } from "./AgentProgressBadge";
 
 // ============================================================================
 // TYPES
@@ -73,6 +74,8 @@ export interface AgentSpriteProps {
   desk?: number | null;
   /** Backend work state; the "..." puff shows only while working. */
   backendState?: AgentState;
+  /** Todo-list progress for the badge over the name tag (null = none). */
+  progress?: { done: number; total: number } | null;
 }
 
 // ============================================================================
@@ -184,6 +187,7 @@ function AgentSpriteComponent({
   offset,
   desk = null,
   backendState = "working",
+  progress = null,
 }: AgentSpriteProps): ReactNode {
   const clickToFocusEnabled = usePreferencesStore((s) => s.clickToFocusEnabled);
   const openFocusPopup = useAttentionStore((s) => s.openFocusPopup);
@@ -258,7 +262,14 @@ function AgentSpriteComponent({
 
       {/* Agent name if present - hide when in elevator or when renderLabel is false */}
       {renderLabel && name && !isInElevatorZone(position) && (
-        <NameTag name={name} accent={accentFromHex(color)} y={-72} />
+        <>
+          <NameTag name={name} accent={accentFromHex(color)} y={-72} />
+          <AgentProgressBadge
+            progress={progress}
+            color={accentFromHex(color)}
+            y={-88}
+          />
+        </>
       )}
 
       {/* Bubble - hide when in elevator or when renderBubble is false */}
@@ -412,20 +423,27 @@ export interface AgentLabelProps {
   name: string;
   position: Position;
   color?: string;
+  /** Todo-list progress for the badge over the name tag (null = none). */
+  progress?: { done: number; total: number } | null;
 }
 
 function AgentLabelComponent({
   name,
   position,
   color,
+  progress = null,
 }: AgentLabelProps): ReactNode {
+  const accent = color ? accentFromHex(color) : undefined;
   return (
-    <NameTag
-      name={name}
-      accent={color ? accentFromHex(color) : undefined}
-      x={position.x}
-      y={position.y - 72}
-    />
+    <>
+      <NameTag name={name} accent={accent} x={position.x} y={position.y - 72} />
+      <AgentProgressBadge
+        progress={progress}
+        color={accent ?? 0x8b5cf6}
+        x={position.x}
+        y={position.y - 88}
+      />
+    </>
   );
 }
 

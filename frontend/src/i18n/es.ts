@@ -303,6 +303,12 @@ const es: Record<TranslationKey, string> = {
     "El servidor rechazó este navegador. Pega el token o el enlace ?token= de la consola del servidor.",
   "auth.placeholder": "Token o enlace de inicio",
   "auth.connect": "Conectar",
+  "team.title": "Equipo ahora",
+  "team.tools": "herramientas",
+  "team.tools_one": "{count} herramienta",
+  "team.tools_other": "{count} herramientas",
+  "team.needsYou": "Te necesita",
+  "team.progress": "Progreso",
 };
 
 export default es;

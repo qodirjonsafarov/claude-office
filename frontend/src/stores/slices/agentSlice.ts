@@ -22,6 +22,7 @@ import type {
 } from "./types";
 import { DESKS_PER_ROW } from "@/constants/positions";
 import { createEmptyBubbleState } from "./shared";
+import { parseProgress } from "@/utils/agentActivity";
 
 export type AgentSlice = {
   agents: Map<string, AgentAnimationState>;
@@ -100,6 +101,7 @@ export const createAgentSlice: StateCreator<GameStore, [], [], AgentSlice> = (
           queueType: null,
           queueIndex: -1,
           isTyping: false,
+          progress: parseProgress(backendAgent.progress),
         };
         newAgents.set(backendAgent.id, animState);
 

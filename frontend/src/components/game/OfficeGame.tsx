@@ -684,6 +684,7 @@ export function OfficeGame(): ReactNode {
                     sunglassesTexture={textures.sunglasses}
                     renderBubble={false}
                     isTyping={boss.isTyping}
+                    progress={boss.progress}
                     isAway={compactionAnimation.phase !== "idle"}
                   />
 
@@ -749,6 +750,7 @@ export function OfficeGame(): ReactNode {
                           labelPositions.get(agent.id) ?? agent.currentPosition
                         }
                         color={agent.color}
+                        progress={agent.progress}
                       />
                     ))}
 

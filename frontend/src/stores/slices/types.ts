@@ -15,6 +15,7 @@ import type {
   EventDetail,
   GameState as BackendGameState,
 } from "@/types";
+import type { AgentProgress } from "@/utils/agentActivity";
 
 /**
  * Frontend-controlled agent phases for queue choreography.
@@ -85,6 +86,9 @@ export interface AgentAnimationState {
 
   // Animation state
   isTyping: boolean; // True when agent is actively using tools
+
+  // Work progress from the agent's own todo list (backend; null = no list)
+  progress: AgentProgress | null;
 }
 
 /**
@@ -106,6 +110,7 @@ export interface BossAnimationState {
   inUseBy: "arrival" | "departure" | null;
   currentTask: string | null;
   isTyping: boolean; // True when boss is actively using tools (typing animation)
+  progress: AgentProgress | null; // Boss's own todo-list progress (null = none)
 }
 
 /**

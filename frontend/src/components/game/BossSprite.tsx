@@ -33,6 +33,7 @@ import {
 import { useGameStore } from "@/stores/gameStore";
 import type { AgentPhase } from "@/stores/gameStore";
 import { NameTag } from "./NameTag";
+import { AgentProgressBadge } from "./AgentProgressBadge";
 
 // ============================================================================
 // TYPES
@@ -54,6 +55,8 @@ export interface BossSpriteProps {
   renderBubble?: boolean; // Whether to render bubble (default true)
   isTyping?: boolean; // Whether boss is typing (animates arms)
   isAway?: boolean; // Whether boss is away from desk (hides body, shows only furniture)
+  /** Todo-list progress for the badge over the name tag (null = none). */
+  progress?: { done: number; total: number } | null;
 }
 
 // ============================================================================
@@ -222,6 +225,7 @@ function BossSpriteComponent({
   renderBubble = true,
   isTyping = false,
   isAway = false,
+  progress = null,
 }: BossSpriteProps): ReactNode {
   // Busy boss (tool use, with a short linger) stands up and directs the team
   const directingElapsed = useActivityClock(
@@ -379,6 +383,9 @@ function BossSpriteComponent({
 
       {/* Boss label - hidden when away from desk */}
       {!isAway && <NameTag name="Claude" accent={0xff8a3d} y={-60} />}
+      {!isAway && (
+        <AgentProgressBadge progress={progress} color={0xff8a3d} y={-76} />
+      )}
 
       {/* Task marquee on desk - scrolling user prompt */}
       {currentTask && (

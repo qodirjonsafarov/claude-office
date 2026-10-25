@@ -117,6 +117,8 @@
   --color-warn-dim: var(--qo-warn-dim);
   --color-info: var(--qo-info);
   --color-info-dim: var(--qo-info-dim);
+  --color-max: var(--qo-max);
+  --color-max-dim: var(--qo-max-dim);
   --color-scrim: var(--qo-scrim);
 
   --radius-xl2: 14px;

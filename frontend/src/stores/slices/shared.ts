@@ -20,4 +20,5 @@ export const initialBossState: BossAnimationState = {
   inUseBy: null,
   currentTask: null,
   isTyping: false,
+  progress: null,
 };

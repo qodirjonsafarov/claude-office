@@ -66,6 +66,7 @@ import {
 import { createReplaySlice, initialReplayState } from "./slices/replaySlice";
 import { createDebugSlice, initialDebugState } from "./slices/debugSlice";
 import { createEmptyBubbleState, initialBossState } from "./slices/shared";
+import { parseProgress, sameProgress } from "@/utils/agentActivity";
 
 // ============================================================================
 // STORE INTERFACE (the single public contract; impls come from the slices)
@@ -229,6 +230,8 @@ export interface GameStore {
   resetForReplay: () => void;
   resetForSessionSwitch: () => void;
   processBackendState: (state: BackendGameState) => void;
+  /** Copy the optional todo-list progress of the boss and known agents. */
+  syncProgress: (state: Pick<BackendGameState, "agents" | "boss">) => void;
 }
 
 // ============================================================================
@@ -322,6 +325,25 @@ export const useGameStore = create<GameStore>()(
         // Debug settings are preserved (not reset)
       }),
 
+    syncProgress: (backendState) =>
+      set((state) => {
+        let agents = state.agents;
+        for (const backendAgent of backendState.agents) {
+          const agent = agents.get(backendAgent.id);
+          if (!agent) continue;
+          const progress = parseProgress(backendAgent.progress);
+          if (sameProgress(agent.progress, progress)) continue;
+          if (agents === state.agents) agents = new Map(agents);
+          agents.set(backendAgent.id, { ...agent, progress });
+        }
+        const bossProgress = parseProgress(backendState.boss.progress);
+        const boss = sameProgress(state.boss.progress, bossProgress)
+          ? state.boss
+          : { ...state.boss, progress: bossProgress };
+        if (agents === state.agents && boss === state.boss) return state;
+        return { agents, boss };
+      }),
+
     processBackendState: (backendState) =>
       set((state) => {
         // This is called when we receive a full state update from backend.
@@ -348,6 +370,7 @@ export const useGameStore = create<GameStore>()(
                 currentTask: backendAgent.currentTask ?? null,
                 desk: backendAgent.desk ?? null,
                 name: backendAgent.name ?? null,
+                progress: parseProgress(backendAgent.progress),
               });
             }
           }
@@ -365,6 +388,7 @@ export const useGameStore = create<GameStore>()(
           ...state.boss,
           backendState: backendState.boss.state,
           currentTask: backendState.boss.currentTask ?? null,
+          progress: parseProgress(backendState.boss.progress),
         };
 
         // Process bubbles from backend state

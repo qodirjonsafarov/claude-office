@@ -109,6 +109,8 @@ export function useWebSocketEvents({
                 lastSeenBubbleText: lastSeenBubbleTextRef.current,
                 initialQueueSyncDone: initialQueueSyncDoneRef,
               });
+              // Optional todo-list progress (the reconciler does not copy it).
+              useGameStore.getState().syncProgress(message.state);
             }
             break;
 

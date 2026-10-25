@@ -20,11 +20,7 @@ import { MobileSheet } from "@/components/layout/MobileSheet";
 import { MobileTabBar, type MobileTab } from "@/components/layout/MobileTabBar";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { Session } from "@/hooks/useSessions";
-import {
-  useGameStore,
-  selectEventLog,
-  type BossAnimationState,
-} from "@/stores/gameStore";
+import { useGameStore, selectEventLog } from "@/stores/gameStore";
 import { useNavigationStore } from "@/stores/navigationStore";
 import { countWorking } from "@/utils/workStatus";
 
@@ -37,7 +33,6 @@ interface MobileOfficeProps {
   orientation: "portrait" | "landscape";
   /** The office scene (OfficeGame). */
   scene: ReactNode;
-  boss: BossAnimationState;
   isConnected: boolean;
   debugMode: boolean;
   aiSummaryEnabled: boolean | null;
@@ -82,7 +77,6 @@ function countNewer(log: { timestamp: Date }[], since: number): number {
 export function MobileOffice({
   orientation,
   scene,
-  boss,
   isConnected,
   debugMode,
   aiSummaryEnabled,
@@ -194,7 +188,7 @@ export function MobileOffice({
           </div>
           <div className="w-[clamp(190px,32%,280px)] flex flex-col gap-2 min-h-0">
             {status}
-            <MobileAgentActivity boss={boss} className="flex-1" />
+            <MobileAgentActivity className="flex-1" />
           </div>
         </main>
       ) : (
@@ -203,7 +197,7 @@ export function MobileOffice({
           <div className="-mx-3 px-3 overflow-x-auto flex-shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <HudStats />
           </div>
-          <MobileAgentActivity boss={boss} className="flex-1" />
+          <MobileAgentActivity className="flex-1" />
         </main>
       )}
 

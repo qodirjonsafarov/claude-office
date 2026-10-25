@@ -24,7 +24,6 @@ import {
   useGameStore,
   selectIsConnected,
   selectDebugMode,
-  selectBoss,
 } from "@/stores/gameStore";
 import { useNavigationStore } from "@/stores/navigationStore";
 import { useTourStore } from "@/stores/tourStore";
@@ -148,7 +147,6 @@ export default function V2TestPage(): React.ReactNode {
   // ------------------------------------------------------------------
   const isConnected = useGameStore(selectIsConnected);
   const debugMode = useGameStore(selectDebugMode);
-  const boss = useGameStore(selectBoss);
   const loadPersistedDebugSettings = useGameStore(
     (state) => state.loadPersistedDebugSettings,
   );
@@ -399,7 +397,6 @@ export default function V2TestPage(): React.ReactNode {
         <MobileOffice
           orientation={layoutMode === "landscape" ? "landscape" : "portrait"}
           scene={<OfficeGame />}
-          boss={boss}
           isConnected={isConnected}
           debugMode={debugMode}
           aiSummaryEnabled={aiSummaryEnabled}

@@ -566,3 +566,57 @@ describe("updateAgentMeta", () => {
   // silently keeping the previous task). QA-012 switched to `??` and added
   // the explicit empty-string test above to pin the corrected behavior.
 });
+
+// ---------------------------------------------------------------------------
+// PROGRESS (optional backend field)
+// ---------------------------------------------------------------------------
+
+describe("agent progress", () => {
+  const PROGRESS = {
+    done: 2,
+    total: 4,
+    current: "Run tests",
+    source: "todos" as const,
+  };
+
+  it("copies progress when an agent is added", () => {
+    addAgent("A", { progress: PROGRESS } as Partial<Agent>);
+    expect(useGameStore.getState().agents.get("A")?.progress).toEqual(PROGRESS);
+  });
+
+  it("defaults to null without progress", () => {
+    addAgent("A");
+    expect(useGameStore.getState().agents.get("A")?.progress).toBeNull();
+    expect(useGameStore.getState().boss.progress).toBeNull();
+  });
+
+  it("syncs progress for agents and the boss from a state update", () => {
+    addAgent("A");
+    useGameStore.getState().syncProgress({
+      agents: [makeAgent("A", { progress: PROGRESS } as Partial<Agent>)],
+      boss: { state: "working", progress: { ...PROGRESS, done: 4 } },
+    });
+    const state = useGameStore.getState();
+    expect(state.agents.get("A")?.progress?.done).toBe(2);
+    expect(state.boss.progress?.done).toBe(4);
+  });
+
+  it("clears progress the backend dropped", () => {
+    addAgent("A", { progress: PROGRESS } as Partial<Agent>);
+    useGameStore.getState().syncProgress({
+      agents: [makeAgent("A")],
+      boss: { state: "idle" },
+    });
+    expect(useGameStore.getState().agents.get("A")?.progress).toBeNull();
+  });
+
+  it("keeps the same agents map when nothing changed", () => {
+    addAgent("A", { progress: PROGRESS } as Partial<Agent>);
+    const before = useGameStore.getState().agents;
+    useGameStore.getState().syncProgress({
+      agents: [makeAgent("A", { progress: { ...PROGRESS } } as Partial<Agent>)],
+      boss: { state: "idle" },
+    });
+    expect(useGameStore.getState().agents).toBe(before);
+  });
+});

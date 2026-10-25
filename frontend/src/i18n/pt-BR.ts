@@ -303,6 +303,12 @@ const ptBR: Record<TranslationKey, string> = {
     "O servidor recusou este navegador. Cole o token ou o link ?token= do console do servidor.",
   "auth.placeholder": "Token ou link de início",
   "auth.connect": "Conectar",
+  "team.title": "Equipe agora",
+  "team.tools": "ferramentas",
+  "team.tools_one": "{count} ferramenta",
+  "team.tools_other": "{count} ferramentas",
+  "team.needsYou": "Precisa de você",
+  "team.progress": "Progresso",
 };
 
 export default ptBR;

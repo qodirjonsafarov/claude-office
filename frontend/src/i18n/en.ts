@@ -301,6 +301,12 @@ const en = {
     "The server refused this browser. Paste the token or the ?token= link from the server console.",
   "auth.placeholder": "Token or launch link",
   "auth.connect": "Connect",
+  "team.title": "Team now",
+  "team.tools": "tools",
+  "team.tools_one": "{count} tool",
+  "team.tools_other": "{count} tools",
+  "team.needsYou": "Needs you",
+  "team.progress": "Progress",
 } as const;
 
 export type TranslationKey = keyof typeof en;

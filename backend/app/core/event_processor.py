@@ -49,6 +49,7 @@ from app.core.handlers import (
 )
 from app.core.jsonl_parser import get_last_assistant_response
 from app.core.product_mapper import get_product_mapper
+from app.core.prompt_envelope import describe_envelope
 from app.core.room_orchestrator import RoomOrchestrator
 from app.core.state_machine import StateMachine, is_phantom_stop
 from app.core.task_file_poller import init_task_file_poller
@@ -167,6 +168,63 @@ def derive_git_root(working_dir: str) -> str | None:
         logger.warning(f"Error deriving git root from {working_dir}: {e}")
 
     return None
+
+
+# Event fields copied into a history entry's ``detail`` (frontend inspection).
+_DETAIL_FIELDS = [
+    ("tool_name", "toolName"),
+    ("tool_input", "toolInput"),
+    ("result_summary", "resultSummary"),
+    ("message", "message"),
+    ("thinking", "thinking"),
+    ("error_type", "errorType"),
+    ("task_description", "taskDescription"),
+    ("agent_name", "agentName"),
+    ("prompt", "prompt"),
+]
+
+
+def history_entry(sm: StateMachine, event: AnyEvent, summary: str) -> HistoryEntry:
+    """Build the event-log entry for *event*, after it went through *sm*.
+
+    Family-specific fields are read via getattr because event.data is the
+    union of all payload classes. Names replace raw ids where the office
+    knows them: a native SubagentStop is attributed to its agent ("Validator
+    V finished"), and an ``<agent-message …>`` prompt reads "Message from …".
+    """
+    detail: dict[str, Any] = {}
+    for src, dst in _DETAIL_FIELDS:
+        val = getattr(event.data, src, None)
+        if val is not None:
+            detail[dst] = val
+    agent_id = event.data.agent_id or "main"
+
+    if event.event_type == EventType.SUBAGENT_STOP:
+        native_id = getattr(event.data, "native_agent_id", None)
+        agent = sm.agents.get(event.data.agent_id or "") or next(
+            (a for a in sm.agents.values() if native_id and a.native_id == native_id), None
+        )
+        if agent is not None:
+            agent_id = agent.id
+            if agent.name:
+                detail.setdefault("agentName", agent.name)
+                summary = f"{agent.name} finished"
+            if agent.current_task:
+                detail.setdefault("taskDescription", agent.current_task)
+    elif event.event_type == EventType.USER_PROMPT_SUBMIT:
+        prompt = getattr(event.data, "prompt", None)
+        envelope = describe_envelope(prompt, sm.name_for_native) if prompt else None
+        if envelope:
+            summary = envelope
+
+    return {
+        "id": str(event.timestamp.timestamp()),
+        "type": str(event.event_type),
+        "agentId": agent_id,
+        "summary": summary,
+        "timestamp": event.timestamp.isoformat(),
+        "detail": detail,
+    }
 
 
 class EventProcessor:
@@ -581,35 +639,7 @@ class EventProcessor:
             sm.is_lead = False
 
         agent_id = event.data.agent_id or "main"
-
-        # Build detail dict from event data fields for frontend inspection.
-        # Family-specific fields are read via getattr because event.data is the
-        # union of all payload classes; only the family matching event.event_type
-        # actually carries each field.
-        detail: dict[str, Any] = {}
-        for src, dst in [
-            ("tool_name", "toolName"),
-            ("tool_input", "toolInput"),
-            ("result_summary", "resultSummary"),
-            ("message", "message"),
-            ("thinking", "thinking"),
-            ("error_type", "errorType"),
-            ("task_description", "taskDescription"),
-            ("agent_name", "agentName"),
-            ("prompt", "prompt"),
-        ]:
-            val = getattr(event.data, src, None)
-            if val is not None:
-                detail[dst] = val
-
-        event_dict: HistoryEntry = {
-            "id": str(event.timestamp.timestamp()),
-            "type": str(event.event_type),
-            "agentId": agent_id,
-            "summary": self._get_event_summary(event),
-            "timestamp": event.timestamp.isoformat(),
-            "detail": detail,
-        }
+        event_dict = history_entry(sm, event, self._get_event_summary(event))
         sm.history.append(event_dict)
         if len(sm.history) > MAX_HISTORY_ENTRIES:
             sm.history = sm.history[-MAX_HISTORY_ENTRIES:]
@@ -826,15 +856,7 @@ class EventProcessor:
                     sm.transition(evt)
 
                     agent_id = evt.data.agent_id or "main"
-                    history_entry: HistoryEntry = {
-                        "id": str(evt.timestamp.timestamp()),
-                        "type": str(evt.event_type),
-                        "agentId": agent_id,
-                        "summary": self._get_event_summary(evt),
-                        "timestamp": evt.timestamp.isoformat(),
-                        "detail": {},
-                    }
-                    sm.history.append(history_entry)
+                    sm.history.append(history_entry(sm, evt, self._get_event_summary(evt)))
 
                     # Rebuild conversation from stored events. Each branch
                     # narrows evt to its family variant so family-specific

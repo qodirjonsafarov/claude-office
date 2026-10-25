@@ -9,6 +9,7 @@ from typing import Any, cast
 
 from app.core.path_utils import compress_path, compress_paths_in_text, truncate_long_words
 from app.core.progress_tracker import ProgressTracker, progress_from_todos
+from app.core.prompt_envelope import describe_envelope
 from app.core.quotes import get_random_job_completion_quote
 from app.core.summary_service import get_summary_service
 from app.core.token_tracker import TokenTracker
@@ -342,12 +343,14 @@ def _handle_user_prompt_submit(sm: "StateMachine", event: AnyEvent) -> None:
     sm.turn_active = True
     sm.last_user_prompt = prompt_text
     if prompt_text:
+        # "<agent-message from=…>" and similar are not the owner typing.
+        shown = describe_envelope(prompt_text, sm.name_for_native) or prompt_text
         sm.boss_bubble = BubbleContent(
             type=BubbleType.SPEECH,
-            text=prompt_text,
+            text=shown,
             icon="📞",
         )
-        sm.boss_current_task = prompt_text
+        sm.boss_current_task = shown
 
 
 def _handle_permission_request(sm: "StateMachine", event: AnyEvent) -> None:
@@ -672,6 +675,13 @@ class StateMachine:
     # ---------------------------------------------------------------------------
     # Core methods
     # ---------------------------------------------------------------------------
+
+    def name_for_native(self, native_id: str) -> str | None:
+        """Display name of the agent with this native Claude id, if present."""
+        for agent in self.agents.values():
+            if agent.native_id == native_id:
+                return agent.name
+        return None
 
     def append_capped(
         self,

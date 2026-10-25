@@ -13,6 +13,7 @@ import logging
 from app.core.broadcast_service import broadcast_state
 from app.core.jsonl_parser import get_last_assistant_response
 from app.core.path_utils import is_safe_transcript_path
+from app.core.prompt_envelope import describe_envelope
 from app.core.state_machine import StateMachine
 from app.core.summary_service import get_summary_service
 from app.models.common import BubbleContent, BubbleType
@@ -47,8 +48,12 @@ async def handle_user_prompt_submit(
     if not event.data.prompt:
         return
 
-    summary_service = get_summary_service()
-    sm.boss_current_task = await summary_service.summarize_user_prompt(event.data.prompt)
+    envelope = describe_envelope(event.data.prompt, sm.name_for_native)
+    if envelope:
+        sm.boss_current_task = envelope
+    else:
+        summary_service = get_summary_service()
+        sm.boss_current_task = await summary_service.summarize_user_prompt(event.data.prompt)
     logger.debug(f"Boss current task set to: {sm.boss_current_task}")
 
     # Skip task-notification messages from the conversation history.

@@ -13,6 +13,13 @@ export const metadata: Metadata = {
   title: "Qodirjon Office",
   description:
     "Real-time pixel art visualization of Claude Code operations in a virtual office",
+  // iPhone "Add to Home Screen": standalone app. Its localStorage (the API
+  // token) is separate from Safari, so the token prompt shows once there.
+  appleWebApp: {
+    capable: true,
+    title: "Office",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 // viewport-fit=cover lets the page run under the iPhone's notch and home

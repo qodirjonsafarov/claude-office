@@ -150,11 +150,11 @@ async def handle_subagent_info(
     ensure_transcript_poller_fn()
     poller = get_transcript_poller()
     if poller:
-        for agent_id, agent in sm.agents.items():
-            # Only this native agent's own character (or a not yet linked one):
-            # resting agents of other transcripts must not pick it up.
-            if agent.native_id not in (None, native_agent_id):
-                continue
+        # The character linked to this native id (state_machine.link_native)
+        # first; only without one fall back to the first unlinked character.
+        linked = [(aid, a) for aid, a in sm.agents.items() if a.native_id == native_agent_id]
+        candidates = linked or [(aid, a) for aid, a in sm.agents.items() if a.native_id is None]
+        for agent_id, agent in candidates:
             # Link and enrich agents that have not yet been assigned a native_id.
             if agent.native_id is None:
                 agent.native_id = native_agent_id

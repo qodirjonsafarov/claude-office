@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from collections.abc import Callable
@@ -301,28 +302,74 @@ def _recall(agent: Agent) -> None:
         agent.resting_since = None
 
 
-def _resting_by_native(sm: "StateMachine", native_id: str | None) -> Agent | None:
-    if not native_id:
-        return None
-    for agent in sm.agents.values():
-        if agent.native_id == native_id and agent.state == AgentState.RESTING:
-            return agent
-    return None
-
-
 def _as_utc(ts: datetime) -> datetime:
     """Event timestamps may be naive (UTC) or aware; compare them as aware."""
     return ts if ts.tzinfo else ts.replace(tzinfo=UTC)
 
 
+def tool_use_id_from_meta(transcript_path: str | None) -> str | None:
+    """``toolUseId`` from ``agent-<native>.meta.json`` next to the transcript.
+
+    Claude Code writes it for every subagent: the id of the Agent/Task call
+    that started it, which names our character (``subagent_<toolUseId>``).
+    """
+    from app.config import get_settings  # local import to avoid cycles
+
+    if not transcript_path or not transcript_path.endswith(".jsonl"):
+        return None
+    meta = Path(get_settings().translate_path(transcript_path[: -len(".jsonl")] + ".meta.json"))
+    try:
+        data = json.loads(meta.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    value = cast(dict[str, object], data).get("toolUseId")
+    return value if isinstance(value, str) and value else None
+
+
+def link_native(
+    sm: "StateMachine",
+    native: str | None,
+    transcript_path: str | None,
+    agent_type: str | None,
+) -> Agent | None:
+    """The character of a native agent id, linking it if needed.
+
+    Order: already linked; the character started by the same tool call (from
+    the transcript's meta file); the oldest unlinked character of the same
+    agent type. None when nothing matches (the async handler falls back).
+    """
+    if not native:
+        return None
+    for agent in sm.agents.values():
+        if agent.native_id == native:
+            return agent
+    tool_use_id = tool_use_id_from_meta(transcript_path)
+    if tool_use_id:
+        agent = sm.agents.get(f"subagent_{tool_use_id}")
+        if agent is not None and agent.native_id is None:
+            agent.native_id = native
+            return agent
+    if agent_type:
+        same_type = sorted(
+            (a for a in sm.agents.values() if a.native_id is None and a.agent_type == agent_type),
+            key=lambda a: a.number,
+        )
+        if same_type:
+            same_type[0].native_id = native
+            return same_type[0]
+    return None
+
+
 def _handle_subagent_info(sm: "StateMachine", event: AnyEvent) -> None:
-    """Handle SUBAGENT_INFO: a resumed agent (same native id) wakes up."""
+    """Handle SUBAGENT_INFO: link the native id; a resumed agent wakes up."""
     assert isinstance(event, AgentEvent)
     native = event.data.native_agent_id or native_id_from_transcript(
         event.data.agent_transcript_path
     )
-    agent = _resting_by_native(sm, native)
-    if agent is not None:
+    agent = link_native(sm, native, event.data.agent_transcript_path, event.data.agent_type)
+    if agent is not None and agent.state == AgentState.RESTING:
         _recall(agent)
 
 

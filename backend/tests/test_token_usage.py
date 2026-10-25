@@ -9,7 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from app.core.state_machine import StateMachine
-from app.core.token_tracker import TokenTracker, estimate_cost_usd
+from app.core.token_tracker import TokenTracker, estimate_cost_parts, estimate_cost_usd
 from app.models.events import AnyEvent, EventAdapter, EventType
 
 
@@ -177,6 +177,38 @@ class TestCost:
         tracker.update_from_event(_event(f))
         usage = tracker.session_usage()
         assert usage is not None and usage.cost_usd == pytest.approx(3.0)
+
+
+class TestCostParts:
+    """The cost split by kind, so the UI can show where the estimate comes from."""
+
+    def test_parts_per_kind(self) -> None:
+        parts = estimate_cost_parts(
+            [("claude-sonnet-4-5", (1_000_000, 1_000_000, 1_000_000, 1_000_000, 1_000_000))]
+        )
+        assert parts is not None
+        assert parts.input == pytest.approx(3.0)
+        assert parts.output == pytest.approx(15.0)
+        assert parts.cache_read == pytest.approx(0.3)
+        assert parts.cache_write == pytest.approx(3.75 + 6.0)
+        assert parts.total == pytest.approx(3 + 15 + 0.3 + 9.75)
+
+    def test_unknown_model_gives_no_parts(self) -> None:
+        assert estimate_cost_parts([("claude-future-9", (1, 1, 0, 0, 0))]) is None
+
+    def test_session_usage_carries_parts(self, claude_home: Path) -> None:
+        f = claude_home / "s1.jsonl"
+        f.write_text(_assistant("m1", inp=1_000_000, out=1_000_000))
+        tracker = TokenTracker()
+        tracker.update_from_event(_event(f))
+        usage = tracker.session_usage()
+        assert usage is not None
+        assert usage.cost_input_usd == pytest.approx(3.0)
+        assert usage.cost_output_usd == pytest.approx(15.0)
+        assert usage.cost_cache_read_usd == pytest.approx(0.0)
+        assert usage.cost_cache_write_usd == pytest.approx(0.0)
+        dumped = usage.model_dump(by_alias=True)
+        assert "costInputUsd" in dumped and "costCacheWriteUsd" in dumped
 
 
 class TestContextWindow:

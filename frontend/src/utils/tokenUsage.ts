@@ -11,6 +11,29 @@ export interface TokenTotals {
   cacheWrite: number;
   /** Estimate in USD; null when a model in the session has no known price. */
   costUsd: number | null;
+  /** The same estimate per token kind (null when the backend did not split it). */
+  costParts: CostParts | null;
+}
+
+export interface CostParts {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+}
+
+function usd(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function parseCostParts(r: Record<string, unknown>): CostParts | null {
+  const input = usd(r.costInputUsd);
+  const output = usd(r.costOutputUsd);
+  const cacheRead = usd(r.costCacheReadUsd);
+  const cacheWrite = usd(r.costCacheWriteUsd);
+  if (input === null || output === null || cacheRead === null) return null;
+  if (cacheWrite === null) return null;
+  return { input, output, cacheRead, cacheWrite };
 }
 
 function count(value: unknown): number {
@@ -33,7 +56,15 @@ export function parseTokenUsage(raw: unknown): TokenTotals | null {
     typeof r.costUsd === "number" && Number.isFinite(r.costUsd)
       ? r.costUsd
       : null;
-  return { total, input, output, cacheRead, cacheWrite, costUsd };
+  return {
+    total,
+    input,
+    output,
+    cacheRead,
+    cacheWrite,
+    costUsd,
+    costParts: parseCostParts(r),
+  };
 }
 
 /** True when two totals would display the same. */
@@ -48,7 +79,8 @@ export function sameTokenTotals(
     a.output === b.output &&
     a.cacheRead === b.cacheRead &&
     a.cacheWrite === b.cacheWrite &&
-    a.costUsd === b.costUsd
+    a.costUsd === b.costUsd &&
+    JSON.stringify(a.costParts) === JSON.stringify(b.costParts)
   );
 }
 
@@ -69,21 +101,59 @@ export function formatCost(usd: number | null): string | null {
   return `≈$${Math.round(usd)}`;
 }
 
-/** Tooltip text with the breakdown. */
-export function tokenBreakdown(t: TokenTotals): string {
+/** "≈ API $151": the dollars are what the tokens would cost on the API. */
+export function apiCost(usd: number | null): string | null {
+  const cost = formatCost(usd);
+  return cost
+    ? cost.replace(/^(≈|<)/, (m) => `${m === "≈" ? "≈ " : "< "}API `)
+    : null;
+}
+
+export interface CostRow {
+  label: string;
+  tokens: string;
+  /** "$4.80"; null when the backend did not split the cost. */
+  usd: string | null;
+}
+
+/** One row per token kind: tokens and their share of the estimate. */
+export function costRows(t: TokenTotals): CostRow[] {
+  const money = (v: number | undefined) =>
+    v === undefined ? null : `$${v.toFixed(2)}`;
+  const p = t.costParts ?? undefined;
   return [
-    `in ${formatTokens(t.input)}`,
-    `out ${formatTokens(t.output)}`,
-    `cache read ${formatTokens(t.cacheRead)}`,
-    `cache write ${formatTokens(t.cacheWrite)}`,
-  ].join(" · ");
+    { label: "Input", tokens: formatTokens(t.input), usd: money(p?.input) },
+    { label: "Output", tokens: formatTokens(t.output), usd: money(p?.output) },
+    {
+      label: "Cache read",
+      tokens: formatTokens(t.cacheRead),
+      usd: money(p?.cacheRead),
+    },
+    {
+      label: "Cache write",
+      tokens: formatTokens(t.cacheWrite),
+      usd: money(p?.cacheWrite),
+    },
+  ];
+}
+
+/** What the estimate means, then the split. */
+export const COST_NOTE =
+  "API-equivalent estimate: what these tokens would cost at API list prices, not your subscription bill.";
+
+/** Tooltip text: the note and one line per kind. */
+export function usageTooltip(t: TokenTotals): string {
+  const lines = costRows(t).map((row) =>
+    [`${row.label} ${row.tokens}`, row.usd].filter(Boolean).join(" · "),
+  );
+  return [COST_NOTE, ...lines].join("\n");
 }
 
 /** "1.3M tok · ≈$3.40" for a session row; null without usage. */
 export function usageLabel(raw: unknown): string | null {
   const totals = parseTokenUsage(raw);
   if (!totals) return null;
-  const cost = formatCost(totals.costUsd);
+  const cost = apiCost(totals.costUsd);
   return [`${formatTokens(totals.total)} tok`, cost]
     .filter(Boolean)
     .join(" · ");

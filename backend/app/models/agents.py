@@ -138,6 +138,11 @@ class TokenUsage(BaseModel):
     cache_write_tokens: int = 0
     model: str | None = None
     cost_usd: float | None = None
+    # The same estimate split by token kind (all None when cost_usd is None).
+    cost_input_usd: float | None = None
+    cost_output_usd: float | None = None
+    cost_cache_read_usd: float | None = None
+    cost_cache_write_usd: float | None = None
 
 
 class OfficeState(BaseModel):

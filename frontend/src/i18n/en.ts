@@ -265,6 +265,8 @@ const en = {
   "eventLog.kindPermissions": "Permissions",
   "eventLog.noMatches": "No events match",
   "eventLog.clearFilters": "Clear filters",
+  "hud.costTitle": "Tokens · API-equivalent cost",
+  "hud.costTotal": "Total",
   "hud.tokens": "Tokens",
   "sessions.older": "older sessions",
   "sessions.older_one": "{count} older session",

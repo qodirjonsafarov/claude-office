@@ -86,8 +86,21 @@ def _price_for_model(model: str) -> ModelPrice | None:
     return MODEL_PRICES_USD_PER_MTOK.get(base)
 
 
-def estimate_cost_usd(requests: Iterable[tuple[str, ModelTokens]]) -> float | None:
-    """Estimate the API-equivalent cost in USD of a list of requests.
+class CostParts(NamedTuple):
+    """API-equivalent cost in USD, split by token kind."""
+
+    input: float
+    output: float
+    cache_read: float
+    cache_write: float
+
+    @property
+    def total(self) -> float:
+        return self.input + self.output + self.cache_read + self.cache_write
+
+
+def estimate_cost_parts(requests: Iterable[tuple[str, ModelTokens]]) -> CostParts | None:
+    """Estimate the API-equivalent cost of a list of requests, per token kind.
 
     This is what the tokens would cost at API list prices, not what a
     subscription user pays. Each item is one request (model, tokens), so a
@@ -95,7 +108,7 @@ def estimate_cost_usd(requests: Iterable[tuple[str, ModelTokens]]) -> float | No
     Returns ``None`` when any model has no known price, so a partial sum is
     never shown as the full cost.
     """
-    total = 0.0
+    cost_in = cost_out = cost_read = cost_write = 0.0
     for model, tokens in requests:
         if not any(tokens):
             continue  # e.g. "<synthetic>" messages with empty usage
@@ -110,14 +123,20 @@ def estimate_cost_usd(requests: Iterable[tuple[str, ModelTokens]]) -> float | No
             price_in, price_out, price_read = price.long_input, price.long_output, None
         if price_read is None:
             price_read = price_in * _CACHE_READ_FACTOR
-        total += (
-            inp * price_in
-            + out * price_out
-            + cache_read * price_read
-            + cache_write_5m * price_in * _CACHE_WRITE_5M_FACTOR
+        cost_in += inp * price_in / 1_000_000
+        cost_out += out * price_out / 1_000_000
+        cost_read += cache_read * price_read / 1_000_000
+        cost_write += (
+            cache_write_5m * price_in * _CACHE_WRITE_5M_FACTOR
             + cache_write_1h * price_in * _CACHE_WRITE_1H_FACTOR
         ) / 1_000_000
-    return total
+    return CostParts(cost_in, cost_out, cost_read, cost_write)
+
+
+def estimate_cost_usd(requests: Iterable[tuple[str, ModelTokens]]) -> float | None:
+    """Total of :func:`estimate_cost_parts` (``None`` without a known price)."""
+    parts = estimate_cost_parts(requests)
+    return None if parts is None else parts.total
 
 
 def _as_int(value: Any) -> int:
@@ -268,13 +287,18 @@ class TranscriptUsage:
         if not self.messages:
             return None
         requests = self.requests()
+        parts = estimate_cost_parts(requests)
         return TokenUsage(
             input_tokens=sum(t[0] for _, t in requests),
             output_tokens=sum(t[1] for _, t in requests),
             cache_read_tokens=sum(t[2] for _, t in requests),
             cache_write_tokens=sum(t[3] + t[4] for _, t in requests),
             model=self.model,
-            cost_usd=estimate_cost_usd(requests),
+            cost_usd=None if parts is None else parts.total,
+            cost_input_usd=None if parts is None else parts.input,
+            cost_output_usd=None if parts is None else parts.output,
+            cost_cache_read_usd=None if parts is None else parts.cache_read,
+            cost_cache_write_usd=None if parts is None else parts.cache_write,
         )
 
 

@@ -278,6 +278,10 @@ export type Cachereadtokens = number;
 export type Cachewritetokens = number;
 export type Model = string | null;
 export type Costusd = number | null;
+export type Costinputusd = number | null;
+export type Costoutputusd = number | null;
+export type Costcachereadusd = number | null;
+export type Costcachewriteusd = number | null;
 export type Toolusessincecompaction = number;
 export type Printreport = boolean;
 export type Lastupdated = string;
@@ -897,6 +901,10 @@ export interface TokenUsage {
   cacheWriteTokens?: Cachewritetokens;
   model?: Model;
   costUsd?: Costusd;
+  costInputUsd?: Costinputusd;
+  costOutputUsd?: Costoutputusd;
+  costCacheReadUsd?: Costcachereadusd;
+  costCacheWriteUsd?: Costcachewriteusd;
   [k: string]: unknown;
 }
 /**

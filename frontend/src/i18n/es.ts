@@ -268,6 +268,8 @@ const es: Record<TranslationKey, string> = {
   "eventLog.kindPermissions": "Permisos",
   "eventLog.noMatches": "Ningún evento coincide",
   "eventLog.clearFilters": "Quitar filtros",
+  "hud.costTitle": "Tokens · costo equivalente en API",
+  "hud.costTotal": "Total",
   "hud.tokens": "Tokens",
   "sessions.older": "sesiones anteriores",
   "sessions.older_one": "{count} sesión anterior",

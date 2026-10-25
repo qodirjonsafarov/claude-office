@@ -268,6 +268,8 @@ const ptBR: Record<TranslationKey, string> = {
   "eventLog.kindPermissions": "Permissões",
   "eventLog.noMatches": "Nenhum evento corresponde",
   "eventLog.clearFilters": "Limpar filtros",
+  "hud.costTitle": "Tokens · custo equivalente na API",
+  "hud.costTotal": "Total",
   "hud.tokens": "Tokens",
   "sessions.older": "sessões anteriores",
   "sessions.older_one": "{count} sessão anterior",

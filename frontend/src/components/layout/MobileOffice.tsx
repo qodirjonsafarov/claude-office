@@ -204,7 +204,7 @@ export function MobileOffice({
         <div className="flex-1 min-h-0 flex flex-col gap-3 py-3 qo-safe-x [--qo-gutter:12px]">
           {stage}
           <div className="-mx-3 px-3 overflow-x-auto flex-shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <HudStats />
+            <HudStats compact />
           </div>
           <MobileAgentActivity className="flex-1" />
         </div>

@@ -55,26 +55,7 @@ const SINGLE_TOUR_STEPS: TourStep[] = [
     pointerLabel: null,
     wideSpotlight: true,
   },
-  {
-    id: "single-simulate",
-    type: "interactive",
-    targetTourId: "simulate-btn",
-    titleKey: "tour.steps.simulate.title",
-    descriptionKey: "tour.steps.simulate.description",
-    advanceOn: { kind: "click", targetTourId: "simulate-btn" },
-    pointerLabel: "click here",
-    wideSpotlight: false,
-  },
-  {
-    id: "single-agents-arrive",
-    type: "narrated",
-    targetTourId: null,
-    titleKey: "tour.steps.agentsArrive.title",
-    descriptionKey: "tour.steps.agentsArrive.description",
-    advanceOn: { kind: "simulation-event", event: "agent-idle" },
-    pointerLabel: null,
-    wideSpotlight: true,
-  },
+
   {
     id: "single-inspect-agent",
     type: "interactive",

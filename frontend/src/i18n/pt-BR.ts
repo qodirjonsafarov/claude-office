@@ -21,8 +21,6 @@ const ptBR: Record<TranslationKey, string> = {
   "header.status": "Status",
   "header.connected": "Conectado",
   "header.disconnected": "Desconectado",
-  "header.aiOn": "LIGADO",
-  "header.aiOff": "DESLIGADO",
   "header.agents": "agentes",
   "header.tour": "Tur",
   "header.more": "Mais",
@@ -205,12 +203,6 @@ const ptBR: Record<TranslationKey, string> = {
   "tour.steps.singleWelcome.title": "Bem-vindo ao Claude Office",
   "tour.steps.singleWelcome.description":
     "Este escritório em pixel art mostra suas sessões do Claude Code em tempo real. Vamos dar uma olhada rápida.",
-  "tour.steps.simulate.title": "Iniciar Simulação",
-  "tour.steps.simulate.description":
-    "Clique em Simular para dar vida ao escritório.",
-  "tour.steps.agentsArrive.title": "Agentes Chegam",
-  "tour.steps.agentsArrive.description":
-    "Agentes chegam pelo elevador, caminham até suas mesas e começam a trabalhar.",
   "tour.steps.inspectAgent.title": "Inspecione um Agente",
   "tour.steps.inspectAgent.description":
     "Clique em qualquer personagem para inspecioná-lo.",

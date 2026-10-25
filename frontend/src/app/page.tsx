@@ -23,7 +23,7 @@ import {
   selectDebugMode,
 } from "@/stores/gameStore";
 import { useTourStore } from "@/stores/tourStore";
-import { apiFetch, initApiKeyFromBrowser } from "@/utils/api";
+import { initApiKeyFromBrowser } from "@/utils/api";
 import { Map } from "lucide-react";
 import { SessionSidebar } from "@/components/layout/SessionSidebar";
 import { MobileOffice } from "@/components/layout/MobileOffice";
@@ -96,9 +96,6 @@ export default function V2TestPage(): React.ReactNode {
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const layoutMode = useLayoutMode();
   const isMobile = layoutMode !== "desktop";
-  const [aiSummaryEnabled, setAiSummaryEnabled] = useState<boolean | null>(
-    null,
-  );
 
   // Session pending delete drives the delete-confirmation modal
   const [sessionPendingDelete, setSessionPendingDelete] =
@@ -166,12 +163,6 @@ export default function V2TestPage(): React.ReactNode {
   // ------------------------------------------------------------------
   useEffect(() => {
     initApiKeyFromBrowser();
-    apiFetch("/api/v1/status")
-      .then((res) => res.json())
-      .then((data: { aiSummaryEnabled: boolean }) => {
-        setAiSummaryEnabled(data.aiSummaryEnabled);
-      })
-      .catch(() => setAiSummaryEnabled(false));
   }, []);
 
   useEffect(() => {
@@ -359,7 +350,6 @@ export default function V2TestPage(): React.ReactNode {
           scene={<OfficeGame />}
           isConnected={isConnected}
           debugMode={debugMode}
-          aiSummaryEnabled={aiSummaryEnabled}
           sessions={sessions}
           sessionsLoading={sessionsLoading}
           sessionId={sessionId}
@@ -391,7 +381,6 @@ export default function V2TestPage(): React.ReactNode {
           <HeaderControls
             isConnected={isConnected}
             debugMode={debugMode}
-            aiSummaryEnabled={aiSummaryEnabled}
             onSimulate={handleSimulate}
             onReset={handleReset}
             onClearDB={() => setIsClearModalOpen(true)}

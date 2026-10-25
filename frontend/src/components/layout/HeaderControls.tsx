@@ -12,7 +12,6 @@ import { HeaderMoreMenu } from "@/components/layout/HeaderMoreMenu";
 interface HeaderControlsProps {
   isConnected: boolean;
   debugMode: boolean;
-  aiSummaryEnabled: boolean | null;
   onSimulate: () => Promise<void>;
   onReset: () => void;
   onClearDB: () => void;
@@ -36,7 +35,6 @@ interface HeaderControlsProps {
 export function HeaderControls({
   isConnected,
   debugMode,
-  aiSummaryEnabled,
   onSimulate,
   onReset,
   onClearDB,
@@ -86,7 +84,7 @@ export function HeaderControls({
         onToggleDebug={onToggleDebug}
       />
 
-      {/* Connection and AI status */}
+      {/* Connection status */}
       <div
         className="qo-pill ml-1"
         title={`${t("header.status")}: ${
@@ -99,10 +97,6 @@ export function HeaderControls({
         />
         <span className={isConnected ? "text-ink" : "text-danger"}>
           {isConnected ? t("header.connected") : t("header.disconnected")}
-        </span>
-        <span aria-hidden="true" className="w-px h-4 bg-line-strong" />
-        <span className={aiSummaryEnabled ? "text-accent" : "text-ink-faint"}>
-          AI {aiSummaryEnabled ? t("header.aiOn") : t("header.aiOff")}
         </span>
       </div>
     </div>

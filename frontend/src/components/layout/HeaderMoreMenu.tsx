@@ -21,8 +21,8 @@ interface HeaderMoreMenuProps {
 // ============================================================================
 
 /**
- * Overflow "⋯" menu holding the rarely-used developer/maintenance actions
- * (Simulate, Reset, Clear DB, Debug) so they don't crowd the header.
+ * Overflow "⋯" menu: the debug toggle, and in debug mode the developer
+ * actions (Simulate, Reset, Clear DB), so they don't crowd the header.
  * Closes on outside click or Escape.
  */
 export function HeaderMoreMenu({
@@ -77,56 +77,63 @@ export function HeaderMoreMenu({
           className="qo-pop absolute right-0 top-full mt-2 z-50 min-w-[12rem] p-1.5 bg-panel border border-line-strong rounded-xl3 shadow-[0_8px_24px_var(--qo-float-shade)]"
         >
           <button
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              void onSimulate();
-            }}
-            className={`${itemClass} text-emerald-400 hover:bg-emerald-500/15`}
-          >
-            <Play size={14} fill="currentColor" />
-            {t("header.simulate")}
-          </button>
-
-          <button
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              onReset();
-            }}
-            className={`${itemClass} text-amber-400 hover:bg-amber-500/15`}
-          >
-            <RefreshCw size={14} />
-            {t("header.reset")}
-          </button>
-
-          <button
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              onClearDB();
-            }}
-            className={`${itemClass} text-rose-400 hover:bg-rose-500/15`}
-          >
-            <Trash2 size={14} />
-            {t("header.clearDb")}
-          </button>
-
-          <button
-            role="menuitem"
+            role="menuitemcheckbox"
             onClick={() => {
               setOpen(false);
               onToggleDebug();
             }}
+            aria-checked={debugMode}
             className={`${itemClass} ${
               debugMode
-                ? "text-green-400 hover:bg-green-500/15"
-                : "text-slate-400 hover:bg-slate-500/15"
+                ? "text-accent hover:bg-accent-dim"
+                : "text-ink-soft hover:bg-panel-2"
             }`}
           >
             <Bug size={14} />
             {debugMode ? t("header.debugOn") : t("header.debugOff")}
           </button>
+
+          {/* Developer actions: only in debug mode */}
+          {debugMode && (
+            <>
+              <div aria-hidden="true" className="h-px my-1 bg-line" />
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  void onSimulate();
+                }}
+                className={`${itemClass} text-accent hover:bg-accent-dim`}
+              >
+                <Play size={14} fill="currentColor" />
+                {t("header.simulate")}
+              </button>
+
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  onReset();
+                }}
+                className={`${itemClass} text-warn hover:bg-warn-dim`}
+              >
+                <RefreshCw size={14} />
+                {t("header.reset")}
+              </button>
+
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  onClearDB();
+                }}
+                className={`${itemClass} text-danger hover:bg-danger-dim`}
+              >
+                <Trash2 size={14} />
+                {t("header.clearDb")}
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

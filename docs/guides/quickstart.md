@@ -191,7 +191,7 @@ Now that the visualizer is running:
 
 | Task | Command/Action |
 |------|----------------|
-| Run simulation | Click the **Simulate** button in the frontend header |
+| Run simulation | Turn on debug mode (press `D` or More > Debug), then More > **Simulate** |
 | Enable debug mode | Press `D` in the browser |
 | View hook logs | `make hooks-logs` |
 | Stop services | `make dev-tmux-kill` |

@@ -33,7 +33,6 @@ interface MobileOfficeProps {
   scene: ReactNode;
   isConnected: boolean;
   debugMode: boolean;
-  aiSummaryEnabled: boolean | null;
   sessions: Session[];
   sessionsLoading: boolean;
   sessionId: string;
@@ -76,7 +75,6 @@ export function MobileOffice({
   scene,
   isConnected,
   debugMode,
-  aiSummaryEnabled,
   sessions,
   sessionsLoading,
   sessionId,
@@ -252,18 +250,7 @@ export function MobileOffice({
       {tab === "more" && (
         <MobileSheet title={t("mobile.actions")} onClose={close}>
           <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap gap-2">
-              {status}
-              <div className="qo-pill">
-                <span
-                  className={
-                    aiSummaryEnabled ? "text-accent" : "text-ink-faint"
-                  }
-                >
-                  AI {aiSummaryEnabled ? t("header.aiOn") : t("header.aiOff")}
-                </span>
-              </div>
-            </div>
+            <div className="flex flex-wrap gap-2">{status}</div>
 
             <div className="flex flex-col gap-1">
               <button
@@ -288,23 +275,7 @@ export function MobileOffice({
             <div className="flex flex-col gap-1">
               <button
                 type="button"
-                onClick={run(() => void onSimulate())}
-                className={`${actionClass} text-ink hover:bg-panel-2`}
-              >
-                <Play size={20} className="text-accent" />
-                {t("header.simulate")}
-              </button>
-              <button
-                type="button"
-                onClick={run(onReset)}
-                className={`${actionClass} text-ink hover:bg-panel-2`}
-              >
-                <RefreshCw size={20} className="text-warn" />
-                {t("header.reset")}
-              </button>
-              <button
-                type="button"
-                onClick={run(onToggleDebug)}
+                onClick={onToggleDebug}
                 aria-pressed={debugMode}
                 className={`${actionClass} hover:bg-panel-2 ${
                   debugMode ? "text-accent" : "text-ink"
@@ -313,14 +284,35 @@ export function MobileOffice({
                 <Bug size={20} className="text-ink-faint" />
                 {debugMode ? t("header.debugOn") : t("header.debugOff")}
               </button>
-              <button
-                type="button"
-                onClick={run(onClearDB)}
-                className={`${actionClass} text-danger bg-danger-dim mt-2`}
-              >
-                <Trash2 size={20} />
-                {t("header.clearDb")}
-              </button>
+              {/* Developer actions: only in debug mode */}
+              {debugMode && (
+                <>
+                  <button
+                    type="button"
+                    onClick={run(() => void onSimulate())}
+                    className={`${actionClass} text-ink hover:bg-panel-2`}
+                  >
+                    <Play size={20} className="text-accent" />
+                    {t("header.simulate")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={run(onReset)}
+                    className={`${actionClass} text-ink hover:bg-panel-2`}
+                  >
+                    <RefreshCw size={20} className="text-warn" />
+                    {t("header.reset")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={run(onClearDB)}
+                    className={`${actionClass} text-danger bg-danger-dim mt-2`}
+                  >
+                    <Trash2 size={20} />
+                    {t("header.clearDb")}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </MobileSheet>

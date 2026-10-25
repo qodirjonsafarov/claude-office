@@ -19,8 +19,6 @@ const en = {
   "header.status": "Status",
   "header.connected": "Connected",
   "header.disconnected": "Disconnected",
-  "header.aiOn": "ON",
-  "header.aiOff": "OFF",
   "header.agents": "agents",
   "header.tour": "Tour",
   "header.more": "More",
@@ -202,12 +200,6 @@ const en = {
   "tour.steps.singleWelcome.title": "Welcome to Claude Office",
   "tour.steps.singleWelcome.description":
     "This pixel art office shows your Claude Code sessions in real time. Let's take a quick look around.",
-  "tour.steps.simulate.title": "Start Simulation",
-  "tour.steps.simulate.description":
-    "Click Simulate to bring the office to life.",
-  "tour.steps.agentsArrive.title": "Agents Arrive",
-  "tour.steps.agentsArrive.description":
-    "Agents arrive through the elevator, walk to their desks, and start working.",
   "tour.steps.inspectAgent.title": "Inspect an Agent",
   "tour.steps.inspectAgent.description":
     "Click on any character to inspect them.",

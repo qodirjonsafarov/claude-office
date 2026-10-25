@@ -6,8 +6,10 @@ reason a session cannot take a prompt, and the append-only audit log.
 """
 
 import hashlib
+import hmac
 import ipaddress
 import json
+import re
 import time
 import unicodedata
 from collections import deque
@@ -19,12 +21,16 @@ from urllib.parse import urlparse
 
 MAX_PROMPT_CHARS = 8000
 
+# Slash commands the web may send: /cost alone, /compact with optional focus text.
+_SAFE_COMMAND = re.compile(r"/cost|/compact(?:\s.*)?", re.DOTALL)
+
 ChatBlockReason = Literal[
     "disabled",
     "no_key",
     "inactive",
     "no_tmux",
     "pane_reused",
+    "checking",
     "pane_gone",
     "not_claude",
     "permission_pending",
@@ -53,35 +59,47 @@ def sanitize_prompt(text: str) -> str:
     if cleaned.startswith("!"):
         # Claude Code runs "!..." as a shell command, without a permission prompt.
         raise PromptRejectedError("Messages starting with '!' (shell mode) are not allowed")
+    if cleaned.startswith("#"):
+        raise PromptRejectedError("Messages starting with '#' (memory) are not allowed")
+    if cleaned.startswith("/") and not _SAFE_COMMAND.fullmatch(cleaned):
+        # Slash commands can do anything; user commands may even run bash.
+        raise PromptRejectedError("Only /compact and /cost are allowed from the web")
     return cleaned
 
 
-# Loopback plus the Tailscale address ranges (CGNAT IPv4 and the ULA prefix).
-_ALLOWED_NETWORKS = (
-    ipaddress.ip_network("127.0.0.0/8"),
-    ipaddress.ip_network("::1/128"),
-    ipaddress.ip_network("100.64.0.0/10"),
-    ipaddress.ip_network("fd7a:115c:a1e0::/48"),
-)
+_LOOPBACK = (ipaddress.ip_network("127.0.0.0/8"), ipaddress.ip_network("::1/128"))
+# Tailscale address ranges (CGNAT IPv4 and the ULA prefix). Trusted only when
+# a tailnet host is configured (WEB_PROMPT_TAILNET_HOST).
+_TAILSCALE = (ipaddress.ip_network("100.64.0.0/10"), ipaddress.ip_network("fd7a:115c:a1e0::/48"))
 
 
-def is_allowed_client_ip(host: str | None) -> bool:
-    """True for loopback and Tailscale client addresses (IPv4-mapped too)."""
-    if not host:
-        return False
+def _ip(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
     try:
         addr = ipaddress.ip_address(host)
     except ValueError:
-        return False
+        return None
     if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped is not None:
-        addr = addr.ipv4_mapped
-    return any(addr in net for net in _ALLOWED_NETWORKS)
+        return addr.ipv4_mapped
+    return addr
 
 
-def is_allowed_origin(origin: str | None, configured: Iterable[str]) -> bool:
-    """True when a browser Origin is ours: configured CORS, loopback or Tailscale.
+def is_allowed_client_ip(host: str | None, *, tailnet: bool = False) -> bool:
+    """Loopback always; Tailscale addresses only with *tailnet* (IPv4-mapped too)."""
+    addr = _ip(host) if host else None
+    if addr is None:
+        return False
+    nets = _LOOPBACK + _TAILSCALE if tailnet else _LOOPBACK
+    return any(addr in net for net in nets)
 
-    A missing Origin (non-browser client) passes; the API key gates those.
+
+def is_allowed_origin(
+    origin: str | None, configured: Iterable[str], tailnet_host: str = ""
+) -> bool:
+    """True when a browser Origin is ours.
+
+    Configured CORS origins and loopback hosts pass; with *tailnet_host* set,
+    that exact MagicDNS name and Tailscale IPs pass too. A missing Origin
+    (non-browser client) passes; the API key gates those.
     """
     if origin is None:
         return True
@@ -95,9 +113,11 @@ def is_allowed_origin(origin: str | None, configured: Iterable[str]) -> bool:
         return False
     if parsed.scheme not in ("http", "https") or not host:
         return False
-    if host == "localhost" or host.endswith(".ts.net"):
+    if host == "localhost":
         return True
-    return is_allowed_client_ip(host)
+    if tailnet_host and host == tailnet_host.lower().rstrip("."):
+        return True
+    return is_allowed_client_ip(host, tailnet=bool(tailnet_host))
 
 
 class PromptRateLimiter:
@@ -164,6 +184,8 @@ def chat_block_reason(
         return "no_tmux"
     if pane_taken:
         return "pane_reused"
+    if pane_state is None:
+        return "checking"  # the background pane check has not run yet
     if pane_state == "gone":
         return "pane_gone"
     if pane_state == "not_claude":
@@ -176,20 +198,27 @@ def chat_block_reason(
 def append_audit(
     path: Path,
     *,
+    key: str,
     client_ip: str | None,
+    origin: str | None,
     session_id: str,
     pane: str | None,
     text: str,
     outcome: str,
 ) -> None:
-    """Append one JSON line per attempt. Stores a hash of the text, never the text."""
+    """Append one JSON line per attempt.
+
+    The text is never stored: only its length and an HMAC-SHA256 keyed by
+    the API key (a plain hash of a short text could be brute-forced).
+    """
     record = {
         "time": datetime.now(UTC).isoformat(),
         "client_ip": client_ip,
+        "origin": origin,
         "session_id": session_id,
         "pane": pane,
         "length": len(text),
-        "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        "hmac": hmac.new(key.encode("utf-8"), text.encode("utf-8"), hashlib.sha256).hexdigest(),
         "outcome": outcome,
     }
     path.parent.mkdir(parents=True, exist_ok=True)

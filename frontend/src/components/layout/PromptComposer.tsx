@@ -27,7 +27,7 @@ const PREVIEW_CHARS = 280;
 
 /** Why the session cannot take a message (backend ChatStatus.reason). */
 const HINTS: Record<string, string> = {
-  disabled: "Chat is off (ENABLE_WEB_PROMPT)",
+  disabled: "Chat is off — enable it in the office settings (backend .env)",
   no_key: "Chat needs an explicit CLAUDE_OFFICE_API_KEY on the backend",
   no_tmux:
     "Not in tmux — start Claude inside tmux (Termius does this) to chat from here",
@@ -35,11 +35,23 @@ const HINTS: Record<string, string> = {
   pane_gone: "The tmux pane of this session is gone",
   not_claude: "The tmux pane is not running Claude",
   pane_reused: "Another Claude session now runs in this tmux pane",
+  checking: "Checking the terminal…",
+  terminal_busy: "Claude is busy with a dialog — answer it in the terminal",
 };
 
-function Hint({ text }: { text: string }) {
+/** Exact settings behind a hint, shown as a tooltip (the docs have the rest). */
+const HINT_DETAILS: Record<string, string> = {
+  disabled:
+    "Set ENABLE_WEB_PROMPT=true in backend/.env and restart the backend (docs/guides/deployment.md, Web chat)",
+  no_key: "Set CLAUDE_OFFICE_API_KEY in backend/.env",
+};
+
+function Hint({ text, detail }: { text: string; detail?: string }) {
   return (
-    <div className="flex-shrink-0 border-t border-slate-800 px-3 py-2.5 flex items-start gap-2 text-ink-faint text-[11.5px] leading-snug">
+    <div
+      title={detail}
+      className="flex-shrink-0 border-t border-slate-800 px-3 py-2.5 flex items-start gap-2 text-ink-faint text-[11.5px] leading-snug"
+    >
       <TerminalSquare size={14} className="flex-shrink-0 mt-px" aria-hidden />
       <span>{text}</span>
     </div>
@@ -82,6 +94,7 @@ function Composer({ sessionId }: { sessionId: string }) {
         text={
           HINTS[status.reason ?? ""] ?? "Chat is unavailable for this session"
         }
+        detail={HINT_DETAILS[status.reason ?? ""]}
       />
     );
   }
@@ -161,6 +174,8 @@ function Composer({ sessionId }: { sessionId: string }) {
           </p>
           <p className="m-0 text-[11px] text-ink-faint">
             It is typed into Claude&apos;s tmux pane as if you typed it there.
+            With bypassPermissions or auto mode on, a message can run commands
+            on this machine.
           </p>
           <div className="flex justify-end gap-2">
             <button

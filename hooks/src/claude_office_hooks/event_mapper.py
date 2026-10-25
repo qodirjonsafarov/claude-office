@@ -406,6 +406,11 @@ def map_event(
     tmux_pane = os.environ.get("TMUX_PANE")
     if tmux_pane:
         data["tmux_pane"] = tmux_pane
+        # $TMUX is "<socket>,<pid>,<session>": the socket pins the pane id to
+        # this tmux server.
+        tmux_socket = os.environ.get("TMUX", "").split(",", 1)[0]
+        if tmux_socket.startswith("/"):
+            data["tmux_socket"] = tmux_socket
 
     payload: dict[str, Any] = {
         "event_type": event_type,

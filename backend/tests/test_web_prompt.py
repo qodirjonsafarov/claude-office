@@ -1,6 +1,7 @@
 """Web prompt rules: text sanitising, client/Origin allowlists, rate limit, block reasons."""
 
 import hashlib
+import hmac
 import json
 from pathlib import Path
 
@@ -71,6 +72,32 @@ class TestSanitizePrompt:
     def test_exclamation_inside_text_is_fine(self) -> None:
         assert sanitize_prompt("ship it!") == "ship it!"
 
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "/exit",
+            "  /deploy prod",
+            "/model",
+            "/cost now",
+            "/compactx",
+            "#remember this",
+            " # note",
+        ],
+    )
+    def test_slash_commands_and_memory_prefix_are_rejected(self, text: str) -> None:
+        # "/..." runs slash commands (user commands may run bash), "#" writes memory.
+        with pytest.raises(PromptRejectedError):
+            sanitize_prompt(text)
+
+    @pytest.mark.parametrize(
+        "text", ["/compact", "/compact keep the API notes", "/cost", "  /cost  "]
+    )
+    def test_safe_commands_are_allowed(self, text: str) -> None:
+        assert sanitize_prompt(text) == text.strip()
+
+    def test_slash_and_hash_inside_text_are_fine(self) -> None:
+        assert sanitize_prompt("check src/app and issue #12") == "check src/app and issue #12"
+
 
 # ---------------------------------------------------------------------------
 # Client IP allowlist
@@ -78,22 +105,22 @@ class TestSanitizePrompt:
 
 
 class TestClientIp:
-    @pytest.mark.parametrize(
-        "host",
-        [
-            "127.0.0.1",
-            "127.0.0.2",
-            "::1",
-            "100.64.0.1",
-            "100.66.186.99",
-            "100.127.255.254",
-            "fd7a:115c:a1e0::8501:baee",
-            "::ffff:127.0.0.1",
-            "::ffff:100.66.186.99",
-        ],
-    )
-    def test_loopback_and_tailscale_are_allowed(self, host: str) -> None:
+    @pytest.mark.parametrize("host", ["127.0.0.1", "127.0.0.2", "::1", "::ffff:127.0.0.1"])
+    def test_loopback_is_always_allowed(self, host: str) -> None:
         assert is_allowed_client_ip(host) is True
+
+    _TAILSCALE = [
+        "100.64.0.1",
+        "100.66.186.99",
+        "100.127.255.254",
+        "fd7a:115c:a1e0::8501:baee",
+        "::ffff:100.66.186.99",
+    ]
+
+    @pytest.mark.parametrize("host", _TAILSCALE)
+    def test_tailscale_only_with_a_tailnet_host(self, host: str) -> None:
+        assert is_allowed_client_ip(host) is False
+        assert is_allowed_client_ip(host, tailnet=True) is True
 
     @pytest.mark.parametrize(
         "host",
@@ -112,7 +139,7 @@ class TestClientIp:
         ],
     )
     def test_everything_else_is_rejected(self, host: str | None) -> None:
-        assert is_allowed_client_ip(host) is False
+        assert is_allowed_client_ip(host, tailnet=True) is False
 
 
 # ---------------------------------------------------------------------------
@@ -120,6 +147,7 @@ class TestClientIp:
 # ---------------------------------------------------------------------------
 
 _CORS = ["http://localhost:3000", "http://127.0.0.1:3000"]
+_TAILNET = "safarovs-machine.taile6887e.ts.net"
 
 
 class TestOrigin:
@@ -131,18 +159,23 @@ class TestOrigin:
         assert is_allowed_origin("http://localhost:3000", _CORS) is True
 
     @pytest.mark.parametrize(
+        "origin", ["http://localhost:3100", "http://127.0.0.1:3000", "http://[::1]:3000"]
+    )
+    def test_loopback_origins_are_allowed(self, origin: str) -> None:
+        assert is_allowed_origin(origin, _CORS) is True
+
+    @pytest.mark.parametrize(
         "origin",
         [
-            "http://localhost:3100",
-            "http://127.0.0.1:3000",
-            "http://[::1]:3000",
+            f"https://{_TAILNET}",
+            f"http://{_TAILNET}:3000",
             "http://100.66.186.99:3000",
-            "https://desktop.tail1234.ts.net",
             "http://[fd7a:115c:a1e0::8501:baee]:3000",
         ],
     )
-    def test_loopback_and_tailscale_origins_are_allowed(self, origin: str) -> None:
-        assert is_allowed_origin(origin, _CORS) is True
+    def test_tailnet_origins_need_the_configured_host(self, origin: str) -> None:
+        assert is_allowed_origin(origin, _CORS) is False
+        assert is_allowed_origin(origin, _CORS, tailnet_host=_TAILNET) is True
 
     @pytest.mark.parametrize(
         "origin",
@@ -151,12 +184,14 @@ class TestOrigin:
             "http://192.168.1.10:3000",
             "null",
             "http://localhost.evil.example",
-            "https://ts.net.evil.example",
+            "https://other-machine.taile6887e.ts.net",
+            "https://desktop.tail1234.ts.net",
+            f"https://{_TAILNET}.evil.example",
             "not a url",
         ],
     )
     def test_foreign_origins_are_rejected(self, origin: str) -> None:
-        assert is_allowed_origin(origin, _CORS) is False
+        assert is_allowed_origin(origin, _CORS, tailnet_host=_TAILNET) is False
 
 
 # ---------------------------------------------------------------------------
@@ -244,6 +279,9 @@ class TestBlockReason:
     def test_pane_taken_by_newer_session(self) -> None:
         assert _reason(pane_taken=True) == "pane_reused"
 
+    def test_pane_not_checked_yet(self) -> None:
+        assert _reason(pane_state=None) == "checking"
+
     def test_pane_gone(self) -> None:
         assert _reason(pane_state="gone") == "pane_gone"
 
@@ -267,24 +305,55 @@ class TestAudit:
         log = tmp_path / "logs" / "web_prompts.jsonl"
         append_audit(
             log,
+            key="k1",
             client_ip="127.0.0.1",
+            origin="http://localhost:3000",
             session_id="s1",
             pane="%7",
             text="secret plan",
             outcome="sent",
         )
         append_audit(
-            log, client_ip="::1", session_id="s1", pane="%7", text="two", outcome="pane_gone"
+            log,
+            key="k1",
+            client_ip="::1",
+            origin=None,
+            session_id="s1",
+            pane=None,
+            text="two",
+            outcome="origin",
         )
 
         lines = log.read_text(encoding="utf-8").splitlines()
         assert len(lines) == 2
         first = json.loads(lines[0])
         assert first["client_ip"] == "127.0.0.1"
+        assert first["origin"] == "http://localhost:3000"
         assert first["session_id"] == "s1"
         assert first["pane"] == "%7"
         assert first["length"] == len("secret plan")
-        assert first["sha256"] == hashlib.sha256(b"secret plan").hexdigest()
         assert first["outcome"] == "sent"
         assert "time" in first
         assert "secret plan" not in log.read_text(encoding="utf-8")
+
+    def test_text_digest_is_keyed(self, tmp_path: Path) -> None:
+        # A plain sha256 of a short text can be brute-forced; an HMAC keyed by
+        # the API key cannot without the key.
+        log = tmp_path / "a.jsonl"
+        for key in ("k1", "k2"):
+            append_audit(
+                log,
+                key=key,
+                client_ip=None,
+                origin=None,
+                session_id="s",
+                pane=None,
+                text="yes",
+                outcome="sent",
+            )
+        first, second = (json.loads(x) for x in log.read_text().splitlines())
+        expected = hmac.new(b"k1", b"yes", hashlib.sha256).hexdigest()
+        assert first["hmac"] == expected
+        assert first["hmac"] != second["hmac"]
+        assert "sha256" not in first
+        assert hashlib.sha256(b"yes").hexdigest() not in log.read_text()

@@ -264,3 +264,17 @@ class TestTmuxPane:
         result = map_event("session_start", self._raw(), SESSION_ID)
         assert result is not None
         assert "tmux_pane" not in result["data"]
+
+    def test_socket_from_tmux_env_is_sent(self, monkeypatch) -> None:
+        monkeypatch.setenv("TMUX_PANE", "%7")
+        monkeypatch.setenv("TMUX", "/tmp/tmux-1000/default,212036,0")
+        result = map_event("stop", self._raw(), SESSION_ID)
+        assert result is not None
+        assert result["data"]["tmux_socket"] == "/tmp/tmux-1000/default"
+
+    def test_no_socket_without_tmux_env(self, monkeypatch) -> None:
+        monkeypatch.setenv("TMUX_PANE", "%7")
+        monkeypatch.delenv("TMUX", raising=False)
+        result = map_event("stop", self._raw(), SESSION_ID)
+        assert result is not None
+        assert "tmux_socket" not in result["data"]

@@ -35,6 +35,8 @@ class SessionRecord(Base):
     is_lead: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     # Latest tmux pane the session reported (TMUX_PANE), e.g. "%7".
     tmux_pane: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Socket of that pane's tmux server (None: the default server).
+    tmux_socket: Mapped[str | None] = mapped_column(String, nullable=True)
 
     events: Mapped[list[EventRecord]] = relationship(
         "EventRecord", back_populates="session", cascade="all, delete-orphan"

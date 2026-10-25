@@ -754,6 +754,7 @@ class StateMachine:
     # Web chat: the tmux pane the session runs in, its project name (shown in
     # the confirm step) and whether the session has ended.
     tmux_pane: str | None = None
+    tmux_socket: str | None = None
     project_name: str | None = None
     session_ended: bool = False
 
@@ -947,6 +948,7 @@ class StateMachine:
 
         if event.data.tmux_pane:
             self.tmux_pane = event.data.tmux_pane
+            self.tmux_socket = event.data.tmux_socket
         if event.data.project_name:
             self.project_name = event.data.project_name
         if event.event_type == EventType.SESSION_START:

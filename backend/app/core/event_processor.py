@@ -1089,6 +1089,7 @@ class EventProcessor:
             # The latest tmux pane wins (a resumed session may move panes).
             if event.data.tmux_pane:
                 session_rec.tmux_pane = event.data.tmux_pane
+                session_rec.tmux_socket = event.data.tmux_socket
 
             # Sync team fields to DB record.
             if team_name and not session_rec.team_name:

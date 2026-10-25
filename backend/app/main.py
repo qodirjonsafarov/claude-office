@@ -18,6 +18,7 @@ from sqlalchemy import delete, select, update
 from app.api.middleware import ApiKeyMiddleware, LocalhostOnlyMiddleware
 from app.api.routes import events, floors, preferences, prompt, sessions, websockets
 from app.config import get_settings
+from app.core.chat_status import chat_status_loop
 from app.core.event_processor import EventProcessor, get_event_processor
 from app.core.summary_service import get_summary_service
 from app.db.database import Base, get_engine
@@ -88,8 +89,15 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
         )
     )
 
+    # Web chat: keep pane checks fresh off the broadcast path (see chat_status).
+    chat_watcher = asyncio.create_task(chat_status_loop()) if settings.ENABLE_WEB_PROMPT else None
+
     yield
 
+    if chat_watcher is not None:
+        chat_watcher.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await chat_watcher
     # Cancel any pending debounced overview broadcast so shutdown is clean.
     await get_event_processor().shutdown()
     idle_evictor.cancel()

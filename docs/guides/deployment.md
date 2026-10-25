@@ -11,6 +11,7 @@ Guide for deploying Claude Office Visualizer using Docker containers.
 - [Architecture](#architecture)
 - [Building](#building)
 - [Running](#running)
+- [Web chat](#web-chat)
 - [Troubleshooting](#troubleshooting)
 - [Related Documentation](#related-documentation)
 
@@ -122,6 +123,9 @@ For production or shared-host deployments, set an explicit `CLAUDE_OFFICE_API_KE
 | `SERVE_STATIC` | No | `1` (in `docker-compose.yml`) | Set to `1`/`true`/`yes` to serve the built frontend from `backend/static/`. The compose file sets this; a raw `docker run` must set it explicitly or the root URL serves no frontend. |
 | `LOCALHOST_ONLY` | No | `1` (code default; compose sets `0`) | Set to `0` to skip the in-app client-IP check. Required in Docker, where every request arrives from the bridge gateway; the host port binding (`127.0.0.1:8050`) is the loopback boundary there. Note: other containers on the same Docker network can then reach the API unauthenticated — keep the compose network private. |
 | `CLAUDE_OFFICE_API_KEY` | No | (auto-generated per launch) | Explicit API key; when set, all state-changing endpoints require the `X-API-Key` header |
+| `ENABLE_WEB_PROMPT` | No | `false` | Web chat: type into the Claude Code terminal from the office UI. Needs an explicit `CLAUDE_OFFICE_API_KEY`. See [Web chat](#web-chat) |
+| `WEB_PROMPT_TAILNET_HOST` | No | - | MagicDNS name of this machine (e.g. `my-machine.tailXXXX.ts.net`). Only when set are that Origin and Tailscale client IPs accepted for web chat |
+| `WEB_PROMPT_AUDIT_LOG` | No | `backend/logs/web_prompts.jsonl` | Append-only audit of web chat attempts (length and an HMAC of the text, never the text) |
 
 > **Note:** Additional backend settings like `SUMMARY_MODEL`, `SUMMARY_MAX_TOKENS`, and `GIT_POLL_INTERVAL` can be configured in the backend's `config.py` defaults or by extending the docker-compose environment section. See `backend/app/config.py` for all available settings.
 
@@ -368,6 +372,50 @@ docker compose up -d
 | WebSocket connection fails | Check CORS settings and container networking |
 | AI summaries not working | Verify `CLAUDE_CODE_OAUTH_TOKEN` is set |
 | Slow startup | First build downloads dependencies; subsequent starts are faster |
+
+## Web chat
+
+The Conversation tab can send a message into the running Claude Code
+session: the backend pastes it into the session's tmux pane and presses
+Enter. The reply arrives through the normal hooks.
+
+Turn it on in `backend/.env` and restart the backend:
+
+```bash
+CLAUDE_OFFICE_API_KEY=<a long random key>
+ENABLE_WEB_PROMPT=true
+```
+
+Claude must run inside tmux (Termius sessions do), and the hooks must be
+installed from a version that sends `tmux_pane` / `tmux_socket`.
+
+> **Warning:** the text is typed into Claude as if you typed it. With
+> `bypassPermissions` (or a permissive auto mode) any message effectively runs
+> commands on this machine. Whoever holds the API key can do the same.
+
+What the backend refuses (409/422): ended sessions, panes that do not run
+Claude, a pending permission request, and any screen that is not an empty
+normal prompt (pickers, dialogs, surveys, a typed draft, shell mode). Text
+starting with `!`, `#` or `/` is refused, except `/compact [focus]` and
+`/cost`. Limits: 8000 characters, 5 messages per minute per session, 20 overall.
+
+### Reaching it from a phone
+
+Today the whole API is loopback-only: `LOCALHOST_ONLY` rejects other client
+IPs, CORS allows only `localhost` origins, and the WebSocket origin check is
+loopback-only. So a phone reaches the office through a port forward that
+ends on this machine (for example Termius forwarding `localhost:3000` and
+`localhost:8000` over SSH): to the backend that is a 127.0.0.1 client with a
+`localhost` Origin, and it works as is.
+
+Direct Tailscale access (`http://100.x.y.z:3000`) would also need the global
+middleware, CORS and WebSocket origin to accept the tailnet; this is not
+done. `WEB_PROMPT_TAILNET_HOST` only widens the web chat route itself.
+
+Putting the office behind `tailscale serve` makes every request arrive from
+127.0.0.1, so the client-IP checks no longer tell the phone from local
+processes: the API key and the Origin check (set `WEB_PROMPT_TAILNET_HOST`
+to the served name) are then the only gates.
 
 ## Related Documentation
 

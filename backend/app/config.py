@@ -122,7 +122,15 @@ class Settings(BaseSettings):
     # Chat from the office UI: POST /sessions/{id}/prompt pastes the text into
     # the session's tmux pane. Off by default; works only with an explicit
     # CLAUDE_OFFICE_API_KEY (never with the auto token).
+    # WARNING: the text is typed into Claude as if you typed it. With
+    # bypassPermissions (or a permissive auto mode) any message effectively
+    # runs commands on this machine, so whoever holds the key can too.
     ENABLE_WEB_PROMPT: bool = False
+    # MagicDNS name of this machine on the tailnet (e.g.
+    # "my-machine.tailXXXX.ts.net"). Only when set are that Origin and
+    # Tailscale client addresses (100.64.0.0/10, fd7a:115c:a1e0::/48) accepted
+    # for web prompts. See docs/guides/deployment.md, "Web chat".
+    WEB_PROMPT_TAILNET_HOST: str = ""
     # Append-only JSONL audit of web prompts (hash and length, never the text).
     WEB_PROMPT_AUDIT_LOG: str = str(_BACKEND_DIR / "logs" / "web_prompts.jsonl")
 

@@ -101,10 +101,29 @@ describe("PromptComposer", () => {
     expect(textarea()).toBeNull();
   });
 
-  it("explains that chat is off", () => {
+  it("explains that chat is off in plain words, flag in the tooltip", () => {
     render({ canSend: false, reason: "disabled" });
-    expect(host.textContent).toContain("Chat is off (ENABLE_WEB_PROMPT)");
+    expect(host.textContent).toContain(
+      "Chat is off — enable it in the office settings (backend .env)",
+    );
+    expect(host.textContent).not.toContain("ENABLE_WEB_PROMPT");
+    expect(host.querySelector("[title]")?.getAttribute("title")).toContain(
+      "ENABLE_WEB_PROMPT=true",
+    );
     expect(textarea()).toBeNull();
+  });
+
+  it("says it is still checking the terminal", () => {
+    render({ canSend: false, reason: "checking" });
+    expect(host.textContent).toContain("Checking the terminal");
+    expect(textarea()).toBeNull();
+  });
+
+  it("explains a dialog in the terminal", () => {
+    render({ canSend: false, reason: "terminal_busy" });
+    expect(host.textContent).toContain(
+      "Claude is busy with a dialog — answer it in the terminal",
+    );
   });
 
   it("explains how to chat when Claude is not in tmux", () => {
@@ -141,6 +160,8 @@ describe("PromptComposer", () => {
     expect(dialog!.textContent).toContain("claude-office");
     expect(dialog!.textContent).toContain(SESSION.slice(0, 8));
     expect(dialog!.textContent).toContain("deploy the fix");
+    // Typing into Claude can run commands (bypassPermissions / auto mode).
+    expect(dialog!.textContent).toContain("bypassPermissions");
 
     await click("Send to terminal");
     expect(sendPrompt).toHaveBeenCalledWith(SESSION, "deploy the fix");

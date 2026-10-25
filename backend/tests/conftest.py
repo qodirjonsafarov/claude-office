@@ -6,6 +6,14 @@ import os
 # when CLAUDE_CODE_OAUTH_TOKEN is present in .env but expired.
 os.environ["SUMMARY_ENABLED"] = "False"
 
+# A known security state, whatever backend/.env says (env vars beat .env in
+# pydantic-settings): no explicit API key, web chat off, loopback-only.
+# Tests that need a key or the chat set it themselves (monkeypatch).
+os.environ["CLAUDE_OFFICE_API_KEY"] = ""
+os.environ["ENABLE_WEB_PROMPT"] = "false"
+os.environ["WEB_PROMPT_TAILNET_HOST"] = ""
+os.environ["LOCALHOST_ONLY"] = "true"
+
 import asyncio
 import tempfile
 from collections.abc import AsyncIterator, Iterator

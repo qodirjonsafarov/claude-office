@@ -1,8 +1,7 @@
 "use client";
 
-import { HelpCircle, Settings, Bell, LayoutGrid } from "lucide-react";
+import { HelpCircle, Settings, Bell } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useNavigationStore } from "@/stores/navigationStore";
 import { useAttentionStore, selectUnreadCount } from "@/stores/attentionStore";
 import { HeaderMoreMenu } from "@/components/layout/HeaderMoreMenu";
 
@@ -14,8 +13,6 @@ interface HeaderControlsProps {
   isConnected: boolean;
   debugMode: boolean;
   aiSummaryEnabled: boolean | null;
-  /** Number of active sessions — gates the Command Center button (>= 2). */
-  activeSessionCount: number;
   onSimulate: () => Promise<void>;
   onReset: () => void;
   onClearDB: () => void;
@@ -29,8 +26,8 @@ interface HeaderControlsProps {
 // ============================================================================
 
 /**
- * Desktop-only header controls. Frequently-used entry points (Command Center,
- * Settings, Help, attention queue) stay visible; the rarely-used
+ * Desktop-only header controls. Frequently-used entry points (Settings,
+ * Help, attention queue) stay visible; the rarely-used
  * developer/maintenance actions live in the "⋯" overflow menu, and the tour
  * moved into the Help modal — keeping the header readable.
  *
@@ -40,7 +37,6 @@ export function HeaderControls({
   isConnected,
   debugMode,
   aiSummaryEnabled,
-  activeSessionCount,
   onSimulate,
   onReset,
   onClearDB,
@@ -49,8 +45,6 @@ export function HeaderControls({
   onOpenHelp,
 }: HeaderControlsProps): React.ReactNode {
   const { t } = useTranslation();
-  const view = useNavigationStore((s) => s.view);
-  const goToCommand = useNavigationStore((s) => s.goToCommand);
   const unreadCount = useAttentionStore(selectUnreadCount);
   const openCommandBar = useAttentionStore((s) => s.openCommandBar);
 
@@ -66,19 +60,6 @@ export function HeaderControls({
           <span className="absolute -top-1.5 -right-1.5 bg-orange-400 text-on-accent text-[9px] font-extrabold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
-        </button>
-      )}
-
-      {/* Command Center — cross-terminal overview (>= 2 active sessions) */}
-      {activeSessionCount >= 2 && (
-        <button
-          onClick={goToCommand}
-          title={t("commandCenter.title")}
-          aria-pressed={view === "command"}
-          className="qo-btn qo-btn-secondary"
-        >
-          <LayoutGrid size={15} />
-          {t("header.commandCenter")}
         </button>
       )}
 

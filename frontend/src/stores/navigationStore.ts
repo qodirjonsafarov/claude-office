@@ -1,63 +1,35 @@
 "use client";
 
 import { create } from "zustand";
-import type {
-  ViewMode,
-  BuildingConfig,
-  FloorConfig,
-  TransitionDirection,
-} from "@/types/navigation";
+import type { ViewMode, BuildingConfig, FloorConfig } from "@/types/navigation";
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
+/**
+ * What is left of the upstream building/floor navigation: the app always
+ * shows the single office (one session at a time). The floor config is still
+ * loaded so the office can label its elevator if a floor is ever selected.
+ */
 interface NavigationState {
-  /** Current view mode */
+  /** Always the office. */
   view: ViewMode;
-  /** Selected floor ID (null when in building view or single mode) */
+  /** Selected floor ID (null: no floor; the office is not inside a building) */
   floorId: string | null;
   /** Building configuration loaded from backend */
   buildingConfig: BuildingConfig | null;
   /** Whether config is loading */
   isLoading: boolean;
-  /** Pixel coordinates of the click that triggered the transition */
-  transitionOrigin: { x: number; y: number } | null;
-  /** Direction of the current transition */
-  transitionDirection: TransitionDirection;
-  /** Whether a transition animation is in progress */
-  isTransitioning: boolean;
-  /** Whether an edit-building request is pending */
-  pendingEditBuilding: boolean;
 }
 
 interface NavigationActions {
-  /** Navigate to building view */
-  goToBuilding: () => void;
-  /** Navigate to a specific floor */
-  goToFloor: (floorId: string) => void;
-  /** Navigate to the Command Center (cross-terminal overview) */
-  goToCommand: () => void;
-  /** Navigate to the single office view (keeps building config for back-nav) */
-  goToSingle: () => void;
-  /** Set building config from API (auto-switches to building view if floors exist) */
+  /** Store the building config from the API. Never changes the view. */
   setBuildingConfig: (config: BuildingConfig) => void;
-  /** Update building config in-place without triggering a view change */
-  updateBuildingConfig: (config: BuildingConfig) => void;
   /** Set loading state */
   setLoading: (loading: boolean) => void;
-  /** Set transition origin for the next navigation */
-  setTransitionOrigin: (origin: { x: number; y: number } | null) => void;
-  /** Mark transition as complete */
-  completeTransition: () => void;
   /** Get the currently selected floor config */
   getCurrentFloor: () => FloorConfig | null;
-  /** Reset back to single view (no building config) */
-  resetToSingle: () => void;
-  /** Request the settings modal open on the building tab */
-  requestEditBuilding: () => void;
-  /** Consume the pending edit-building request (returns true if one was pending) */
-  consumeEditBuilding: () => boolean;
 }
 
 type NavigationStore = NavigationState & NavigationActions;
@@ -71,100 +43,15 @@ export const useNavigationStore = create<NavigationStore>()((set, get) => ({
   floorId: null,
   buildingConfig: null,
   isLoading: false,
-  transitionOrigin: null,
-  transitionDirection: null,
-  isTransitioning: false,
-  pendingEditBuilding: false,
-
-  goToBuilding: () =>
-    set({
-      view: "building",
-      floorId: null,
-      transitionDirection: "zoom-out",
-      isTransitioning: true,
-    }),
-
-  goToFloor: (floorId) =>
-    set({
-      view: "floor",
-      floorId,
-      transitionDirection: "zoom-in",
-      isTransitioning: true,
-    }),
-
-  // Command Center renders outside ViewTransition, so no transition flags.
-  goToCommand: () =>
-    set({
-      view: "command",
-      floorId: null,
-      transitionDirection: null,
-      isTransitioning: false,
-      transitionOrigin: null,
-    }),
-
-  // Drill from the Command Center into a single session's office. Keeps
-  // buildingConfig so the building/floor navigation remains available.
-  goToSingle: () =>
-    set({
-      view: "single",
-      floorId: null,
-      transitionDirection: null,
-      isTransitioning: false,
-      transitionOrigin: null,
-    }),
 
   setBuildingConfig: (config) =>
-    set((state) => {
-      // If config has floors, auto-switch to building view from single
-      const hasFloors = config.floors.length > 0;
-      const currentView = state.view;
-      const newView: ViewMode =
-        currentView === "single" && hasFloors
-          ? "building"
-          : currentView === "single"
-            ? "single"
-            : currentView;
-      return {
-        buildingConfig: config,
-        isLoading: false,
-        view: newView,
-      };
-    }),
-
-  updateBuildingConfig: (config) => set({ buildingConfig: config }),
+    set({ buildingConfig: config, isLoading: false }),
 
   setLoading: (loading) => set({ isLoading: loading }),
-
-  setTransitionOrigin: (origin) => set({ transitionOrigin: origin }),
-
-  completeTransition: () =>
-    set({
-      isTransitioning: false,
-      transitionDirection: null,
-      transitionOrigin: null,
-    }),
 
   getCurrentFloor: () => {
     const { buildingConfig, floorId } = get();
     if (!buildingConfig || !floorId) return null;
     return buildingConfig.floors.find((f) => f.id === floorId) ?? null;
-  },
-
-  resetToSingle: () =>
-    set({
-      view: "single",
-      floorId: null,
-      buildingConfig: null,
-      transitionDirection: null,
-      isTransitioning: false,
-      transitionOrigin: null,
-    }),
-
-  requestEditBuilding: () => set({ pendingEditBuilding: true }),
-
-  consumeEditBuilding: () => {
-    const pending = get().pendingEditBuilding;
-    if (pending) set({ pendingEditBuilding: false });
-    return pending;
   },
 }));

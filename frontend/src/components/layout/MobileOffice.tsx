@@ -4,7 +4,6 @@ import { useState, type ReactNode } from "react";
 import {
   Bug,
   HelpCircle,
-  LayoutGrid,
   Play,
   RefreshCw,
   Settings,
@@ -21,7 +20,6 @@ import { MobileTabBar, type MobileTab } from "@/components/layout/MobileTabBar";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { Session } from "@/hooks/useSessions";
 import { useGameStore, selectEventLog } from "@/stores/gameStore";
-import { useNavigationStore } from "@/stores/navigationStore";
 import { countWorking } from "@/utils/workStatus";
 
 // ============================================================================
@@ -36,7 +34,6 @@ interface MobileOfficeProps {
   isConnected: boolean;
   debugMode: boolean;
   aiSummaryEnabled: boolean | null;
-  activeSessionCount: number;
   sessions: Session[];
   sessionsLoading: boolean;
   sessionId: string;
@@ -80,7 +77,6 @@ export function MobileOffice({
   isConnected,
   debugMode,
   aiSummaryEnabled,
-  activeSessionCount,
   sessions,
   sessionsLoading,
   sessionId,
@@ -96,7 +92,6 @@ export function MobileOffice({
   const [tab, setTab] = useState<MobileTab>("office");
   const [logTab, setLogTab] = useState<"events" | "conversation">("events");
   const [eventsSeenAt, setEventsSeenAt] = useState(() => Date.now());
-  const goToCommand = useNavigationStore((s) => s.goToCommand);
 
   const eventLog = useGameStore(selectEventLog);
   const working = useGameStore((s) =>
@@ -271,16 +266,6 @@ export function MobileOffice({
             </div>
 
             <div className="flex flex-col gap-1">
-              {activeSessionCount >= 2 && (
-                <button
-                  type="button"
-                  onClick={run(goToCommand)}
-                  className={`${actionClass} text-ink hover:bg-panel-2`}
-                >
-                  <LayoutGrid size={20} className="text-ink-faint" />
-                  {t("commandCenter.title")}
-                </button>
-              )}
               <button
                 type="button"
                 onClick={run(onOpenSettings)}

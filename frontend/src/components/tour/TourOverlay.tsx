@@ -2,7 +2,6 @@
 
 import { useEffect, type ReactNode } from "react";
 import { useTourStore } from "@/stores/tourStore";
-import { useNavigationStore } from "@/stores/navigationStore";
 import { useGameStore } from "@/stores/gameStore";
 import { useAttentionStore } from "@/stores/attentionStore";
 import { NarratorBar } from "./NarratorBar";
@@ -24,16 +23,6 @@ export function TourOverlay(): ReactNode {
   const { t } = useTranslation();
 
   const step = isActive && stepIndex < steps.length ? steps[stepIndex] : null;
-
-  // Navigation-based advance
-  const view = useNavigationStore((s) => s.view);
-  useEffect(() => {
-    if (!step || step.advanceOn.kind !== "navigation") return;
-    if (view === step.advanceOn.targetView) {
-      const timer = setTimeout(advanceStep, 200);
-      return () => clearTimeout(timer);
-    }
-  }, [view, step, advanceStep]);
 
   // Timer-based advance
   useEffect(() => {
@@ -81,18 +70,6 @@ export function TourOverlay(): ReactNode {
       }
     });
   }, [step, advanceStep]);
-
-  // Navigate to step's expected view if needed
-  useEffect(() => {
-    if (!step) return;
-    const currentView = useNavigationStore.getState().view;
-    if (step.view !== currentView && step.advanceOn.kind !== "navigation") {
-      const store = useNavigationStore.getState();
-      if (step.view === "building") store.goToBuilding();
-      else if (step.view === "floor" && store.floorId)
-        store.goToFloor(store.floorId);
-    }
-  }, [step]);
 
   if (!isActive || !step) return null;
 

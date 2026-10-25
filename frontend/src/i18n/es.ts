@@ -25,27 +25,15 @@ const es: Record<TranslationKey, string> = {
   "header.aiOff": "OFF",
   "header.agents": "agentes",
   "header.tour": "Tour",
-  "header.commandCenter": "Mando",
   "header.more": "Más",
   "header.moreMenu": "Más acciones",
   "help.tour": "Hacer el tour",
 
   // Command Center
-  "commandCenter.title": "Centro de Mando",
   "commandCenter.zone.needsYou": "Te necesita",
   "commandCenter.zone.working": "Trabajando",
   "commandCenter.zone.done": "Hecho",
   "commandCenter.zone.ended": "Finalizado",
-  "commandCenter.moreCount": "+{count} más",
-  "commandCenter.popup.todos": "Tareas",
-  "commandCenter.popup.employees": "Empleados",
-  "commandCenter.popup.terminal": "Terminal",
-  "commandCenter.popup.drillIn": "Abrir",
-  "commandCenter.initializing": "Inicializando Centro de Mando...",
-  "commandCenter.board.allSessions": "TODAS LAS SESIONES",
-  "commandCenter.board.terminals": "Terminales",
-  "commandCenter.board.employees": "Empleados",
-  "commandCenter.board.todos": "Tareas",
 
   // Modals
   "modal.confirmDbWipe": "Confirmar borrado de base de datos",
@@ -81,30 +69,6 @@ const es: Record<TranslationKey, string> = {
   "settings.clockTip":
     "Consejo: Haz clic en el reloj de la oficina para alternar rápidamente entre modos.",
   "settings.language": "Idioma",
-  "settings.tabs.general": "General",
-  "settings.tabs.building": "Edificio",
-  "settings.building.name": "Nombre del Edificio",
-  "settings.building.namePlaceholder": "Mi Empresa",
-  "settings.building.floors": "Pisos",
-  "settings.building.addFloor": "Agregar Piso",
-  "settings.building.floorName": "Nombre del Piso",
-  "settings.building.floorNumber": "Piso",
-  "settings.building.accentColor": "Color",
-  "settings.building.icon": "Icono",
-  "settings.building.repos": "Carpetas de proyectos",
-  "settings.building.reposPlaceholder": "claude-office, mi-api, web-ui",
-  "settings.building.save": "Guardar",
-  "settings.building.saving": "Guardando...",
-  "settings.building.saved": "¡Guardado!",
-  "settings.building.deleteFloor": "Eliminar",
-  "settings.building.noFloors": "No hay pisos configurados",
-  "settings.building.enableHint":
-    "Agrega pisos y mapea nombres de carpetas de proyectos para habilitar la vista de edificio",
-  "settings.building.unsavedWarning":
-    "Tienes cambios sin guardar en el edificio. ¿Descartarlos?",
-  "settings.building.saveFailed": "Error al guardar: {status} {statusText}",
-  "settings.building.saveUnreachable":
-    "No se puede conectar con el servidor — ¿está en ejecución?",
 
   // Sessions
   "sessions.title": "Sesiones",
@@ -238,9 +202,6 @@ const es: Record<TranslationKey, string> = {
   "navigation.building": "Edificio",
 
   // Tour
-  "tour.steps.welcome.title": "Bienvenido",
-  "tour.steps.welcome.description":
-    "Este es tu centro de comando. Haz clic en un piso para explorar.",
   "tour.steps.singleWelcome.title": "Bienvenido a Claude Office",
   "tour.steps.singleWelcome.description":
     "Esta oficina en pixel art muestra tus sesiones de Claude Code en tiempo real. Hagamos un recorrido rápido.",
@@ -256,8 +217,6 @@ const es: Record<TranslationKey, string> = {
   "tour.steps.focusPopup.title": "Popup de Enfoque",
   "tour.steps.focusPopup.description":
     "Desde aquí puedes copiar un mensaje al portapapeles e ir a tu terminal. La oficina se actualiza en tiempo real mientras Claude trabaja.",
-  "tour.steps.zoomOut.title": "Alejar",
-  "tour.steps.zoomOut.description": "Intenta alejar para ver la vista general.",
   "tour.steps.settings.title": "Configurar Pisos",
   "tour.steps.settings.description":
     "Abre Configuración para agregar pisos y mapear carpetas de proyectos para una vista de edificio multi-piso.",

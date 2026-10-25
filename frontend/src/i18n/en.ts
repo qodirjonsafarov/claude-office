@@ -23,27 +23,15 @@ const en = {
   "header.aiOff": "OFF",
   "header.agents": "agents",
   "header.tour": "Tour",
-  "header.commandCenter": "Command",
   "header.more": "More",
   "header.moreMenu": "More actions",
   "help.tour": "Take the Tour",
 
   // Command Center
-  "commandCenter.title": "Command Center",
   "commandCenter.zone.needsYou": "Needs you",
   "commandCenter.zone.working": "Working",
   "commandCenter.zone.done": "Done",
   "commandCenter.zone.ended": "Ended",
-  "commandCenter.moreCount": "+{count} more",
-  "commandCenter.popup.todos": "Todos",
-  "commandCenter.popup.employees": "Employees",
-  "commandCenter.popup.terminal": "Terminal",
-  "commandCenter.popup.drillIn": "Open",
-  "commandCenter.initializing": "Initializing Command Center...",
-  "commandCenter.board.allSessions": "ALL SESSIONS",
-  "commandCenter.board.terminals": "Terminals",
-  "commandCenter.board.employees": "Employees",
-  "commandCenter.board.todos": "Todos",
 
   // Modals
   "modal.confirmDbWipe": "Confirm Database Wipe",
@@ -79,30 +67,6 @@ const en = {
   "settings.clockTip":
     "Tip: Click the clock in the office to quickly cycle between modes.",
   "settings.language": "Language",
-  "settings.tabs.general": "General",
-  "settings.tabs.building": "Building",
-  "settings.building.name": "Building Name",
-  "settings.building.namePlaceholder": "My Company",
-  "settings.building.floors": "Floors",
-  "settings.building.addFloor": "Add Floor",
-  "settings.building.floorName": "Floor Name",
-  "settings.building.floorNumber": "Floor",
-  "settings.building.accentColor": "Accent",
-  "settings.building.icon": "Icon",
-  "settings.building.repos": "Project folders",
-  "settings.building.reposPlaceholder": "claude-office, my-api, web-ui",
-  "settings.building.save": "Save",
-  "settings.building.saving": "Saving...",
-  "settings.building.saved": "Saved!",
-  "settings.building.deleteFloor": "Remove",
-  "settings.building.noFloors": "No floors configured",
-  "settings.building.enableHint":
-    "Add floors and map project folder names to enable building navigation view",
-  "settings.building.unsavedWarning":
-    "You have unsaved building changes. Discard them?",
-  "settings.building.saveFailed": "Save failed: {status} {statusText}",
-  "settings.building.saveUnreachable":
-    "Cannot reach backend — is the server running?",
 
   // Sessions
   "sessions.title": "Sessions",
@@ -235,9 +199,6 @@ const en = {
   "navigation.building": "Building",
 
   // Tour
-  "tour.steps.welcome.title": "Welcome",
-  "tour.steps.welcome.description":
-    "This is your command center. Click a floor to explore.",
   "tour.steps.singleWelcome.title": "Welcome to Claude Office",
   "tour.steps.singleWelcome.description":
     "This pixel art office shows your Claude Code sessions in real time. Let's take a quick look around.",
@@ -253,9 +214,6 @@ const en = {
   "tour.steps.focusPopup.title": "Focus Popup",
   "tour.steps.focusPopup.description":
     "From here you can copy a message to clipboard and jump to your terminal. The office updates in real time as Claude works.",
-  "tour.steps.zoomOut.title": "Zoom Out",
-  "tour.steps.zoomOut.description":
-    "Try zooming back out to see the big picture.",
   "tour.steps.settings.title": "Configure Floors",
   "tour.steps.settings.description":
     "Open Settings to add floors and map project folders for a multi-floor building view.",

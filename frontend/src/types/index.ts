@@ -138,6 +138,6 @@ export interface WebSocketMessage {
 // NAVIGATION TYPES — re-exported from ./navigation
 // ============================================================================
 
-export type { ViewMode, TransitionDirection } from "./navigation";
+export type { ViewMode } from "./navigation";
 
 export type { RoomConfig, FloorConfig, BuildingConfig } from "./navigation";

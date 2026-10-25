@@ -4,10 +4,8 @@
  * Uses the unified Zustand store, XState machines, and OfficeGame component.
  * Layout and logic are delegated to extracted components and custom hooks.
  *
- * Navigation modes:
- * - "single" (default): the original flat layout with sidebar + canvas + sidebar
- * - "building": cross-section building view (when user configures floors)
- * - "floor": floor-level view wrapping the office canvas
+ * One view: the office (sessions sidebar + canvas + team/events sidebar on
+ * desktop, MobileOffice on phones). One session at a time.
  */
 
 "use client";
@@ -17,7 +15,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useWebSocketEvents } from "@/hooks/useWebSocketEvents";
 import { useSessions } from "@/hooks/useSessions";
 import { useSessionSwitch } from "@/hooks/useSessionSwitch";
-import { useFloorConfig } from "@/hooks/useFloorConfig";
 import { useLayoutMode } from "@/hooks/useLayoutMode";
 import { useBackgroundAlerts } from "@/hooks/useBackgroundAlerts";
 import {
@@ -25,7 +22,6 @@ import {
   selectIsConnected,
   selectDebugMode,
 } from "@/stores/gameStore";
-import { useNavigationStore } from "@/stores/navigationStore";
 import { useTourStore } from "@/stores/tourStore";
 import { apiFetch, initApiKeyFromBrowser } from "@/utils/api";
 import { Map } from "lucide-react";
@@ -42,11 +38,6 @@ import {
 } from "@/components/layout/StatusToast";
 import Modal from "@/components/overlay/Modal";
 import SettingsModal from "@/components/overlay/SettingsModal";
-import { Breadcrumb } from "@/components/navigation/Breadcrumb";
-import { ViewTransition } from "@/components/navigation/ViewTransition";
-import { BuildingView } from "@/components/views/BuildingView";
-import { FloorView } from "@/components/views/FloorView";
-import { CommandCenterView } from "@/components/command/CommandCenterView";
 import { TourOverlay } from "@/components/tour/TourOverlay";
 import CommandBar from "@/components/attention/CommandBar";
 import AttentionToasts from "@/components/attention/AttentionToasts";
@@ -99,9 +90,6 @@ export default function V2TestPage(): React.ReactNode {
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [settingsInitialTab, setSettingsInitialTab] = useState<
-    "general" | "building"
-  >("general");
   const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(
     null,
   );
@@ -152,43 +140,16 @@ export default function V2TestPage(): React.ReactNode {
   );
   const loadPreferences = usePreferencesStore((s) => s.loadPreferences);
 
-  // Navigation store
-  const view = useNavigationStore((s) => s.view);
-  const buildingConfig = useNavigationStore((s) => s.buildingConfig);
-
   // Onboarding tour now lives in the Help modal (rarely used).
   const startTour = useTourStore((s) => s.startTour);
   const handleStartTour = (): void => {
-    const hasBuildingConfig =
-      buildingConfig !== null && (buildingConfig.floors.length ?? 0) > 0;
-    const mode = view !== "single" && hasBuildingConfig ? "building" : "single";
-    startTour(mode);
+    startTour();
     setIsHelpModalOpen(false);
   };
 
-  // Active session count gates the Command Center entry point (>= 2).
-  const activeSessionCount = sessions.filter(
-    (s) => s.status === "active",
-  ).length;
-
   // ------------------------------------------------------------------
-  // Floor config + tour initialization
+  // Tour initialization
   // ------------------------------------------------------------------
-  useFloorConfig();
-
-  // Watch for edit-building requests from BuildingView. Subscribe to the
-  // store so the modal-opening setState runs in an event callback (the store
-  // notification) rather than in the effect body.
-  useEffect(() => {
-    return useNavigationStore.subscribe((state) => {
-      if (state.pendingEditBuilding) {
-        state.consumeEditBuilding();
-        setSettingsInitialTab("building");
-        setIsSettingsModalOpen(true);
-      }
-    });
-  }, []);
-
   const loadTourSeen = useTourStore((s) => s.loadTourSeen);
   useEffect(() => {
     loadTourSeen();
@@ -351,7 +312,6 @@ export default function V2TestPage(): React.ReactNode {
       <SettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
-        initialTab={settingsInitialTab}
       />
 
       <Modal
@@ -400,7 +360,6 @@ export default function V2TestPage(): React.ReactNode {
           isConnected={isConnected}
           debugMode={debugMode}
           aiSummaryEnabled={aiSummaryEnabled}
-          activeSessionCount={activeSessionCount}
           sessions={sessions}
           sessionsLoading={sessionsLoading}
           sessionId={sessionId}
@@ -423,8 +382,6 @@ export default function V2TestPage(): React.ReactNode {
               title={`Qodirjon ${t("app.title")}`}
               subtitle={t("app.subtitle")}
             />
-            {/* Breadcrumb — only when in building/floor view */}
-            <Breadcrumb />
           </div>
 
           <div className="hidden xl:flex flex-1 justify-center min-w-0">
@@ -435,7 +392,6 @@ export default function V2TestPage(): React.ReactNode {
             isConnected={isConnected}
             debugMode={debugMode}
             aiSummaryEnabled={aiSummaryEnabled}
-            activeSessionCount={activeSessionCount}
             onSimulate={handleSimulate}
             onReset={handleReset}
             onClearDB={() => setIsClearModalOpen(true)}
@@ -449,9 +405,9 @@ export default function V2TestPage(): React.ReactNode {
       {/* ----------------------------------------------------------------
           Main Content
       ---------------------------------------------------------------- */}
-      {isMobile ? null : view === "single" ? (
+      {isMobile ? null : (
         /* ----------------------------------------------------------------
-            Single View (default, original layout)
+            The office: sessions, the scene, the team and events
         ---------------------------------------------------------------- */
         <div className="flex-grow flex gap-2 overflow-hidden min-h-0">
           <SessionSidebar
@@ -482,44 +438,6 @@ export default function V2TestPage(): React.ReactNode {
 
           <RightSidebar />
         </div>
-      ) : view === "command" ? (
-        /* ----------------------------------------------------------------
-            Command Center (cross-terminal overview)
-        ---------------------------------------------------------------- */
-        <CommandCenterView
-          sessions={sessions}
-          sessionsLoading={sessionsLoading}
-          sessionId={sessionId}
-          isCollapsed={leftSidebarCollapsed}
-          onToggleCollapsed={() =>
-            setLeftSidebarCollapsed(!leftSidebarCollapsed)
-          }
-          onSessionSelect={handleSessionSelect}
-          onDeleteSession={setSessionPendingDelete}
-          onRenameSession={handleRenameSession}
-        />
-      ) : (
-        /* ----------------------------------------------------------------
-            Building / Floor View (animated transitions)
-        ---------------------------------------------------------------- */
-        <ViewTransition
-          view={view}
-          buildingView={<BuildingView sessions={sessions} />}
-          floorView={
-            <FloorView
-              sessions={sessions}
-              sessionsLoading={sessionsLoading}
-              sessionId={sessionId}
-              isCollapsed={leftSidebarCollapsed}
-              onToggleCollapsed={() =>
-                setLeftSidebarCollapsed(!leftSidebarCollapsed)
-              }
-              onSessionSelect={handleSessionSelect}
-              onDeleteSession={setSessionPendingDelete}
-              onRenameSession={handleRenameSession}
-            />
-          }
-        />
       )}
 
       {/* ----------------------------------------------------------------

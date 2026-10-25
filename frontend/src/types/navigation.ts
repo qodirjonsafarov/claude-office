@@ -1,12 +1,11 @@
 /**
- * Navigation types for building/floor view system.
- *
- * "single" mode is the default — no building navigation, just the office.
- * "building" and "floor" modes activate when the user configures floors.
+ * Navigation types. The app has one view, the office ("single"); the
+ * upstream building/floor/Command Center views were removed. Floor config
+ * types stay for the backend's /floors endpoint.
  */
 
 /** Current view mode */
-export type ViewMode = "single" | "building" | "floor" | "command";
+export type ViewMode = "single";
 
 /** Sentinel floor ID for the lobby (unmatched sessions) */
 export const LOBBY_FLOOR_ID = "__lobby__";
@@ -32,6 +31,3 @@ export interface BuildingConfig {
   buildingName: string;
   floors: FloorConfig[];
 }
-
-/** Direction of view transition animation */
-export type TransitionDirection = "zoom-in" | "zoom-out" | null;

@@ -573,6 +573,12 @@
     height: 44px;
   }
 
+  /* A row that scrolls sideways: its end fades out, so a cut chip reads as "more". */
+  .qo-fade-end {
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, black calc(100% - 28px), transparent);
+  }
+
   /* A progress bar. The fill takes its colour from --qo-bar (the agent). */
   .qo-progress {
     position: relative;

@@ -73,14 +73,62 @@ function useAgentDirectory(): {
   }, [flat, lifespans]);
 }
 
-export function EventLog() {
+/** The log's text search (also placed in a phone sheet's header). */
+export function EventSearch({
+  value,
+  onChange,
+  className = "",
+}: {
+  value: string;
+  onChange: (query: string) => void;
+  className?: string;
+}): React.ReactNode {
+  const { t } = useTranslation();
+  return (
+    <label className={`relative block ${className}`}>
+      <Search
+        size={15}
+        strokeWidth={2.2}
+        aria-hidden="true"
+        className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none"
+      />
+      <input
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={t("eventLog.search")}
+        aria-label={t("eventLog.search")}
+        className="qo-input qo-input-sm w-full !pl-9"
+      />
+    </label>
+  );
+}
+
+interface EventLogProps {
+  /** Controlled search text (the search box lives outside, see `compact`). */
+  query?: string;
+  onQueryChange?: (query: string) => void;
+  /** Phone landscape: no title row, no search box (the sheet header has it). */
+  compact?: boolean;
+  /** Chips in one row that scrolls sideways (phones) instead of wrapping. */
+  scrollChips?: boolean;
+}
+
+export function EventLog({
+  query: controlledQuery,
+  onQueryChange,
+  compact = false,
+  scrollChips = false,
+}: EventLogProps = {}) {
   const { t } = useTranslation();
   const eventLog = useGameStore(selectEventLog);
   const { names, colors } = useAgentDirectory();
   const [selectedEvent, setSelectedEvent] = useState<EventLogEntry | null>(
     null,
   );
-  const [query, setQuery] = useState("");
+  const [ownQuery, setOwnQuery] = useState("");
+  const query = controlledQuery ?? ownQuery;
+  const setQuery = onQueryChange ?? setOwnQuery;
   const [person, setPerson] = useState("all");
   const [kinds, setKinds] = useState<ReadonlySet<string>>(new Set());
 
@@ -108,7 +156,11 @@ export function EventLog() {
   return (
     <>
       <div className="qo-card flex flex-col h-full overflow-hidden text-xs">
-        <div className="px-4 pt-3 pb-2 flex items-center justify-between flex-shrink-0">
+        <div
+          className={`px-4 pt-3 pb-2 items-center justify-between flex-shrink-0 ${
+            compact ? "hidden" : "flex"
+          }`}
+        >
           <div className="qo-eyebrow flex items-center gap-2">
             <Terminal size={14} strokeWidth={2.2} aria-hidden="true" />
             {t("eventLog.title")}
@@ -121,27 +173,18 @@ export function EventLog() {
         </div>
 
         {/* Quick filter: search, person chips, kind chips */}
-        <div className="px-2 pb-2 flex flex-col gap-2 flex-shrink-0">
-          <label className="relative block">
-            <Search
-              size={15}
-              strokeWidth={2.2}
-              aria-hidden="true"
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none"
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("eventLog.search")}
-              aria-label={t("eventLog.search")}
-              className="qo-input qo-input-sm w-full !pl-9"
-            />
-          </label>
+        <div
+          className={`px-2 pb-2 flex flex-col gap-2 flex-shrink-0 ${compact ? "pt-2" : ""}`}
+        >
+          {!compact && <EventSearch value={query} onChange={setQuery} />}
           <div
             role="toolbar"
             aria-label={t("eventLog.filters")}
-            className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className={
+              scrollChips
+                ? "qo-fade-end flex gap-1.5 pr-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                : "flex flex-wrap gap-1.5"
+            }
           >
             <button
               type="button"

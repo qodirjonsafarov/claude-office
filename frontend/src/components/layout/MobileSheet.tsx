@@ -13,6 +13,8 @@ interface MobileSheetProps {
   children: ReactNode;
   /** The content fills the sheet and scrolls by itself (an event log). */
   fill?: boolean;
+  /** Controls on the title row (phone landscape: tabs and search). */
+  headerContent?: ReactNode;
 }
 
 /**
@@ -27,6 +29,7 @@ export function MobileSheet({
   onClose,
   children,
   fill = false,
+  headerContent,
 }: MobileSheetProps): React.ReactNode {
   const { t } = useTranslation();
   const box = useRef<HTMLDivElement>(null);
@@ -97,10 +100,12 @@ export function MobileSheet({
         >
           <span
             aria-hidden="true"
-            className="block w-10 h-1 mx-auto mb-2 rounded-full bg-line-strong"
+            className={`block w-10 h-1 mx-auto rounded-full bg-line-strong ${
+              headerContent ? "mb-1.5" : "mb-2"
+            }`}
           />
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-baseline gap-2 min-w-0">
+            <div className="flex items-baseline gap-2 min-w-0 flex-shrink-0">
               <h2 className="m-0 text-[18px] leading-tight font-extrabold text-ink truncate">
                 {title}
               </h2>
@@ -110,6 +115,15 @@ export function MobileSheet({
                 </span>
               )}
             </div>
+            {headerContent && (
+              // Taps on the controls must not start a pull-down.
+              <div
+                className="flex-1 min-w-0 flex items-center gap-2 touch-auto"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                {headerContent}
+              </div>
+            )}
             <button
               type="button"
               onClick={close}

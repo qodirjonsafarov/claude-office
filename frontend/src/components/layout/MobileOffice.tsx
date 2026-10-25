@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { BrandMark } from "@/components/layout/BrandMark";
 import { ConversationHistory } from "@/components/layout/ConversationHistory";
-import { EventLog } from "@/components/layout/EventLog";
+import { EventLog, EventSearch } from "@/components/layout/EventLog";
 import { HudStats } from "@/components/layout/HudStats";
 import { MobileAgentActivity } from "@/components/layout/MobileAgentActivity";
 import { MobileSessionList } from "@/components/layout/MobileSessionList";
@@ -80,6 +80,7 @@ export function MobileOffice({
   const { t } = useTranslation();
   const [tab, setTab] = useState<MobileTab>("office");
   const [logTab, setLogTab] = useState<"events" | "conversation">("events");
+  const [logQuery, setLogQuery] = useState("");
   // The newest event the user has seen (by identity, not clock).
   const [seenEvent, setSeenEvent] = useState<EventLogEntry | null>(
     () => useGameStore.getState().eventLog[0] ?? null,
@@ -132,6 +133,27 @@ export function MobileOffice({
   const stage = (
     <div data-tour-id="game-canvas" className="qo-stage-phone qo-studio">
       {scene}
+    </div>
+  );
+
+  const logTabs = (className: string) => (
+    <div role="tablist" className={`qo-segmented ${className}`}>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={logTab === "events"}
+        onClick={() => setLogTab("events")}
+      >
+        {t("sidebar.events")}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={logTab === "conversation"}
+        onClick={() => setLogTab("conversation")}
+      >
+        {t("sidebar.conversation")}
+      </button>
     </div>
   );
 
@@ -198,27 +220,38 @@ export function MobileOffice({
       )}
 
       {tab === "events" && (
-        <MobileSheet title={t("mobile.events")} onClose={close} fill>
-          <div role="tablist" className="qo-segmented mb-3 flex-shrink-0">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={logTab === "events"}
-              onClick={() => setLogTab("events")}
-            >
-              {t("sidebar.events")}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={logTab === "conversation"}
-              onClick={() => setLogTab("conversation")}
-            >
-              {t("sidebar.conversation")}
-            </button>
-          </div>
+        <MobileSheet
+          title={t("mobile.events")}
+          onClose={close}
+          fill
+          headerContent={
+            // Landscape is short: the tabs and the search share the title row.
+            landscape ? (
+              <>
+                {logTabs("flex-shrink-0 w-[250px]")}
+                {logTab === "events" && (
+                  <EventSearch
+                    value={logQuery}
+                    onChange={setLogQuery}
+                    className="flex-1 min-w-0"
+                  />
+                )}
+              </>
+            ) : undefined
+          }
+        >
+          {!landscape && logTabs("mb-3 flex-shrink-0")}
           <div className="flex-1 min-h-0">
-            {logTab === "events" ? <EventLog /> : <ConversationHistory />}
+            {logTab === "events" ? (
+              <EventLog
+                query={logQuery}
+                onQueryChange={setLogQuery}
+                compact={landscape}
+                scrollChips
+              />
+            ) : (
+              <ConversationHistory />
+            )}
           </div>
         </MobileSheet>
       )}

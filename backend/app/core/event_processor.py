@@ -50,7 +50,7 @@ from app.core.handlers import (
 from app.core.jsonl_parser import get_last_assistant_response
 from app.core.product_mapper import get_product_mapper
 from app.core.room_orchestrator import RoomOrchestrator
-from app.core.state_machine import StateMachine
+from app.core.state_machine import StateMachine, is_phantom_stop
 from app.core.task_file_poller import init_task_file_poller
 from app.core.task_persistence import load_tasks, save_tasks
 from app.core.transcript_poller import init_transcript_poller
@@ -392,6 +392,16 @@ class EventProcessor:
         Args:
             event: The incoming hook event to process.
         """
+        # Claude Code's hidden side-agents (e.g. the auto-mode permission
+        # classifier) fire the native SubagentStop hook on every tool call.
+        # They were never started and leave no transcript: drop them before
+        # they reach the DB, the history log or the office.
+        if is_phantom_stop(self.sessions.get(event.session_id), event):
+            logger.debug(
+                "Ignoring SubagentStop from hidden side-agent %s", event.data.native_agent_id
+            )
+            return
+
         logger.info(
             f"Processing event: {event.event_type} "
             f"Session: {event.session_id} "

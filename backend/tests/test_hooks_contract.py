@@ -156,8 +156,13 @@ _RAW_CASES: list[tuple[str, dict[str, Any], str]] = [
         {"session_id": "abc123", "agent_id": "sa_1", "agent_type": "general-purpose"},
         "subagent_start-to-subagent_info",
     ),
-    # Native SubagentStop hook -> subagent_stop.
-    ("subagent_stop", {"session_id": "abc123", "agent_id": "sa_1"}, "subagent_stop"),
+    # Native SubagentStop hook -> subagent_stop. The mapper drops stops without
+    # an agent transcript on disk (hidden side-agents), so point at a real file.
+    (
+        "subagent_stop",
+        {"session_id": "abc123", "agent_id": "sa_1", "agent_transcript_path": __file__},
+        "subagent_stop",
+    ),
     (
         "permission_request",
         {

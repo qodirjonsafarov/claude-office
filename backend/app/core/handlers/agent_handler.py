@@ -17,7 +17,7 @@ from typing import Any
 
 from app.core.broadcast_service import broadcast_state
 from app.core.jsonl_parser import get_first_user_prompt, get_last_assistant_response
-from app.core.state_machine import StateMachine, resolve_agent_for_stop
+from app.core.state_machine import StateMachine, resolve_agent_for_stop, stop_transcript_exists
 from app.core.summary_service import get_summary_service
 from app.core.transcript_poller import get_transcript_poller
 from app.models.agents import Agent, AgentState, BossState
@@ -209,6 +209,7 @@ async def handle_subagent_stop(
         arrival_queue=sm.arrival_queue,
         agent_id=event.data.agent_id,
         native_agent_id=event.data.native_agent_id,
+        allow_late_link=stop_transcript_exists(event),
     )
 
     if not resolved:

@@ -1,5 +1,7 @@
 """Tests for event_mapper subagent event handling."""
 
+from pathlib import Path
+
 from claude_office_hooks.event_mapper import map_event
 
 SESSION_ID = "test-session-001"
@@ -160,16 +162,30 @@ class TestNativeSubagentStart:
 class TestNativeSubagentStop:
     """Native SubagentStop hook should pass through with native_agent_id."""
 
-    def test_native_subagent_stop_includes_native_id(self) -> None:
+    def test_native_subagent_stop_includes_native_id(self, tmp_path: Path) -> None:
+        transcript = tmp_path / "session.jsonl"
+        agent_file = tmp_path / "session" / "subagents" / "agent-a5a60c7.jsonl"
+        agent_file.parent.mkdir(parents=True)
+        agent_file.write_text("{}\n")
         raw = {
             "agent_id": "a5a60c7",
             "session_id": SESSION_ID,
-            "transcript_path": TRANSCRIPT,
+            "transcript_path": str(transcript),
         }
         result = map_event("subagent_stop", raw, SESSION_ID)
         assert result is not None
         assert result["event_type"] == "subagent_stop"
         assert result["data"]["native_agent_id"] == "a5a60c7"
+
+    def test_stop_without_agent_transcript_is_dropped(self, tmp_path: Path) -> None:
+        """Hidden side-agents (e.g. the permission classifier) leave no transcript."""
+        raw = {
+            "agent_id": "ab99ecb9afdc4eb66",
+            "session_id": SESSION_ID,
+            "transcript_path": str(tmp_path / "session.jsonl"),
+            "agent_transcript_path": str(tmp_path / "missing" / "agent-ab99.jsonl"),
+        }
+        assert map_event("subagent_stop", raw, SESSION_ID) is None
 
     def test_native_subagent_stop_without_agent_id_returns_none(self) -> None:
         raw = {

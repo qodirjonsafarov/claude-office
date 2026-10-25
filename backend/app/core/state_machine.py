@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum, auto
+from pathlib import Path
 from typing import Any, cast
 
 from app.core.path_utils import compress_path, compress_paths_in_text, truncate_long_words
@@ -98,6 +99,7 @@ def resolve_agent_for_stop(
     arrival_queue: list[str],
     agent_id: str | None,
     native_agent_id: str | None,
+    allow_late_link: bool = True,
 ) -> ResolvedAgent | None:
     """Resolve an agent for SUBAGENT_STOP by ID, native ID, or fallback linking.
 
@@ -114,6 +116,11 @@ def resolve_agent_for_stop(
         arrival_queue: List of agent_ids in arrival order
         agent_id: Optional agent_id from event
         native_agent_id: Optional native_agent_id from event
+        allow_late_link: Whether steps 3-4 may bind an unknown native ID to an
+            unlinked agent. Pass False when the stop has no transcript on
+            disk: Claude Code's hidden side-agents (e.g. the permission
+            classifier) fire SubagentStop too, and linking them would evict
+            a real background agent that is still waiting for SubagentInfo.
 
     Returns:
         ResolvedAgent if found, None otherwise
@@ -129,6 +136,9 @@ def resolve_agent_for_stop(
     for aid, agent in agents.items():
         if agent.native_id == native_agent_id:
             return ResolvedAgent(agent_id=aid, agent=agent)
+
+    if not allow_late_link:
+        return None
 
     # 3. Fallback: link oldest unlinked agent (FIFO from arrival_queue)
     for aid in arrival_queue:
@@ -151,6 +161,35 @@ def resolve_agent_for_stop(
             return ResolvedAgent(agent_id=aid, agent=agent, was_late_linked=True)
 
     return None
+
+
+def stop_transcript_exists(event: AnyEvent) -> bool:
+    """True when a SUBAGENT_STOP's agent transcript exists on disk.
+
+    Real subagents write a transcript before they stop; hidden side-agents
+    do not, so this is the evidence that an unknown native ID is a real agent.
+    """
+    from app.config import get_settings  # local import to avoid cycles
+
+    path = getattr(event.data, "agent_transcript_path", None)
+    if not path:
+        return False
+    try:
+        return Path(get_settings().translate_path(path)).is_file()
+    except OSError:
+        return False
+
+
+def is_phantom_stop(sm: "StateMachine | None", event: AnyEvent) -> bool:
+    """A native SubagentStop for an agent we never saw and that has no transcript."""
+    if event.event_type != EventType.SUBAGENT_STOP or event.data.agent_id:
+        return False
+    native_agent_id = event.data.native_agent_id
+    if not native_agent_id:
+        return False
+    if sm is not None and any(a.native_id == native_agent_id for a in sm.agents.values()):
+        return False
+    return not stop_transcript_exists(event)
 
 
 # ---------------------------------------------------------------------------
@@ -385,6 +424,7 @@ def _handle_subagent_stop(sm: "StateMachine", event: AnyEvent) -> None:
         arrival_queue=sm.arrival_queue,
         agent_id=event.data.agent_id,
         native_agent_id=event.data.native_agent_id,
+        allow_late_link=stop_transcript_exists(event),
     )
 
     if resolved:

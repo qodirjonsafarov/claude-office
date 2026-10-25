@@ -114,6 +114,14 @@ export function useWebSocketEvents({
               useGameStore
                 .getState()
                 .setTokenUsage(message.state.office?.tokenUsage);
+              // The backend's recent history: fills the log on load and on
+              // reconnect (de-duplicated against the live stream).
+              useGameStore
+                .getState()
+                .mergeEventHistory(
+                  message.state.history as
+                    NonNullable<WebSocketMessage["event"]>[] | undefined,
+                );
             }
             break;
 

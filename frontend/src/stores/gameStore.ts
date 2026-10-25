@@ -190,6 +190,10 @@ export interface GameStore {
   setPrintReport: (printReport: boolean) => void;
   setGitStatus: (status: GitStatus | null) => void;
   addEventLog: (event: NonNullable<WebSocketMessage["event"]>) => void;
+  mergeEventHistory: (
+    history:
+      readonly NonNullable<WebSocketMessage["event"]>[] | null | undefined,
+  ) => void;
   conversation: ConversationEntry[];
   setConversation: (conversation: ConversationEntry[]) => void;
   /** Session token totals and cost (backend `office.tokenUsage`; null = none). */

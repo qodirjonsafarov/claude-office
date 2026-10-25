@@ -24,6 +24,24 @@ import {
 } from "@/utils/tokenUsage";
 
 const MAX_EVENT_LOG = 500;
+/** How much of the backend's history fills the log on (re)connect. */
+const HISTORY_SEED = 200;
+
+type LogEvent = NonNullable<WebSocketMessage["event"]>;
+
+/** One event, whichever path (history or live stream) brought it. */
+function eventKey(e: { id: string; type: string; agentId?: string | null }) {
+  return `${e.id}|${e.type}|${e.agentId || "main"}`;
+}
+
+function toEntry(event: LogEvent): EventLogEntry {
+  const timestamp = event.timestamp ? new Date(event.timestamp) : new Date();
+  return { ...event, timestamp };
+}
+
+function hasDetail(e: { detail?: object | null }): boolean {
+  return !!e.detail && Object.keys(e.detail).length > 0;
+}
 
 export type OfficeSlice = {
   sessionId: string;
@@ -54,6 +72,8 @@ export type OfficeSlice = {
   setPrintReport: (printReport: boolean) => void;
   setGitStatus: (status: GitStatus | null) => void;
   addEventLog: (event: NonNullable<WebSocketMessage["event"]>) => void;
+  /** Add the newest backend history entries the log does not have yet. */
+  mergeEventHistory: (history: readonly LogEvent[] | null | undefined) => void;
   setConversation: (conversation: ConversationEntry[]) => void;
   /** Store the backend's optional office `tokenUsage` (raw, parsed here). */
   setTokenUsage: (raw: unknown) => void;
@@ -107,13 +127,38 @@ export const createOfficeSlice: StateCreator<GameStore, [], [], OfficeSlice> = (
 
   addEventLog: (event) =>
     set((state) => {
-      const timestamp = event.timestamp
-        ? new Date(event.timestamp)
-        : new Date();
-      const entry: EventLogEntry = { ...event, timestamp };
+      const key = eventKey(event);
+      const index = state.eventLog.findIndex((e) => eventKey(e) === key);
+      if (index !== -1) {
+        // Already brought by the history: only take a richer detail.
+        if (!hasDetail(event) || hasDetail(state.eventLog[index]!)) {
+          return state;
+        }
+        const eventLog = [...state.eventLog];
+        eventLog[index] = toEntry(event);
+        return { eventLog };
+      }
       return {
-        eventLog: [entry, ...state.eventLog.slice(0, MAX_EVENT_LOG - 1)],
+        eventLog: [
+          toEntry(event),
+          ...state.eventLog.slice(0, MAX_EVENT_LOG - 1),
+        ],
       };
+    }),
+
+  mergeEventHistory: (history) =>
+    set((state) => {
+      if (!history || history.length === 0) return state;
+      const known = new Set(state.eventLog.map(eventKey));
+      const fresh = history
+        .slice(-HISTORY_SEED)
+        .filter((e) => !known.has(eventKey(e)))
+        .map(toEntry);
+      if (fresh.length === 0) return state;
+      const eventLog = [...state.eventLog, ...fresh]
+        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+        .slice(0, MAX_EVENT_LOG);
+      return { eventLog };
     }),
 
   setConversation: (conversation) => set({ conversation }),

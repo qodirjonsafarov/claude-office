@@ -85,4 +85,15 @@ describe("attention toasts", () => {
       .toastQueue.filter((t) => !t.dismissed);
     expect(active).toHaveLength(2);
   });
+
+  it("forgets old dismissed toasts, keeping about 20", () => {
+    const { processEvent, dismissToast } = useAttentionStore.getState();
+    for (let i = 0; i < 50; i += 1) {
+      processEvent({ type: "error" });
+      const queue = useAttentionStore.getState().toastQueue;
+      dismissToast(queue[queue.length - 1]!.id);
+    }
+    const queue = useAttentionStore.getState().toastQueue;
+    expect(queue.filter((t) => t.dismissed).length).toBeLessThanOrEqual(20);
+  });
 });

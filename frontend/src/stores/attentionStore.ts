@@ -116,6 +116,22 @@ const TOAST_TITLES: Partial<Record<EventType, string>> = {
   background_task_notification: "Background task",
 };
 
+/** Dismissed toasts kept (the newest); older ones are dropped. */
+const MAX_DISMISSED_TOASTS = 20;
+
+/** Every active toast and only the newest dismissed ones, order kept. */
+function pruneDismissed(queue: AttentionToast[]): AttentionToast[] {
+  const dismissed = queue.filter((t) => t.dismissed);
+  if (dismissed.length <= MAX_DISMISSED_TOASTS) return queue;
+  const keep = new Set(
+    [...dismissed]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, MAX_DISMISSED_TOASTS)
+      .map((t) => t.id),
+  );
+  return queue.filter((t) => !t.dismissed || keep.has(t.id));
+}
+
 /** The headline: "Validator V finished", "Dev D · Needs permission". */
 function toastTitle(type: EventType, agentName: string | null): string {
   if (type === "stop" || type === "subagent_stop") {
@@ -169,22 +185,26 @@ export const useAttentionStore = create<AttentionState>()((set, get) => ({
         const finalQueue = queue.map((t) =>
           t.id === toastId ? { ...t, dismissed: true } : t,
         );
-        return { toastQueue: finalQueue };
+        return { toastQueue: pruneDismissed(finalQueue) };
       }
-      return { toastQueue: queue };
+      return { toastQueue: pruneDismissed(queue) };
     });
   },
 
   dismissToast: (id) =>
     set((state) => ({
-      toastQueue: state.toastQueue.map((t) =>
-        t.id === id ? { ...t, dismissed: true } : t,
+      toastQueue: pruneDismissed(
+        state.toastQueue.map((t) =>
+          t.id === id ? { ...t, dismissed: true } : t,
+        ),
       ),
     })),
 
   clearAllToasts: () =>
     set((state) => ({
-      toastQueue: state.toastQueue.map((t) => ({ ...t, dismissed: true })),
+      toastQueue: pruneDismissed(
+        state.toastQueue.map((t) => ({ ...t, dismissed: true })),
+      ),
     })),
 
   openCommandBar: () => set({ isCommandBarOpen: true, commandFilter: "" }),

@@ -177,6 +177,11 @@ export default function V2TestPage(): React.ReactNode {
     document.documentElement.lang = language;
   }, [language]);
 
+  // Phone styles (44px touch targets) key off this, portaled dialogs too.
+  useEffect(() => {
+    document.documentElement.dataset.layout = layoutMode;
+  }, [layoutMode]);
+
   // ------------------------------------------------------------------
   // Cmd+K / Ctrl+K command bar toggle
   // ------------------------------------------------------------------

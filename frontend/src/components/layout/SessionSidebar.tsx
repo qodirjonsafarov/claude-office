@@ -295,17 +295,6 @@ export function SessionSidebar({
                                   : "text-slate-300"
                               }`}
                             />
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteSession(primary);
-                              }}
-                              className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition-colors opacity-0 group-hover:opacity-100"
-                              aria-label={`${t("sessions.deleteSession")} ${primary.id}`}
-                            >
-                              <Trash2 size={15} />
-                            </button>
                           </div>
                           <div className="text-[10px] text-slate-500 font-mono truncate mb-1">
                             {primary.id}
@@ -330,6 +319,28 @@ export function SessionSidebar({
                                 },
                               )}
                             </span>
+                          </div>
+                          {/* The danger action: its own row, set apart by a
+                              line, only on the open session (hover elsewhere) */}
+                          <div
+                            className={`mt-2 pt-2 border-t border-line ${
+                              primary.id === sessionId
+                                ? "flex"
+                                : "hidden group-hover:flex group-focus-within:flex"
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteSession(primary);
+                              }}
+                              className="qo-btn qo-btn-danger !h-9 w-full"
+                              aria-label={`${t("sessions.deleteSession")} ${primary.id}`}
+                            >
+                              <Trash2 size={15} />
+                              {t("sessions.deleteSession")}
+                            </button>
                           </div>
                         </div>
 

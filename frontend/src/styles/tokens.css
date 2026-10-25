@@ -553,6 +553,26 @@
     color: var(--qo-on-accent);
   }
 
+  /* Phones (portrait and landscape, see useLayoutMode / data-layout on
+     <html>): every control is a 44px touch target, mouse or not. */
+  :root[data-layout="portrait"] .qo-chip,
+  :root[data-layout="landscape"] .qo-chip {
+    height: 44px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+  :root[data-layout="portrait"] .qo-segmented > button,
+  :root[data-layout="landscape"] .qo-segmented > button,
+  :root[data-layout="portrait"] .qo-input-sm,
+  :root[data-layout="landscape"] .qo-input-sm {
+    height: 44px;
+  }
+  :root[data-layout="portrait"] .qo-zoom button,
+  :root[data-layout="landscape"] .qo-zoom button {
+    width: 44px;
+    height: 44px;
+  }
+
   /* A progress bar. The fill takes its colour from --qo-bar (the agent). */
   .qo-progress {
     position: relative;

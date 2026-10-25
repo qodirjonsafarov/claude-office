@@ -3,13 +3,19 @@
 import json
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO, cast
 from unittest.mock import patch
 
 import pytest
 
+from app.core import token_tracker
 from app.core.state_machine import StateMachine
-from app.core.token_tracker import TokenTracker, estimate_cost_parts, estimate_cost_usd
+from app.core.token_tracker import (
+    TokenTracker,
+    TranscriptUsage,
+    estimate_cost_parts,
+    estimate_cost_usd,
+)
 from app.models.events import AnyEvent, EventAdapter, EventType
 
 
@@ -177,6 +183,39 @@ class TestCost:
         tracker.update_from_event(_event(f))
         usage = tracker.session_usage()
         assert usage is not None and usage.cost_usd == pytest.approx(3.0)
+
+
+class TestChunkedRead:
+    """A big transcript is read in bounded chunks, never in one go."""
+
+    def test_lines_across_chunk_borders_are_all_counted(self, tmp_path: Path) -> None:
+        f = tmp_path / "big.jsonl"
+        lines = [_assistant(f"m{i}", inp=1, out=1) for i in range(30)]
+        f.write_text("".join(lines) + '{"partial": ')
+        reads: list[int] = []
+        real_open = open
+
+        def spy_open(*args: Any, **kwargs: Any) -> Any:
+            handle = cast(BinaryIO, real_open(*args, **kwargs))
+            real_read = handle.read
+
+            def read(n: int = -1) -> bytes:
+                reads.append(n)
+                return real_read(n)
+
+            handle.read = read  # type: ignore[method-assign]
+            return handle
+
+        usage = TranscriptUsage()
+        with (
+            patch.object(token_tracker, "_READ_CHUNK", 100),
+            patch("builtins.open", spy_open),
+        ):
+            usage.read(f, main=True)
+        assert len(usage.messages) == 30
+        assert reads and all(0 < n <= 100 for n in reads)
+        # The unfinished last line is left for the next read.
+        assert usage.offsets[f] == sum(len(x.encode()) for x in lines)
 
 
 class TestCostParts:

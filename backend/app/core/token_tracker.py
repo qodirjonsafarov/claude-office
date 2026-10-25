@@ -27,6 +27,10 @@ _THINKING_READ_SIZE = 50_000
 # real sessions while preventing a pathological transcript from exhausting RAM.
 _MAX_TRANSCRIPT_BYTES = 50_000_000
 
+# TranscriptUsage reads new transcript bytes in pieces of this size, so the
+# first read of a long session never holds the whole file in memory.
+_READ_CHUNK = 2 * 1024 * 1024
+
 # Context window: 200k unless the session runs a 1M-context model, seen as a
 # ``[1m]`` suffix on the model id or as a context larger than 200k tokens.
 _DEFAULT_CONTEXT_WINDOW = 200_000
@@ -229,35 +233,47 @@ class TranscriptUsage:
         try:
             with open(path, "rb") as f:
                 f.seek(offset)
-                chunk = f.read()
+                pending = b""  # an unfinished line carried to the next chunk
+                while True:
+                    chunk = f.read(_READ_CHUNK)
+                    if not chunk:
+                        break
+                    data = pending + chunk
+                    end = data.rfind(b"\n")
+                    if end == -1:
+                        pending = data
+                        continue
+                    for raw in data[: end + 1].split(b"\n"):
+                        self._record_line(raw, main=main)
+                    offset += end + 1
+                    pending = data[end + 1 :]
         except OSError as exc:
             logger.warning("Failed to read transcript %s: %s", path, exc)
+        # Up to the last complete line; the rest is read next time.
+        self.offsets[path] = offset
+
+    def _record_line(self, raw: bytes, *, main: bool) -> None:
+        """Record the usage of one transcript line, if it has any."""
+        if b'"usage"' not in raw:
             return
-        end = chunk.rfind(b"\n")
-        if end == -1:
-            return  # no complete line yet
-        self.offsets[path] = offset + end + 1
-        for raw in chunk[: end + 1].split(b"\n"):
-            if b'"usage"' not in raw:
-                continue
-            try:
-                record = json.loads(raw)
-            except (json.JSONDecodeError, UnicodeDecodeError):
-                continue
-            if not isinstance(record, dict):
-                continue
-            rec = cast(dict[str, Any], record)
-            parsed = _parse_usage_record(rec)
-            if parsed is None:
-                continue
-            msg_id, usage = parsed
-            self.messages[msg_id] = usage
-            if main:
-                self.last_main = usage
-                requested = rec.get("requestedModel")
-                markers = f"{requested or ''} {usage.model or ''}".lower()
-                if _LONG_CONTEXT_MARKER in markers:
-                    self.long_context = True
+        try:
+            record = json.loads(raw)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return
+        if not isinstance(record, dict):
+            return
+        rec = cast(dict[str, Any], record)
+        parsed = _parse_usage_record(rec)
+        if parsed is None:
+            return
+        msg_id, usage = parsed
+        self.messages[msg_id] = usage
+        if main:
+            self.last_main = usage
+            requested = rec.get("requestedModel")
+            markers = f"{requested or ''} {usage.model or ''}".lower()
+            if _LONG_CONTEXT_MARKER in markers:
+                self.long_context = True
 
     @property
     def model(self) -> str | None:

@@ -27,6 +27,7 @@ import {
 } from "@/systems/typingPose";
 import { facingFromDelta, type Facing } from "@/systems/personMotion";
 import type { Gesture } from "@/systems/personPoses";
+import { useReducedMotion } from "@/systems/reducedMotion";
 import {
   FRAME,
   sheetCell,
@@ -130,6 +131,8 @@ interface PersonSpriteProps {
   glance?: boolean;
   /** Soft floor shadow under the feet (off for seated people). */
   shadow?: boolean;
+  /** Seated and reading (Read / Grep): head bowed instead of typing. */
+  reading?: boolean;
 }
 
 /** Shadow under the feet, in canvas px (before the sprite scale). */
@@ -150,14 +153,17 @@ function PersonSpriteComponent({
   gesture,
   seed,
   glance = false,
-  shadow = mode !== "sit",
+  shadow = mode !== "sit" && mode !== "sleep",
+  reading = false,
 }: PersonSpriteProps): ReactNode {
   const [texture, setTexture] = useState<Texture | null>(
     () => loadedSheets.get(sheet) ?? null,
   );
   const typingElapsed = useActivityClock(typing && mode === "sit");
   const pose = typingElapsed === null ? null : typingPose(typingElapsed);
-  const bodyBob = pose ? pose.bodyBob : 0;
+  // No typing lean under reduced motion
+  const reduced = useReducedMotion();
+  const bodyBob = pose && !reduced ? pose.bodyBob : 0;
 
   const input: CellInput = {
     mode,
@@ -167,6 +173,7 @@ function PersonSpriteComponent({
     seed,
     glance,
     pressed: pose?.pressed ?? null,
+    reading,
   };
 
   // Life clock (breathing, blinking, glancing) and gesture clock

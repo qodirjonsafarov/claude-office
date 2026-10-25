@@ -42,6 +42,7 @@ import {
   selectBoss,
   selectTodos,
   selectDebugMode,
+  selectEventLog,
   selectShowPaths,
   selectShowQueueSlots,
   selectShowPhaseLabels,
@@ -56,6 +57,7 @@ import { wireGameRuntime, unwireGameRuntime } from "@/systems/gameRuntime";
 import { useCompactionAnimation } from "@/systems/compactionAnimation";
 import { CrowdLayoutCache } from "@/systems/crowdLayout";
 import { AgentLookCache } from "@/systems/agentLooks";
+import { sceneSignals, type PersonSignals } from "@/systems/sceneSignals";
 import { useOfficeTextures } from "@/hooks/useOfficeTextures";
 import {
   CANVAS_WIDTH,
@@ -343,6 +345,22 @@ export function OfficeGame(): ReactNode {
 
   // Render-only nudges so people never stand inside each other, and name
   // tag lifts so tags never overlap (systems/crowdLayout.ts)
+  // Per-person activity, failures and current tool (systems/sceneSignals.ts)
+  const eventLog = useGameStore(selectEventLog);
+  const signals = useMemo(() => sceneSignals(eventLog), [eventLog]);
+  const bossSignals = useMemo<PersonSignals | undefined>(() => {
+    const own = signals.get("boss");
+    const office = signals.get("*");
+    if (!own && !office) return undefined;
+    // The boss dozes off only when the whole office has been quiet
+    return {
+      lastEventAt: office?.lastEventAt ?? null,
+      lastErrorAt: own?.lastErrorAt ?? null,
+      tool: own?.tool ?? "other",
+      failing: own?.failing ?? false,
+    };
+  }, [signals]);
+
   // Character look per agent by role (systems/agentLooks.ts)
   const [lookCache] = useState(() => new AgentLookCache());
   const agentLooks = useMemo(
@@ -623,6 +641,7 @@ export function OfficeGame(): ReactNode {
                             desk={agent.desk}
                             backendState={agent.backendState}
                             sheet={agentLooks.get(agent.id)}
+                            signals={signals.get(agent.id)}
                             offset={crowdOffsets.get(agent.id)}
                           />
                         </pixiContainer>
@@ -695,6 +714,7 @@ export function OfficeGame(): ReactNode {
                     renderBubble={false}
                     isTyping={boss.isTyping}
                     progress={boss.progress}
+                    signals={bossSignals}
                     isAway={compactionAnimation.phase !== "idle"}
                   />
 
@@ -761,6 +781,7 @@ export function OfficeGame(): ReactNode {
                         }
                         color={agent.color}
                         progress={agent.progress}
+                        failing={signals.get(agent.id)?.failing ?? false}
                       />
                     ))}
 

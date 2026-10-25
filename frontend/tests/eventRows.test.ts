@@ -34,7 +34,7 @@ describe("groupToolCalls", () => {
   it("keeps a running call (no post yet) as its own row", () => {
     const pre = e("pre_tool_use", "main", "Read");
     expect(groupToolCalls([pre])).toEqual([
-      { kind: "tool", key: pre.id, pre, post: null },
+      { kind: "tool", key: expect.any(String), pre, post: null },
     ]);
   });
 
@@ -63,7 +63,7 @@ describe("groupToolCalls", () => {
   it("leaves other events as they are", () => {
     const stop = e("stop", "main");
     expect(groupToolCalls([stop])).toEqual([
-      { kind: "event", key: stop.id, event: stop },
+      { kind: "event", key: expect.any(String), event: stop },
     ]);
   });
 });
@@ -95,5 +95,29 @@ describe("eventText", () => {
         summary: 'User: <agent-message from="a3">\n[Sub...',
       }),
     ).toBe("Message from an agent");
+  });
+});
+
+describe("groupToolCalls row keys", () => {
+  it("are unique even when events share a timestamp id", () => {
+    const same = "1792969161.210412";
+    const rows = groupToolCalls([
+      { id: same, type: "user_prompt_submit", agentId: "main", summary: "a" },
+      { id: same, type: "subagent_start", agentId: "x", summary: "b" },
+      { id: same, type: "subagent_start", agentId: "x", summary: "c" },
+      { id: same, type: "pre_tool_use", agentId: "y", summary: "d" },
+    ]);
+    const keys = rows.map((r) => r.key);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("keeps the same key for the same row on the next render", () => {
+    const log = [
+      { id: "1", type: "stop", agentId: "main", summary: "a" },
+      { id: "1", type: "stop", agentId: "main", summary: "b" },
+    ];
+    expect(groupToolCalls(log).map((r) => r.key)).toEqual(
+      groupToolCalls(log).map((r) => r.key),
+    );
   });
 });

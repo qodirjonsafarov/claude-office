@@ -29,12 +29,21 @@ export function groupToolCalls<E extends RowEvent>(
   const rows: LogRow<E>[] = [];
   // Per person: tool rows that have a post but no pre yet, oldest first.
   const open = new Map<string, Extract<LogRow<E>, { kind: "tool" }>[]>();
+  // Backend ids come from timestamps and can repeat: make React keys unique
+  // (stable across renders, the log order is the same).
+  const used = new Map<string, number>();
+  const keyOf = (event: E): string => {
+    const base = `${event.id}|${event.type}|${personKey(event.agentId)}`;
+    const n = used.get(base) ?? 0;
+    used.set(base, n + 1);
+    return n === 0 ? base : `${base}#${n}`;
+  };
 
   for (const event of log) {
     if (event.type === "post_tool_use") {
       const row = {
         kind: "tool" as const,
-        key: event.id,
+        key: keyOf(event),
         pre: null,
         post: event,
       };
@@ -55,11 +64,11 @@ export function groupToolCalls<E extends RowEvent>(
         match.pre = event;
         waiting.splice(index, 1);
       } else {
-        rows.push({ kind: "tool", key: event.id, pre: event, post: null });
+        rows.push({ kind: "tool", key: keyOf(event), pre: event, post: null });
       }
       continue;
     }
-    rows.push({ kind: "event", key: event.id, event });
+    rows.push({ kind: "event", key: keyOf(event), event });
   }
   return rows;
 }

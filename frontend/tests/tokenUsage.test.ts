@@ -68,6 +68,10 @@ describe("formatCost", () => {
   it("shows nothing without a price", () => {
     expect(formatCost(null)).toBeNull();
   });
+
+  it("never shows $0", () => {
+    expect(formatCost(0)).toBeNull();
+  });
 });
 
 describe("usageLabel", () => {

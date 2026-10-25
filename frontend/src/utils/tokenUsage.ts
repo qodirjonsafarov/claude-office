@@ -60,9 +60,10 @@ export function formatTokens(n: number): string {
   return `${millions < 10 ? millions.toFixed(1) : Math.round(millions)}M`;
 }
 
-/** "≈$1.23", "≈$123", "<$0.01"; null without a price. */
+/** "≈$1.23", "≈$123", "<$0.01"; null without a price or at zero. */
 export function formatCost(usd: number | null): string | null {
-  if (usd === null) return null;
+  // No price known, or a zero estimate: show tokens only, never "$0".
+  if (usd === null || usd <= 0) return null;
   if (usd < 0.01) return "<$0.01";
   if (usd < 100) return `≈$${usd.toFixed(2)}`;
   return `≈$${Math.round(usd)}`;

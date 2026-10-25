@@ -217,12 +217,14 @@ def history_entry(sm: StateMachine, event: AnyEvent, summary: str) -> HistoryEnt
         if envelope:
             summary = envelope
 
+    # Naive times (SQLite) are UTC: the id must match the live stream's.
+    ts = event.timestamp if event.timestamp.tzinfo else event.timestamp.replace(tzinfo=UTC)
     return {
-        "id": str(event.timestamp.timestamp()),
+        "id": str(ts.timestamp()),
         "type": str(event.event_type),
         "agentId": agent_id,
         "summary": summary,
-        "timestamp": event.timestamp.isoformat(),
+        "timestamp": ts.isoformat(),
         "detail": detail,
     }
 
@@ -836,12 +838,16 @@ class EventProcessor:
             skipped_count = 0
             for rec in events:
                 try:
+                    # SQLite gives naive datetimes; they are stored as UTC.
+                    ts = (
+                        rec.timestamp if rec.timestamp.tzinfo else rec.timestamp.replace(tzinfo=UTC)
+                    )
                     try:
                         evt = EventAdapter.validate_python(
                             {
                                 "event_type": EventType(rec.event_type),
                                 "session_id": rec.session_id,
-                                "timestamp": rec.timestamp,
+                                "timestamp": ts,
                                 "data": rec.data or {},
                             }
                         )

@@ -126,3 +126,55 @@ async def test_restored_history_keeps_tool_detail() -> None:
     sm = await EventProcessor()._build_restored_state_machine(sid)
     assert sm is not None
     assert sm.history[-1]["detail"]["toolName"] == "Read"
+
+
+@pytest.mark.asyncio
+async def test_restored_history_has_utc_times_and_live_ids() -> None:
+    """SQLite returns naive times: restore must read them as UTC so the ids
+    match the live stream's (the frontend dedupes on them)."""
+    sid = f"restore-tz-{uuid4().hex[:8]}"
+    when = datetime(2026, 10, 26, 2, 43, 4, 123456, tzinfo=UTC)
+    async with AsyncSessionLocal() as db:
+        db.add(
+            EventRecord(
+                session_id=sid,
+                timestamp=when.replace(tzinfo=None),
+                event_type="pre_tool_use",
+                data={"tool_name": "Read"},
+            )
+        )
+        await db.commit()
+    sm = await EventProcessor()._build_restored_state_machine(sid)
+    assert sm is not None
+    live = history_entry(
+        StateMachine(),
+        EventAdapter.validate_python(
+            {
+                "event_type": EventType.PRE_TOOL_USE,
+                "session_id": sid,
+                "timestamp": when,
+                "data": {"tool_name": "Read"},
+            }
+        ),
+        "x",
+    )
+    restored = sm.history[-1]
+    assert restored["id"] == live["id"]
+    assert restored["timestamp"] == live["timestamp"]
+    assert restored["timestamp"].endswith("+00:00")
+
+
+def test_history_entry_reads_naive_time_as_utc() -> None:
+    naive = datetime(2026, 10, 26, 2, 0, 0)
+    event = EventAdapter.validate_python(
+        {
+            "event_type": EventType.STOP,
+            "session_id": "s1",
+            "timestamp": naive,
+            "data": {},
+        }
+    )
+    entry = history_entry(StateMachine(), event, "x")
+    assert entry["id"] == str(naive.replace(tzinfo=UTC).timestamp())
+    assert entry["timestamp"].endswith("+00:00")
+

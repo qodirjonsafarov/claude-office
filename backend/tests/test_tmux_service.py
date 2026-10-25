@@ -134,7 +134,7 @@ class TestSendPrompt:
         assert buffer.startswith("claude-office-")
         assert load[4:] == ["-"]
         assert load_stdin == b"hello\nworld"
-        assert paste == ["tmux", "paste-buffer", "-p", "-d", "-b", buffer, "-t", "%7"]
+        assert paste == ["tmux", "paste-buffer", "-p", "-r", "-d", "-b", buffer, "-t", "%7"]
         assert enter == ["tmux", "send-keys", "-t", "%7", "Enter"]
 
     async def test_text_never_goes_into_argv(self) -> None:

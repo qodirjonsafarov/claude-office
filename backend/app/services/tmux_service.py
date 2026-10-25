@@ -149,7 +149,7 @@ class TmuxService:
         if loaded.returncode != 0:
             raise TmuxError("tmux load-buffer failed")
         pasted = await self._run(
-            ["tmux", "paste-buffer", "-p", "-d", "-b", buffer, "-t", pane], None
+            ["tmux", "paste-buffer", "-p", "-r", "-d", "-b", buffer, "-t", pane], None
         )
         if pasted.returncode != 0:
             await self._run(["tmux", "delete-buffer", "-b", buffer], None)

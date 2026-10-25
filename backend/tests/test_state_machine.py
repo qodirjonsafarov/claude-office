@@ -26,7 +26,6 @@ class TestStateMachineInit:
         """Initial queues should be empty."""
         sm = StateMachine()
         assert len(sm.arrival_queue) == 0
-        assert len(sm.handin_queue) == 0
 
     def test_initial_token_counts_zero(self) -> None:
         """Initial token counts should be zero."""
@@ -65,18 +64,6 @@ class TestRemoveAgent:
         sm.arrival_queue.append("agent1")
         sm.remove_agent("agent1")
         assert "agent1" not in sm.arrival_queue
-
-    def test_remove_agent_from_handin_queue(self) -> None:
-        """Should remove agent from handin queue."""
-        sm = StateMachine()
-        from app.models.agents import Agent
-
-        sm.agents["agent1"] = Agent(
-            id="agent1", name="Test", color="#ff0000", number=1, state=AgentState.COMPLETED
-        )
-        sm.handin_queue.append("agent1")
-        sm.remove_agent("agent1")
-        assert "agent1" not in sm.handin_queue
 
     def test_remove_nonexistent_agent_no_error(self) -> None:
         """Removing nonexistent agent should not raise error."""
@@ -144,10 +131,10 @@ class TestToGameState:
         """Queues should be copied to game state."""
         sm = StateMachine()
         sm.arrival_queue = ["a1", "a2"]
-        sm.handin_queue = ["a3"]
         state = sm.to_game_state("test")
         assert state.arrival_queue == ["a1", "a2"]
-        assert state.departure_queue == ["a3"]
+        # Finished agents rest in the office instead of queueing to hand in
+        assert state.departure_queue == []
 
     def test_tool_uses_included(self) -> None:
         """Tool uses counter should be in office state."""

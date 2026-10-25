@@ -331,13 +331,9 @@ def _handle_pre_tool_use(sm: "StateMachine", event: AnyEvent) -> None:
     assert isinstance(event, ToolEvent)
     tool_name = event.data.tool_name
 
-    # Any activity of a resting agent recalls it
-    resting = _resting_by_native(sm, event.data.native_agent_id)
-    if resting is not None:
-        _recall(resting)
-    if event.data.agent_id in sm.agents:
-        _recall(sm.agents[event.data.agent_id])
-
+    # Tool calls never wake a resting agent: the transcript poller may still
+    # read the last tool_use after SubagentStop. Only SUBAGENT_INFO /
+    # SUBAGENT_START with the same native id (a real resume) recall it.
     progress_owner = _progress_owner(event)
     if progress_owner is not None:
         tool_input = event.data.tool_input or {}
@@ -376,7 +372,7 @@ def _handle_pre_tool_use(sm: "StateMachine", event: AnyEvent) -> None:
                 new_agent.state = AgentState.WORKING
                 sm.agents[agent_id] = new_agent
 
-            if agent_id in sm.agents:
+            if agent_id in sm.agents and sm.agents[agent_id].state != AgentState.RESTING:
                 sm.agents[agent_id].bubble = bubble
                 sm.agents[agent_id].state = AgentState.WORKING
                 if agent_id in sm.arrival_queue:
@@ -462,9 +458,11 @@ def _handle_subagent_start(sm: "StateMachine", event: AnyEvent) -> None:
         )
         return
     # Resumed agent (same id or same transcript): wake it, no second arrival
-    existing = sm.agents.get(event.data.agent_id) or _resting_by_native(
-        sm,
-        event.data.native_agent_id or native_id_from_transcript(event.data.agent_transcript_path),
+    native = event.data.native_agent_id or native_id_from_transcript(
+        event.data.agent_transcript_path
+    )
+    existing = sm.agents.get(event.data.agent_id) or next(
+        (a for a in sm.agents.values() if native and a.native_id == native), None
     )
     if existing is not None:
         _recall(existing)
@@ -724,7 +722,6 @@ class StateMachine:
     elevator_state: ElevatorState = ElevatorState.CLOSED
     agents: dict[str, Agent] = field(default_factory=_empty_agents)
     arrival_queue: list[str] = field(default_factory=_empty_str_list)
-    handin_queue: list[str] = field(default_factory=_empty_str_list)
     history: list[HistoryEntry] = field(default_factory=_empty_history_list)
     todos: list[TodoItem] = field(default_factory=_empty_todo_list)
     # Subagent todo lists and Task* tool progress per agent id; the boss's
@@ -772,6 +769,10 @@ class StateMachine:
     last_event_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     # Minutes a finished agent rests in the office before it walks out
     rest_minutes: float = field(default_factory=lambda: _rest_minutes_setting())
+    # Time of each subagent's latest event (stuck-worker safety net)
+    agent_last_event: dict[str, datetime] = field(
+        default_factory=lambda: cast(dict[str, datetime], {})
+    )
 
     # ---------------------------------------------------------------------------
     # Core methods
@@ -875,7 +876,8 @@ class StateMachine:
             history=self.history,
             todos=self.todos,
             arrival_queue=self.arrival_queue.copy(),
-            departure_queue=self.handin_queue.copy(),
+            # Agents no longer queue to hand in work (they rest instead)
+            departure_queue=[],
             whiteboard_data=whiteboard_data,
             conversation=self.conversation.copy(),
             floor_id=self.floor_id,
@@ -895,6 +897,25 @@ class StateMachine:
         for agent_id in gone:
             self.remove_agent(agent_id)
         return gone
+
+    def quiet_workers(self, now: datetime, minutes: float) -> list[str]:
+        """Working subagents without any event for ``minutes`` (maybe stuck)."""
+        limit = _as_utc(now)
+        return [
+            a.id
+            for a in self.agents.values()
+            if a.state in (AgentState.WORKING, AgentState.THINKING)
+            and a.id in self.agent_last_event
+            and (limit - _as_utc(self.agent_last_event[a.id])).total_seconds() >= minutes * 60
+        ]
+
+    def rest_agent(self, agent_id: str, now: datetime) -> None:
+        """Put an agent to rest (finished or lost its transcript)."""
+        agent = self.agents.get(agent_id)
+        if agent is not None:
+            agent.state = AgentState.RESTING
+            agent.resting_since = now
+            agent.bubble = None
 
     def send_longest_resting_home(self) -> str | None:
         """Free a desk: the agent resting the longest leaves. None if nobody rests."""
@@ -918,11 +939,10 @@ class StateMachine:
         """
         if agent_id in self.agents:
             del self.agents[agent_id]
+        self.agent_last_event.pop(agent_id, None)
         self.agent_progress.forget_agent(agent_id)
         if agent_id in self.arrival_queue:
             self.arrival_queue.remove(agent_id)
-        if agent_id in self.handin_queue:
-            self.handin_queue.remove(agent_id)
 
     def transition(self, event: AnyEvent) -> None:
         """Process an event and update state accordingly.
@@ -955,6 +975,7 @@ class StateMachine:
             self.session_ended = True
 
         handler = _DISPATCH_TABLE.get(event.event_type)
+        event_agent = getattr(event.data, "agent_id", None)
         if handler is not None:
             try:
                 handler(self, event)
@@ -965,6 +986,8 @@ class StateMachine:
                     exc_info=True,
                 )
                 raise
+        if event_agent and event_agent in self.agents:
+            self.agent_last_event[event_agent] = event.timestamp
 
     def tool_to_thought(self, event: ToolEvent) -> BubbleContent:
         """Convert a tool use event to thought bubble content.

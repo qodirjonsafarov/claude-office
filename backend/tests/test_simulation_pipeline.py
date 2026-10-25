@@ -14,7 +14,7 @@ TestSimulationTeamScenario  - Lead + teammate session pairing
 TestSimulationStateVerification - Game-state assertions after key events
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -832,3 +832,28 @@ class TestReplayPagination:
         sid = self._seed(3)
         resp = client.get(f"/api/v1/sessions/{sid}/replay?offset=-1")
         assert resp.status_code == 422
+
+
+class TestReplayRestingExpiry:
+    def test_replay_ends_with_long_resting_agents_gone(self) -> None:
+        sid = f"state-rest-expiry-{uuid4()}"
+        long_ago = datetime.now(UTC) - timedelta(hours=2)
+
+        def post_at(event_type: str, data: dict[str, Any], at: datetime) -> None:
+            response = client.post(
+                "/api/v1/events",
+                json={
+                    "event_type": event_type,
+                    "session_id": sid,
+                    "timestamp": at.isoformat(),
+                    "data": data,
+                },
+            )
+            assert response.status_code == 200, response.text
+
+        post_at("session_start", {}, long_ago)
+        post_at("subagent_start", {"agent_id": "w9", "task_description": "x"}, long_ago)
+        post_at("subagent_stop", {"agent_id": "w9", "success": True}, long_ago)
+
+        state = get_replay_state(sid)
+        assert "w9" not in [a["id"] for a in state.get("agents", [])]

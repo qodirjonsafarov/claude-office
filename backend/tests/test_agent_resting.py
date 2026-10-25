@@ -108,7 +108,7 @@ class TestFinishToRest:
         assert agent.state == AgentState.RESTING
         assert agent.desk == 1
         assert agent.name == name
-        assert "subagent_toolu_1" not in sm.handin_queue
+        assert sm.to_game_state(SESSION).departure_queue == []
 
     def test_resting_remembers_the_native_id_from_the_transcript(self) -> None:
         sm = StateMachine()
@@ -133,12 +133,30 @@ class TestRecall:
         # Recalled agents don't queue at the elevator again
         assert agent_id not in sm.arrival_queue
 
-    def test_new_tool_activity_recalls_it(self) -> None:
+    def test_a_late_poller_tool_call_does_not_wake_it(self) -> None:
+        # The transcript poller may still read the last tool_use after the
+        # stop (it stamps events with now()); that is not a resume.
         sm = StateMachine()
         agent_id = finished_agent(sm)
-        tool(sm, agent_id, T0 + timedelta(minutes=9))
+        tool(sm, agent_id, T0 + timedelta(minutes=5, seconds=1))
 
-        assert sm.agents[agent_id].state == AgentState.WORKING
+        assert sm.agents[agent_id].state == AgentState.RESTING
+
+    def test_a_hook_tool_call_with_the_native_id_does_not_wake_it(self) -> None:
+        sm = StateMachine()
+        agent_id = finished_agent(sm)
+        sm.transition(
+            ToolEvent(
+                event_type=EventType.PRE_TOOL_USE,
+                session_id=SESSION,
+                timestamp=T0 + timedelta(minutes=9),
+                data=ToolEventData(
+                    agent_id="main", native_agent_id="abc123", tool_name="TodoWrite"
+                ),
+            )
+        )
+
+        assert sm.agents[agent_id].state == AgentState.RESTING
 
     def test_a_new_start_with_the_same_id_recalls_instead_of_duplicating(self) -> None:
         sm = StateMachine()
@@ -147,6 +165,40 @@ class TestRecall:
 
         assert list(sm.agents) == [agent_id]
         assert sm.agents[agent_id].state == AgentState.WORKING
+
+    def test_a_start_with_a_new_id_but_the_same_native_id_is_the_same_agent(self) -> None:
+        sm = StateMachine()
+        agent_id = finished_agent(sm)
+        sm.transition(
+            AgentEvent(
+                event_type=EventType.SUBAGENT_START,
+                session_id=SESSION,
+                timestamp=T0 + timedelta(minutes=9),
+                data=AgentEventData(
+                    agent_id="subagent_abc123",
+                    native_agent_id="abc123",
+                    agent_type="developer",
+                ),
+            )
+        )
+
+        assert list(sm.agents) == [agent_id]
+        assert sm.agents[agent_id].state == AgentState.WORKING
+
+    def test_a_start_for_a_working_agent_with_the_same_native_id_adds_nobody(self) -> None:
+        sm = StateMachine()
+        start(sm, "subagent_toolu_1", T0)
+        sm.agents["subagent_toolu_1"].native_id = "abc123"
+        sm.transition(
+            AgentEvent(
+                event_type=EventType.SUBAGENT_START,
+                session_id=SESSION,
+                timestamp=T0 + timedelta(minutes=1),
+                data=AgentEventData(agent_id="subagent_abc123", native_agent_id="abc123"),
+            )
+        )
+
+        assert list(sm.agents) == ["subagent_toolu_1"]
 
     def test_a_recalled_agent_can_rest_again(self) -> None:
         sm = StateMachine()
@@ -243,17 +295,10 @@ class TestAsyncStopHandler:
         sm = StateMachine()
         start(sm, "subagent_toolu_1", T0)
         event = stop(sm, T0 + timedelta(minutes=5), "abc123", agent_id="subagent_toolu_1")
-        persisted: list[EventType] = []
 
-        async def persist(
-            _session: str, event_type: EventType, _data: EventDataBase | dict[str, Any] | None
-        ) -> None:
-            persisted.append(event_type)
+        await handle_subagent_stop(sm, event)
 
-        await handle_subagent_stop(sm, event, persist)
-
-        assert "subagent_toolu_1" in sm.agents
-        assert EventType.CLEANUP not in persisted
+        assert sm.agents["subagent_toolu_1"].state == AgentState.RESTING
 
 
 class TestRestSweep:
@@ -288,3 +333,106 @@ class TestRestSweep:
         assert agent_id not in sm.agents
         assert persisted == [(EventType.CLEANUP, agent_id)]
         assert broadcasts == [SESSION]
+
+
+class TestStuckWorkerSafetyNet:
+    def test_a_quiet_working_agent_is_found(self) -> None:
+        sm = StateMachine()
+        start(sm, "w", T0)
+        tool(sm, "w", T0 + timedelta(minutes=1))
+
+        assert sm.quiet_workers(T0 + timedelta(minutes=5), minutes=10) == []
+        assert sm.quiet_workers(T0 + timedelta(minutes=12), minutes=10) == ["w"]
+
+    def test_resting_agents_are_not_quiet_workers(self) -> None:
+        sm = StateMachine()
+        finished_agent(sm)
+
+        assert sm.quiet_workers(T0 + timedelta(hours=1), minutes=10) == []
+
+    def test_rest_agent_puts_it_to_rest(self) -> None:
+        sm = StateMachine()
+        start(sm, "w", T0)
+        sm.rest_agent("w", T0 + timedelta(minutes=12))
+
+        assert sm.agents["w"].state == AgentState.RESTING
+        assert sm.agents["w"].resting_since == T0 + timedelta(minutes=12)
+
+    @pytest.mark.asyncio
+    async def test_the_sweep_rests_quiet_workers_without_a_live_poller(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from app.core import event_processor as ep_module
+
+        sm = StateMachine()
+        start(sm, "polled", T0)
+        start(sm, "lost", T0)
+        tool(sm, "polled", T0 + timedelta(minutes=1))
+        tool(sm, "lost", T0 + timedelta(minutes=1))
+        processor = ep_module.EventProcessor()
+        processor.sessions[SESSION] = sm
+
+        class FakePoller:
+            async def is_polling(self, agent_id: str) -> bool:
+                return agent_id == "polled"
+
+        async def broadcast(_sid: str, _sm: StateMachine) -> None:
+            return None
+
+        monkeypatch.setattr(ep_module, "get_transcript_poller", lambda: FakePoller())
+        monkeypatch.setattr(ep_module, "broadcast_state", broadcast)
+
+        await processor.send_rested_agents_home(T0 + timedelta(minutes=15))
+
+        assert sm.agents["lost"].state == AgentState.RESTING
+        assert sm.agents["polled"].state != AgentState.RESTING
+
+
+class TestStopOrder:
+    @pytest.mark.asyncio
+    async def test_polling_stops_before_the_slow_transcript_count(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from app.core.handlers import agent_handler
+
+        order: list[str] = []
+
+        class FakePoller:
+            async def stop_polling(self, _agent_id: str) -> None:
+                order.append("stop_polling")
+
+        sm = StateMachine()
+        start(sm, "subagent_toolu_1", T0)
+        event = stop(sm, T0 + timedelta(minutes=5), "abc123", agent_id="subagent_toolu_1")
+
+        def count(_path: str) -> int:
+            order.append("count")
+            return 0
+
+        monkeypatch.setattr(agent_handler, "get_transcript_poller", lambda: FakePoller())
+        monkeypatch.setattr(sm.token_tracker, "count_tool_uses_from_jsonl", count)
+
+        await handle_subagent_stop(sm, event)
+
+        assert order == ["stop_polling", "count"]
+
+
+class TestLifespanSweep:
+    @pytest.mark.asyncio
+    async def test_the_sweep_loop_calls_the_processor(self) -> None:
+        import asyncio
+
+        from app.main import _rest_sweep_loop  # pyright: ignore[reportPrivateUsage]
+
+        calls: list[int] = []
+
+        class FakeProcessor:
+            async def send_rested_agents_home(self) -> int:
+                calls.append(1)
+                return 0
+
+        task = asyncio.create_task(_rest_sweep_loop(FakeProcessor(), 0.01))  # type: ignore[arg-type]
+        await asyncio.sleep(0.05)
+        task.cancel()
+
+        assert len(calls) >= 1

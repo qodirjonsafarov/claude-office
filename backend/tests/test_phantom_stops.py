@@ -52,7 +52,6 @@ class TestStateMachine:
         agent = sm.agents["subagent_toolu_bg"]
         assert agent.state == AgentState.WORKING
         assert agent.native_id is None
-        assert sm.handin_queue == []
 
     def test_real_stop_rests_the_linked_agent(self, subagents_dir: Path) -> None:
         sm = StateMachine()

@@ -1,8 +1,10 @@
 import asyncio
 import logging
 import os
+import shutil
 import subprocess
 import sys
+from collections.abc import Callable, Mapping
 from datetime import UTC
 from typing import Annotated, Any, TypedDict
 
@@ -397,6 +399,40 @@ def _validate_clipboard_message(message: str | None) -> str | None:
     return message
 
 
+Which = Callable[[str], str | None]
+
+
+def _is_wayland(env: Mapping[str, str]) -> bool:
+    return bool(env.get("WAYLAND_DISPLAY")) or env.get("XDG_SESSION_TYPE") == "wayland"
+
+
+def terminal_raise_command(platform: str, env: Mapping[str, str], which: Which) -> list[str] | None:
+    """Command that brings the terminal to the front, or None if there is none.
+
+    Wayland does not let one client raise another's window, so nothing is
+    tried there; the clipboard copy still works.
+    """
+    if platform == "darwin":
+        return ["osascript", "-e", 'tell application "Terminal" to activate']
+    if platform == "linux" and not _is_wayland(env) and which("wmctrl"):
+        return ["wmctrl", "-xa", "terminal"]
+    return None
+
+
+def clipboard_command(platform: str, env: Mapping[str, str], which: Which) -> list[str] | None:
+    """Command that reads stdin into the system clipboard, or None if none is installed."""
+    if platform == "darwin":
+        return ["pbcopy"]
+    if platform == "win32":
+        return ["clip"]
+    if platform != "linux":
+        return None
+    candidates = [["xclip", "-selection", "clipboard"], ["xsel", "--clipboard", "--input"]]
+    if _is_wayland(env):
+        candidates.insert(0, ["wl-copy"])
+    return next((cmd for cmd in candidates if which(cmd[0])), None)
+
+
 @router.post("/{session_id}/focus")
 async def focus_session(
     session_id: str,
@@ -405,8 +441,9 @@ async def focus_session(
 ) -> dict[str, str]:
     """Bring a session's terminal to the foreground and optionally copy a message to clipboard.
 
-    Uses platform-appropriate commands (macOS AppleScript, Linux wmctrl/xdg-terminal).
-    Clipboard copy uses ``pbcopy`` (macOS), ``xclip`` (Linux), or ``clip`` (Windows).
+    Raises the terminal with AppleScript (macOS) or ``wmctrl`` (Linux X11); on
+    Wayland the raise is skipped. Clipboard copy uses ``pbcopy`` (macOS),
+    ``wl-copy`` (Wayland), ``xclip``/``xsel`` (X11) or ``clip`` (Windows).
 
     Args:
         session_id: Identifier for the session to focus.
@@ -425,43 +462,24 @@ async def focus_session(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # Bring Terminal to foreground (non-blocking async subprocess)
-    if sys.platform == "darwin":
-        await asyncio.create_subprocess_exec(
-            "osascript",
-            "-e",
-            'tell application "Terminal" to activate',
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL,
-        )
-    elif sys.platform == "linux":
-        # Try common Linux terminal activators; non-fatal if unavailable.
-        for cmd in [
-            ["xdg-terminal", "wait"],
-            ["wmctrl", "-xa", "terminal"],
-        ]:
-            try:
-                proc = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdout=asyncio.subprocess.DEVNULL,
-                    stderr=asyncio.subprocess.DEVNULL,
-                )
-                await proc.wait()
-                break
-            except FileNotFoundError:
-                continue
+    env = dict(os.environ)
+    raise_cmd = terminal_raise_command(sys.platform, env, shutil.which)
+    if raise_cmd:
+        # Non-fatal: the window manager may refuse or the tool may be missing.
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *raise_cmd,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            await proc.wait()
+        except OSError as exc:
+            logger.warning("Terminal raise failed (%s): %s", raise_cmd[0], exc)
 
     # Optionally copy message to clipboard (non-blocking async subprocess)
     clipboard_message = _validate_clipboard_message(body.message if body else None)
     if clipboard_message:
-        clipboard_cmd: list[str] = []
-        if sys.platform == "darwin":
-            clipboard_cmd = ["pbcopy"]
-        elif sys.platform == "linux":
-            clipboard_cmd = ["xclip", "-selection", "clipboard"]
-        elif sys.platform == "win32":
-            clipboard_cmd = ["clip"]
-
+        clipboard_cmd = clipboard_command(sys.platform, env, shutil.which)
         if clipboard_cmd:
             try:
                 proc = await asyncio.create_subprocess_exec(
@@ -471,8 +489,10 @@ async def focus_session(
                     stderr=asyncio.subprocess.DEVNULL,
                 )
                 await proc.communicate(input=clipboard_message.encode("utf-8"))
-            except FileNotFoundError:
-                logger.warning("Clipboard command not found: %s", clipboard_cmd[0])
+            except OSError as exc:
+                logger.warning("Clipboard copy failed (%s): %s", clipboard_cmd[0], exc)
+        else:
+            logger.warning("No clipboard tool found (install wl-clipboard or xclip)")
 
     return {"status": "success", "message": f"Session {session_id} focused"}
 

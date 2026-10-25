@@ -12,6 +12,9 @@ import {
   gestureFrame,
   glanceAt,
   isBlinking,
+  conversantKey,
+  parseConversantKey,
+  showsThinking,
   THINKING_DELAY_MS,
   thinkingDots,
 } from "@/systems/personPoses";
@@ -169,8 +172,12 @@ describe("bossStance", () => {
 
   it("talks to the agent in front of him and hands over the task", () => {
     expect(bossStance({ ...base, conversantPhase: "conversing" })).toBe("talk");
+    expect(bossStance({ ...base, conversantPhase: "at_boss" })).toBe("handoff");
+  });
+
+  it("waits for the agent to arrive before talking", () => {
     expect(bossStance({ ...base, conversantPhase: "walking_to_boss" })).toBe(
-      "talk",
+      "sit",
     );
     expect(bossStance({ ...base, conversantPhase: "at_boss" })).toBe("handoff");
   });
@@ -191,5 +198,47 @@ describe("thinkingDots", () => {
     }
 
     expect([...lit].sort()).toEqual([0, 1, 2]);
+  });
+});
+
+describe("showsThinking", () => {
+  it("thinks only while the agent works on its own", () => {
+    expect(showsThinking("working")).toBe(true);
+    expect(showsThinking("thinking")).toBe(true);
+  });
+
+  it("does not think while waiting for the user or done", () => {
+    expect(showsThinking("waiting_permission")).toBe(false);
+    expect(showsThinking("waiting")).toBe(false);
+    expect(showsThinking("completed")).toBe(false);
+  });
+});
+
+describe("conversantKey", () => {
+  const boss = { x: 640, y: 900 };
+  const at = (phase: string, x: number, y: number) => ({
+    phase: phase as "conversing",
+    currentPosition: { x, y },
+  });
+
+  it("is empty when nobody is in front of the boss", () => {
+    expect(conversantKey([at("idle", 256, 432)], boss)).toBe("");
+  });
+
+  it("names the phase and the side the boss turns to", () => {
+    expect(
+      parseConversantKey(conversantKey([at("conversing", 480, 930)], boss)),
+    ).toEqual({ phase: "conversing", facing: "left" });
+    expect(
+      parseConversantKey(conversantKey([at("at_boss", 760, 868)], boss)),
+    ).toEqual({ phase: "at_boss", facing: "right" });
+    expect(parseConversantKey("")).toEqual({ phase: null, facing: "down" });
+  });
+
+  it("stays the same while the agent walks up (no re-render per frame)", () => {
+    const a = conversantKey([at("walking_to_boss", 470, 930)], boss);
+    const b = conversantKey([at("walking_to_boss", 503.7, 901.2)], boss);
+
+    expect(a).toBe(b);
   });
 });

@@ -4,7 +4,11 @@
  * from the store's agents.
  */
 import { describe, expect, it } from "vitest";
-import { computeCrowdLayout, displayPosition } from "@/systems/crowdLayout";
+import {
+  CrowdLayoutCache,
+  computeCrowdLayout,
+  displayPosition,
+} from "@/systems/crowdLayout";
 import { getDeskPosition } from "@/systems/queuePositions";
 
 type Agent =
@@ -76,6 +80,47 @@ describe("displayPosition", () => {
     expect(displayPosition("z", { x: 100, y: 200 }, offsets, 0)).toEqual({
       x: 100,
       y: 200,
+    });
+  });
+});
+
+describe("CrowdLayoutCache", () => {
+  const still = () =>
+    new Map([
+      ["a", agent("a", 600, 600)],
+      ["b", agent("b", 604, 600)],
+    ]);
+
+  it("reuses the same objects when nobody moved (memoized sprites skip)", () => {
+    const cache = new CrowdLayoutCache();
+    const first = cache.compute(still());
+    const second = cache.compute(still());
+
+    expect(second.crowdOffsets.get("a")).toBe(first.crowdOffsets.get("a"));
+    expect(second.labelPositions.get("b")).toBe(first.labelPositions.get("b"));
+  });
+
+  it("gives new objects once someone moves", () => {
+    const cache = new CrowdLayoutCache();
+    const first = cache.compute(still());
+    const moved = still();
+    moved.set("b", agent("b", 610, 600));
+    const second = cache.compute(moved);
+
+    expect(second.labelPositions.get("b")).not.toBe(
+      first.labelPositions.get("b"),
+    );
+  });
+
+  it("places each label at the nudged spot plus its lift", () => {
+    const cache = new CrowdLayoutCache();
+    const layout = cache.compute(still());
+    const offset = layout.crowdOffsets.get("a")!;
+    const lift = layout.labelLifts.get("a")!;
+
+    expect(layout.labelPositions.get("a")).toEqual({
+      x: 600 + offset.x,
+      y: 600 + offset.y + lift,
     });
   });
 });

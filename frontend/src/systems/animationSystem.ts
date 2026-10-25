@@ -28,6 +28,7 @@ import type { Position } from "@/types";
 
 const MOVEMENT_SPEED = 170; // pixels per second at full stride (eased in/out)
 const BUBBLE_DURATION_MS = 3000; // 3 seconds per bubble
+const COFFEE_CHECK_MS = 250; // coffee-break planner interval
 
 // ============================================================================
 // ANIMATION SYSTEM CLASS
@@ -61,6 +62,10 @@ class AnimationSystem {
   private listener: AnimationListener | null = null;
 
   private coffeeBreaks = new CoffeeBreakPlanner();
+  private lastCoffeeCheck = 0;
+
+  /** Agents re-routed while walking: their new path starts at full speed. */
+  private rerouted = new Set<string>();
 
   /**
    * Wire the machine-layer listener. Called once from the composition root
@@ -134,6 +139,10 @@ class AnimationSystem {
 
     const waypoints = calculatePath(agent.currentPosition, target, agentId);
 
+    // Already walking: carry on at speed instead of easing in again
+    if (agent.path) this.rerouted.add(agentId);
+    else this.rerouted.delete(agentId);
+
     if (waypoints.length > 1) {
       store.updateAgentTarget(agentId, target);
       store.updateAgentPath(agentId, {
@@ -160,6 +169,7 @@ class AnimationSystem {
    */
   unregisterAgent(agentId: string): void {
     collisionManager.unregisterAgent(agentId);
+    this.rerouted.delete(agentId);
   }
 
   // ==========================================================================
@@ -215,6 +225,7 @@ class AnimationSystem {
           path: agent.path,
         },
         deltaSeconds,
+        !this.rerouted.has(agentId),
       );
       if (!result) continue;
 
@@ -231,6 +242,7 @@ class AnimationSystem {
 
       // Queue the delta: path omitted => unchanged, null => cleared on arrival.
       if (arrived) {
+        this.rerouted.delete(agentId);
         movements.push({ agentId, position: newPosition, path: null });
         arrivals.push({ agentId, phase: agent.phase });
       } else if (newPath) {
@@ -259,6 +271,7 @@ class AnimationSystem {
       path: PathState;
     },
     deltaSeconds: number,
+    easeIn: boolean,
   ): {
     newPosition: Position;
     newPath: PathState | null;
@@ -283,6 +296,7 @@ class AnimationSystem {
       progress,
       deltaSeconds,
       MOVEMENT_SPEED,
+      { easeIn },
     );
 
     // Advance through waypoints until we've used all our movement distance
@@ -360,6 +374,11 @@ class AnimationSystem {
 
   /** Send long-idle workers to the coffee machine and back (coffeeBreak.ts). */
   private updateCoffeeBreaks(): void {
+    // Breaks are slow decisions: a few checks per second are plenty
+    const now = Date.now();
+    if (now - this.lastCoffeeCheck < COFFEE_CHECK_MS) return;
+    this.lastCoffeeCheck = now;
+
     const store = useGameStore.getState();
     const agents = Array.from(store.agents.values(), (agent) => ({
       id: agent.id,
@@ -370,10 +389,7 @@ class AnimationSystem {
       isTyping: agent.isTyping,
       backendState: agent.backendState,
     }));
-    for (const { agentId, target } of this.coffeeBreaks.update(
-      Date.now(),
-      agents,
-    )) {
+    for (const { agentId, target } of this.coffeeBreaks.update(now, agents)) {
       this.setAgentPath(agentId, target);
     }
   }

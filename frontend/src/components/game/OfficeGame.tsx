@@ -20,7 +20,14 @@ import {
   TextureSource,
   Application as PixiApplication,
 } from "pixi.js";
-import { useMemo, useEffect, useRef, useCallback, type ReactNode } from "react";
+import {
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   TransformWrapper,
   TransformComponent,
@@ -47,7 +54,7 @@ import {
 import { useAnimationSystem } from "@/systems/animationSystem";
 import { wireGameRuntime, unwireGameRuntime } from "@/systems/gameRuntime";
 import { useCompactionAnimation } from "@/systems/compactionAnimation";
-import { computeCrowdLayout, displayPosition } from "@/systems/crowdLayout";
+import { CrowdLayoutCache } from "@/systems/crowdLayout";
 import { useOfficeTextures } from "@/hooks/useOfficeTextures";
 import {
   CANVAS_WIDTH,
@@ -335,9 +342,10 @@ export function OfficeGame(): ReactNode {
 
   // Render-only nudges so people never stand inside each other, and name
   // tag lifts so tags never overlap (systems/crowdLayout.ts)
-  const { crowdOffsets, labelLifts } = useMemo(
-    () => computeCrowdLayout(agents),
-    [agents],
+  const [crowdCache] = useState(() => new CrowdLayoutCache());
+  const { crowdOffsets, labelPositions } = useMemo(
+    () => crowdCache.compute(agents),
+    [agents, crowdCache],
   );
 
   // Keyboard shortcuts for debug
@@ -585,7 +593,10 @@ export function OfficeGame(): ReactNode {
                       .map((agent) => (
                         <pixiContainer
                           key={agent.id}
-                          zIndex={agent.currentPosition.y}
+                          zIndex={
+                            agent.currentPosition.y +
+                            (crowdOffsets.get(agent.id)?.y ?? 0)
+                          }
                         >
                           <AgentSprite
                             id={agent.id}
@@ -600,6 +611,8 @@ export function OfficeGame(): ReactNode {
                             renderBubble={false}
                             renderLabel={false}
                             isTyping={agent.isTyping}
+                            desk={agent.desk}
+                            backendState={agent.backendState}
                             offset={crowdOffsets.get(agent.id)}
                           />
                         </pixiContainer>
@@ -732,12 +745,9 @@ export function OfficeGame(): ReactNode {
                       <AgentLabel
                         key={`label-${agent.id}`}
                         name={agent.name!}
-                        position={displayPosition(
-                          agent.id,
-                          agent.currentPosition,
-                          crowdOffsets,
-                          labelLifts.get(agent.id) ?? 0,
-                        )}
+                        position={
+                          labelPositions.get(agent.id) ?? agent.currentPosition
+                        }
                         color={agent.color}
                       />
                     ))}

@@ -15,14 +15,7 @@
  * LPC frames. The only extra drawing is a soft shadow on the floor.
  */
 
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { memo, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTick } from "@pixi/react";
 import { Assets, Graphics, Rectangle, Texture } from "pixi.js";
 import type { Position } from "@/types";
@@ -32,53 +25,18 @@ import {
   isTypingVisible,
   typingPose,
 } from "@/systems/typingPose";
+import { facingFromDelta, type Facing } from "@/systems/personMotion";
+import type { Gesture } from "@/systems/personPoses";
 import {
-  facingFromDelta,
-  walkFrameAt,
-  type Facing,
-} from "@/systems/personMotion";
-import {
-  gestureFrame,
-  glanceAt,
-  isBlinking,
-  GESTURES,
-  type Gesture,
-  type GestureAnim,
-} from "@/systems/personPoses";
-
-// ============================================================================
-// SHEET LAYOUT
-// ============================================================================
-
-const FRAME = 64;
-const WALK_X = 0; // frame 0 is the standing pose, 1..8 the walk cycle
-const SIT_X = 576;
-const SIT_CHAIR_FRAME = 2; // third sit frame: sitting on a chair
-const IDLE_X = 768;
-const IDLE_FRAMES = 2;
-const IDLE_STEP_MS = 600; // slow breathing between the two idle frames
-// Typing at the desk: the seated frame with the worker's own left / right
-// hand pressing a key (scripts/make_typing_frames.py)
-const TYPE_LEFT_X = 896;
-const TYPE_RIGHT_X = 960;
-// LPC gesture animations (scripts/compose_lpc_people.py)
-const GESTURE_X: Record<GestureAnim, number> = {
-  spellcast: 1216,
-  thrust: 1664,
-};
-// Eyes-closed copies of idle frame 0 and of the chair sit frame
-const BLINK_IDLE_X = 2176;
-const BLINK_SIT_X = 2240;
+  FRAME,
+  sheetCell,
+  type CellInput,
+  type PersonMode,
+  type SheetCell,
+} from "@/systems/personFrames";
 
 export type PersonDirection = Facing;
-export type PersonMode = "walk" | "idle" | "sit" | "gesture";
-
-const ROW: Record<PersonDirection, number> = {
-  up: 0,
-  left: 1,
-  down: 2,
-  right: 3,
-};
+export type { PersonMode };
 
 /** Agent colors from the backend mapped to the sheet that wears that shirt. */
 const COLOR_TO_SHEET: Record<string, string> = {
@@ -116,6 +74,8 @@ export function sheetForColor(color: string, id: string): string {
 // ============================================================================
 
 const sheetPromises = new Map<string, Promise<Texture>>();
+/** Sheets already loaded, so a newly mounted sprite draws on its first frame. */
+const loadedSheets = new Map<string, Texture>();
 const frameCache = new Map<string, Texture>();
 
 function loadSheet(key: string): Promise<Texture> {
@@ -125,6 +85,7 @@ function loadSheet(key: string): Promise<Texture> {
       (texture) => {
         // Crisp pixel art: no smoothing between pixels
         texture.source.scaleMode = "nearest";
+        loadedSheets.set(key, texture);
         return texture;
       },
     );
@@ -171,11 +132,6 @@ interface PersonSpriteProps {
   shadow?: boolean;
 }
 
-interface SheetCell {
-  x: number;
-  row: number;
-}
-
 /** Shadow under the feet, in canvas px (before the sprite scale). */
 function drawShadow(g: Graphics): void {
   g.clear();
@@ -196,18 +152,31 @@ function PersonSpriteComponent({
   glance = false,
   shadow = mode !== "sit",
 }: PersonSpriteProps): ReactNode {
-  const [texture, setTexture] = useState<Texture | null>(null);
+  const [texture, setTexture] = useState<Texture | null>(
+    () => loadedSheets.get(sheet) ?? null,
+  );
   const typingElapsed = useActivityClock(typing && mode === "sit");
   const pose = typingElapsed === null ? null : typingPose(typingElapsed);
   const bodyBob = pose ? pose.bodyBob : 0;
 
+  const input: CellInput = {
+    mode,
+    direction,
+    walkDistance,
+    gesture,
+    seed,
+    glance,
+    pressed: pose?.pressed ?? null,
+  };
+
   // Life clock (breathing, blinking, glancing) and gesture clock
   const lifeRef = useRef(0);
   const gestureRef = useRef<{ key: string; elapsed: number }>({
-    key: "",
+    key: mode === "gesture" ? `${gesture}` : "",
     elapsed: 0,
   });
-  const [cell, setCell] = useState<SheetCell>({ x: 0, row: ROW[direction] });
+  // Start on the real pose, so a fresh sprite never flashes a wrong frame
+  const [cell, setCell] = useState<SheetCell>(() => sheetCell(input, 0, 0));
 
   useEffect(() => {
     let alive = true;
@@ -219,50 +188,6 @@ function PersonSpriteComponent({
     };
   }, [sheet]);
 
-  const pickCell = useCallback(
-    (lifeMs: number, gestureMs: number): SheetCell => {
-      let facing = direction;
-      if (glance && seed !== undefined && (mode === "idle" || mode === "sit")) {
-        const look = glanceAt(lifeMs, seed);
-        if (look) {
-          // Facing the viewer / away: turn the head to the side. Facing the
-          // side already: look over at the viewer.
-          facing = direction === "up" || direction === "down" ? look : "down";
-        }
-      }
-      const row = ROW[facing];
-      const blink =
-        seed !== undefined && facing !== "up" && isBlinking(lifeMs, seed);
-
-      switch (mode) {
-        case "walk": {
-          const frame =
-            walkDistance === undefined
-              ? Math.floor(lifeMs / 90) % 8
-              : walkFrameAt(walkDistance);
-          return { x: WALK_X + (1 + frame) * FRAME, row };
-        }
-        case "gesture": {
-          const g = gesture ?? "talk";
-          const frame = gestureFrame(g, gestureMs);
-          return { x: GESTURE_X[GESTURES[g].anim] + frame * FRAME, row };
-        }
-        case "sit": {
-          if (pose?.pressed === "left") return { x: TYPE_LEFT_X, row };
-          if (pose?.pressed === "right") return { x: TYPE_RIGHT_X, row };
-          if (blink) return { x: BLINK_SIT_X, row };
-          return { x: SIT_X + SIT_CHAIR_FRAME * FRAME, row };
-        }
-        default: {
-          const frame = Math.floor(lifeMs / IDLE_STEP_MS) % IDLE_FRAMES;
-          if (blink && frame === 0) return { x: BLINK_IDLE_X, row };
-          return { x: IDLE_X + frame * FRAME, row };
-        }
-      }
-    },
-    [direction, glance, seed, mode, walkDistance, gesture, pose?.pressed],
-  );
-
   useTick((ticker) => {
     lifeRef.current += ticker.deltaMS;
     const key = mode === "gesture" ? `${gesture}` : "";
@@ -271,7 +196,7 @@ function PersonSpriteComponent({
     } else {
       gestureRef.current.elapsed += ticker.deltaMS;
     }
-    const next = pickCell(lifeRef.current, gestureRef.current.elapsed);
+    const next = sheetCell(input, lifeRef.current, gestureRef.current.elapsed);
     if (next.x !== cell.x || next.row !== cell.row) setCell(next);
   });
 

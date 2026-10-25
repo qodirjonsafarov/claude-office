@@ -127,6 +127,48 @@ describe("CoffeeBreakPlanner", () => {
   });
 });
 
+describe("CoffeeBreakPlanner and permission prompts", () => {
+  it("comes back from the coffee machine when the user is asked", () => {
+    const planner = new CoffeeBreakPlanner();
+    planner.update(0, [worker()]);
+    const [go] = planner.update(COFFEE_IDLE_MS, [worker()]);
+    const asked = worker({
+      position: go.target,
+      backendState: "waiting_permission",
+    });
+
+    expect(planner.update(COFFEE_IDLE_MS + 1000, [asked])).toEqual([
+      { agentId: "a", target: DESK },
+    ]);
+  });
+
+  it("turns back on the way to the machine when the user is asked", () => {
+    const planner = new CoffeeBreakPlanner();
+    planner.update(0, [worker()]);
+    planner.update(COFFEE_IDLE_MS, [worker()]);
+    const asked = worker({
+      position: { x: 700, y: 300 },
+      hasPath: true,
+      backendState: "waiting_permission",
+    });
+
+    expect(planner.update(COFFEE_IDLE_MS + 500, [asked])).toEqual([
+      { agentId: "a", target: DESK },
+    ]);
+  });
+
+  it("doesn't leave for coffee right after a long permission wait", () => {
+    const planner = new CoffeeBreakPlanner();
+    const asked = worker({ backendState: "waiting_permission" });
+    planner.update(0, [asked]);
+    planner.update(COFFEE_IDLE_MS * 3, [asked]);
+    const t = COFFEE_IDLE_MS * 3 + 1000;
+
+    expect(planner.update(t, [worker()])).toEqual([]);
+    expect(planner.update(t + COFFEE_IDLE_MS / 2, [worker()])).toEqual([]);
+  });
+});
+
 describe("isAtCoffeeSpot", () => {
   it("recognises the coffee spots", () => {
     expect(isAtCoffeeSpot(COFFEE_SPOTS[0])).toBe(true);

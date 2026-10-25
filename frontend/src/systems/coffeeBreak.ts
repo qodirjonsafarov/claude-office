@@ -3,8 +3,8 @@
  *
  * A worker who sits at the desk without typing for a while (the agent is
  * thinking, not using tools) gets up, walks to the coffee machine or the
- * water cooler, stays a moment and walks back. Typing always wins: it sends
- * the worker straight back to the desk. Only workers in the "idle" (at desk)
+ * water cooler, stays a moment and walks back. Work always wins: typing or
+ * a permission prompt for the user sends the worker straight back. Only workers in the "idle" (at desk)
  * phase take breaks; any other phase (leaving, reporting) drops the break and
  * the agent state machine takes over the walking.
  *
@@ -93,7 +93,11 @@ export class CoffeeBreakPlanner {
         };
         this.records.set(agent.id, rec);
       }
-      if (agent.isTyping) rec.lastTypingAt = now;
+      // Work wins over coffee: typing, or the user being asked to approve
+      // something (the worker must be at the desk for that)
+      const working =
+        agent.isTyping || agent.backendState === "waiting_permission";
+      if (working) rec.lastTypingAt = now;
 
       const goDesk = () => {
         rec.stage = "returning";
@@ -105,8 +109,7 @@ export class CoffeeBreakPlanner {
         case "desk": {
           if (
             agent.hasPath ||
-            agent.isTyping ||
-            agent.backendState === "waiting_permission" ||
+            working ||
             !near(agent.position, agent.desk) ||
             now - rec.lastTypingAt < COFFEE_IDLE_MS ||
             now < rec.cooldownUntil
@@ -122,7 +125,7 @@ export class CoffeeBreakPlanner {
           break;
         }
         case "going":
-          if (agent.isTyping) goDesk();
+          if (working) goDesk();
           else if (!agent.hasPath) {
             if (near(agent.position, COFFEE_SPOTS[rec.spot])) {
               rec.stage = "at_coffee";
@@ -134,7 +137,7 @@ export class CoffeeBreakPlanner {
           }
           break;
         case "at_coffee":
-          if (agent.isTyping || now - rec.since >= COFFEE_STAY_MS) goDesk();
+          if (working || now - rec.since >= COFFEE_STAY_MS) goDesk();
           break;
         case "returning":
           if (agent.hasPath) break;
@@ -154,11 +157,6 @@ export class CoffeeBreakPlanner {
       if (!seen.has(id)) this.records.delete(id);
     }
     return commands;
-  }
-
-  /** Forget everything (session reset). */
-  clear(): void {
-    this.records.clear();
   }
 
   private freeSpot(): number {

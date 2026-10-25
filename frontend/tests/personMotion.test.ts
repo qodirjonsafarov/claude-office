@@ -226,4 +226,16 @@ describe("walkStepPx", () => {
     expect(midway).toBeCloseTo(150 / 60);
     expect(atStart).toBeLessThan(midway * 0.6);
   });
+
+  it("keeps full speed when a walker is re-routed mid-walk", () => {
+    const rerouted = walkStepPx(path, 0, 0, 1 / 60, 150, { easeIn: false });
+
+    expect(rerouted).toBeCloseTo(150 / 60);
+  });
+
+  it("still slows down before the target after a re-route", () => {
+    const nearEnd = walkStepPx(path, 0, 0.99, 1 / 60, 150, { easeIn: false });
+
+    expect(nearEnd).toBeLessThan((150 / 60) * 0.6);
+  });
 });

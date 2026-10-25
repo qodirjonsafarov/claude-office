@@ -17,11 +17,10 @@ import {
 } from "react";
 import { useTick } from "@pixi/react";
 import { Graphics, TextStyle, Texture } from "pixi.js";
-import type { Position, BubbleContent } from "@/types";
+import type { Position, BubbleContent, AgentState } from "@/types";
 import type { AgentPhase } from "@/stores/gameStore";
 import { useAttentionStore } from "@/stores/attentionStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
-import { useGameStore } from "@/stores/gameStore";
 import {
   BOSS_POSITION,
   getDeskPosition,
@@ -34,6 +33,7 @@ import {
   agentStance,
   facesBoss,
   seedFromId,
+  showsThinking,
   type AgentStance,
 } from "@/systems/personPoses";
 import { isAtCoffeeSpot } from "@/systems/coffeeBreak";
@@ -69,6 +69,10 @@ export interface AgentSpriteProps {
   isTyping?: boolean; // Whether agent is typing (animates arms)
   /** Render-only nudge so people don't stand inside each other. */
   offset?: Position;
+  /** Assigned desk (1-based), to tell "seated at the desk" from "standing". */
+  desk?: number | null;
+  /** Backend work state; the "..." puff shows only while working. */
+  backendState?: AgentState;
 }
 
 // ============================================================================
@@ -178,6 +182,8 @@ function AgentSpriteComponent({
   renderLabel = true,
   isTyping = false,
   offset,
+  desk = null,
+  backendState = "working",
 }: AgentSpriteProps): ReactNode {
   const clickToFocusEnabled = usePreferencesStore((s) => s.clickToFocusEnabled);
   const openFocusPopup = useAttentionStore((s) => s.openFocusPopup);
@@ -185,8 +191,12 @@ function AgentSpriteComponent({
   const sheet = useMemo(() => sheetForColor(color, id), [color, id]);
   const seed = useMemo(() => seedFromId(id), [id]);
   const motion = usePersonMotion(position);
-  const desk = useGameStore((s) => s.agents.get(id)?.desk ?? null);
-  const greeting = useFirstMoments(phase === "in_arrival_queue", GREET_MS);
+  // Wave hello once the agent stands still in the queue (the timer must not
+  // run out while it's still walking up)
+  const greeting = useFirstMoments(
+    phase === "in_arrival_queue" && !motion.moving,
+    GREET_MS,
+  );
 
   const atDesk =
     phase === "idle" &&
@@ -242,7 +252,9 @@ function AgentSpriteComponent({
       />
 
       {/* Seated and not typing: the agent is thinking */}
-      {stance === "sit" && !bubble && <ThinkingDots active={!isTyping} />}
+      {stance === "sit" && !bubble && (
+        <ThinkingDots active={!isTyping && showsThinking(backendState)} />
+      )}
 
       {/* Agent name if present - hide when in elevator or when renderLabel is false */}
       {renderLabel && name && !isInElevatorZone(position) && (

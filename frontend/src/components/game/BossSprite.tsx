@@ -20,10 +20,16 @@ import {
   PersonSprite,
   useActivityClock,
   usePersonMotion,
+  type PersonMode,
 } from "./PersonSprite";
 import { bossDirectingDirection } from "@/systems/typingPose";
-import { faceToward } from "@/systems/personMotion";
-import { bossStance, seedFromId } from "@/systems/personPoses";
+import {
+  bossStance,
+  conversantKey,
+  parseConversantKey,
+  seedFromId,
+  type BossStance,
+} from "@/systems/personPoses";
 import { useGameStore } from "@/stores/gameStore";
 import type { AgentPhase } from "@/stores/gameStore";
 import { NameTag } from "./NameTag";
@@ -62,30 +68,26 @@ const BOSS_STANDING_FEET_Y = 26;
 
 const BOSS_SEED = seedFromId("boss");
 
-/** Agent phases in which the boss is dealing with that agent in person. */
-const CONVERSANT_PHASES: ReadonlySet<AgentPhase> = new Set([
-  "conversing",
-  "walking_to_boss",
-  "at_boss",
-]);
+/** Boss stance → how the boss sprite is drawn. */
+const STANCE_SPRITE: Record<
+  BossStance,
+  { mode: PersonMode; feetY: number; glance: boolean }
+> = {
+  sit: { mode: "sit", feetY: 30, glance: true },
+  direct: { mode: "idle", feetY: BOSS_STANDING_FEET_Y, glance: false },
+  talk: { mode: "gesture", feetY: BOSS_STANDING_FEET_Y, glance: false },
+  handoff: { mode: "gesture", feetY: BOSS_STANDING_FEET_Y, glance: false },
+};
 
-/**
- * The agent the boss is talking to, as "phase|x|y" (a string so the store
- * selector stays stable), or "" when there is none.
- */
+/** Store selector: who the boss deals with, as "phase|facing" (stable). */
 function selectConversantKey(state: {
   agents: Map<
     string,
     { phase: AgentPhase; currentPosition: { x: number; y: number } }
   >;
+  boss: { position: { x: number; y: number } };
 }): string {
-  for (const agent of state.agents.values()) {
-    if (CONVERSANT_PHASES.has(agent.phase)) {
-      const { x, y } = agent.currentPosition;
-      return `${agent.phase}|${Math.round(x)}|${Math.round(y)}`;
-    }
-  }
-  return "";
+  return conversantKey(state.agents.values(), state.boss.position);
 }
 
 const BOSS_WIDTH = 48; // 1.5 blocks × 32px
@@ -227,16 +229,19 @@ function BossSpriteComponent({
   );
 
   // Talking to / handing over to an agent in front of the desk
-  const conversantKey = useGameStore(selectConversantKey);
-  const [conversantPhase, cx, cy] = conversantKey
-    ? (conversantKey.split("|") as [AgentPhase, string, string])
-    : [null, "0", "0"];
+  const conversant = parseConversantKey(useGameStore(selectConversantKey));
   const stance = bossStance({
-    conversantPhase,
+    conversantPhase: conversant.phase,
     isTyping: directingElapsed !== null,
     backendState: state,
   });
-  const towardConversant = faceToward(position, { x: +cx, y: +cy });
+  const sprite = STANCE_SPRITE[stance];
+  const direction =
+    stance === "sit"
+      ? "down"
+      : stance === "direct"
+        ? bossDirectingDirection(directingElapsed ?? 0)
+        : conversant.facing;
 
   // Animation state for typing
   const [typingTime, setTypingTime] = useState(0);
@@ -302,37 +307,20 @@ function BossSpriteComponent({
         <pixiContainer y={6}>
           {/* Boss: LPC pixel-art worker. He doesn't type: while busy he
               stands behind the desk and looks over the team (directing). */}
-          {stance === "sit" && (
-            <PersonSprite
-              sheet="boss"
-              mode="sit"
-              direction="down"
-              feetY={30}
-              seed={BOSS_SEED}
-              glance
-            />
-          )}
-          {stance === "direct" && (
-            <PersonSprite
-              sheet="boss"
-              mode="idle"
-              direction={bossDirectingDirection(directingElapsed ?? 0)}
-              feetY={BOSS_STANDING_FEET_Y}
-              seed={BOSS_SEED}
-              shadow={false}
-            />
-          )}
-          {(stance === "talk" || stance === "handoff") && (
-            <PersonSprite
-              sheet="boss"
-              mode="gesture"
-              gesture={stance}
-              direction={towardConversant}
-              feetY={BOSS_STANDING_FEET_Y}
-              seed={BOSS_SEED}
-              shadow={false}
-            />
-          )}
+          {/* One sprite for every stance: switching stance must not
+              remount it (that flashed an empty / wrong frame) */}
+          <PersonSprite
+            sheet="boss"
+            mode={sprite.mode}
+            gesture={
+              stance === "talk" || stance === "handoff" ? stance : undefined
+            }
+            direction={direction}
+            feetY={sprite.feetY}
+            seed={BOSS_SEED}
+            glance={sprite.glance}
+            shadow={false}
+          />
         </pixiContainer>
       )}
 

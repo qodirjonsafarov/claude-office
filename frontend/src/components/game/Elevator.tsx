@@ -123,6 +123,8 @@ export function Elevator({
           sunglassesTexture={sunglassesTexture}
           renderBubble={false}
           isTyping={agent.isTyping}
+          desk={agent.desk}
+          backendState={agent.backendState}
         />
       ))}
 

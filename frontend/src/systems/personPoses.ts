@@ -9,8 +9,8 @@
  */
 
 import type { AgentPhase } from "@/stores/slices/types";
-import type { BossState } from "@/types";
-import type { Facing } from "./personMotion";
+import type { AgentState, BossState, Position } from "@/types";
+import { faceToward, type Facing } from "./personMotion";
 
 // ============================================================================
 // GESTURES
@@ -144,6 +144,14 @@ export function thinkingDots(idleMs: number): {
   return { visible: true, lit: step % 3 };
 }
 
+/**
+ * Whether a seated, not-typing agent is thinking on its own (show the "..."
+ * puff), as opposed to waiting for the user or being done.
+ */
+export function showsThinking(backendState: AgentState): boolean {
+  return backendState === "working" || backendState === "thinking";
+}
+
 // ============================================================================
 // STANCES
 // ============================================================================
@@ -207,14 +215,44 @@ export interface BossStanceInput {
 /** The boss never types: he sits, directs the team, talks or hands over. */
 export function bossStance(input: BossStanceInput): BossStance {
   if (input.conversantPhase === "at_boss") return "handoff";
-  if (
-    input.conversantPhase === "conversing" ||
-    input.conversantPhase === "walking_to_boss"
-  ) {
-    return "talk";
-  }
+  // Talk once the agent stands in front of him, not while it walks up
+  if (input.conversantPhase === "conversing") return "talk";
   if (input.isTyping || input.backendState === "delegating") return "direct";
   return "sit";
+}
+
+/** Agent phases in which the boss is dealing with that agent in person. */
+const CONVERSANT_PHASES: ReadonlySet<AgentPhase> = new Set([
+  "conversing",
+  "walking_to_boss",
+  "at_boss",
+]);
+
+/**
+ * The agent the boss is dealing with as "phase|facing" (the side the boss
+ * turns to), or "". A string so a store selector stays stable: it changes
+ * only when the phase or the side changes, not on every step.
+ */
+export function conversantKey(
+  agents: Iterable<{ phase: AgentPhase; currentPosition: Position }>,
+  boss: Position,
+): string {
+  for (const agent of agents) {
+    if (CONVERSANT_PHASES.has(agent.phase)) {
+      return `${agent.phase}|${faceToward(boss, agent.currentPosition)}`;
+    }
+  }
+  return "";
+}
+
+/** Inverse of {@link conversantKey}. */
+export function parseConversantKey(key: string): {
+  phase: AgentPhase | null;
+  facing: Facing;
+} {
+  if (!key) return { phase: null, facing: "down" };
+  const [phase, facing] = key.split("|") as [AgentPhase, Facing];
+  return { phase, facing };
 }
 
 /** Facing while doing a gesture at the coffee machine (it's on the wall). */

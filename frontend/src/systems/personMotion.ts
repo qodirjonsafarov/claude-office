@@ -98,10 +98,16 @@ function ramp(distance: number, over: number): number {
 
 /**
  * Share of full walking speed after `traveled` px with `remaining` px to go.
- * Never 0, so the walker always arrives.
+ * Never 0, so the walker always arrives. With `easeIn` off (a walker who is
+ * re-routed while already walking) only the slow-down at the end applies.
  */
-export function walkSpeedFactor(traveled: number, remaining: number): number {
-  return Math.min(ramp(traveled, ACCEL_PX), ramp(remaining, DECEL_PX));
+export function walkSpeedFactor(
+  traveled: number,
+  remaining: number,
+  easeIn = true,
+): number {
+  const start = easeIn ? ramp(traveled, ACCEL_PX) : 1;
+  return Math.min(start, ramp(remaining, DECEL_PX));
 }
 
 /** Distance walked and left along `waypoints` at (index, progress). */
@@ -245,7 +251,8 @@ export function stackLabels(
 
 /**
  * Distance (px) to walk this frame at (index, progress) along `waypoints`,
- * with ease-in / ease-out applied to `maxSpeed` (px per second).
+ * with ease-in / ease-out applied to `maxSpeed` (px per second). Pass
+ * `easeIn: false` for a path that continues an ongoing walk.
  */
 export function walkStepPx(
   waypoints: Position[],
@@ -253,11 +260,16 @@ export function walkStepPx(
   progress: number,
   deltaSeconds: number,
   maxSpeed: number,
+  options: { easeIn?: boolean } = {},
 ): number {
   const { traveled, remaining } = pathDistances(
     waypoints,
     currentIndex,
     progress,
   );
-  return maxSpeed * deltaSeconds * walkSpeedFactor(traveled, remaining);
+  return (
+    maxSpeed *
+    deltaSeconds *
+    walkSpeedFactor(traveled, remaining, options.easeIn ?? true)
+  );
 }

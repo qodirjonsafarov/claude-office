@@ -86,6 +86,9 @@ class Agent(BaseModel):
     parent_session_id: str | None = None  # session that owns this character
     parent_id: str | None = None  # for subagents: parent lead/teammate id
     progress: AgentProgress | None = None  # None = agent has no todo list
+    # Agent tool's subagent_type ("developer", "qa", "Explore", ...); the
+    # office picks the character's look by it
+    agent_type: str | None = None
 
 
 class Boss(BaseModel):

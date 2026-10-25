@@ -48,6 +48,7 @@ export type Done = number;
 export type Total = number;
 export type Current = string | null;
 export type Source = "todos" | "tasks";
+export type Agenttype = string | null;
 export type ProjectName = string | null;
 export type ProjectDir = string | null;
 export type WorkingDir = string | null;
@@ -511,6 +512,7 @@ export interface Agent {
   parentSessionId?: Parentsessionid;
   parentId?: Parentid;
   progress?: AgentProgress | null;
+  agentType?: Agenttype;
   [k: string]: unknown;
 }
 /**

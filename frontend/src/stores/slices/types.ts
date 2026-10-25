@@ -68,6 +68,8 @@ export interface AgentAnimationState {
   characterType: string | null;
   parentSessionId: string | null;
   parentId: string | null;
+  /** Subagent type ("developer", "qa", "Explore", ...): picks the look. */
+  agentType: string | null;
 
   // Phase tracking (frontend owned)
   phase: AgentPhase;

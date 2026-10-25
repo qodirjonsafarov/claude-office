@@ -904,4 +904,5 @@ class StateMachine:
             desk=count,
             bubble=None,
             current_task=task,
+            agent_type=data.agent_type or None,
         )

@@ -93,6 +93,7 @@ export const createAgentSlice: StateCreator<GameStore, [], [], AgentSlice> = (
           characterType: backendAgent.characterType ?? null,
           parentSessionId: backendAgent.parentSessionId ?? null,
           parentId: backendAgent.parentId ?? null,
+          agentType: backendAgent.agentType ?? null,
           phase: "arriving",
           currentPosition: initialPosition,
           targetPosition: initialPosition,

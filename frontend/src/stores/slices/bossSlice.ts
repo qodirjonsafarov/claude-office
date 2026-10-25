@@ -9,7 +9,7 @@ import type { StateCreator } from "zustand";
 import type { GameStore } from "../gameStore";
 import type { BossState } from "@/types";
 import type { BossAnimationState } from "./types";
-import { initialBossState } from "./shared";
+import { initialBossState, waitStart } from "./shared";
 
 export type BossSlice = {
   boss: BossAnimationState;
@@ -30,7 +30,15 @@ export const createBossSlice: StateCreator<GameStore, [], [], BossSlice> = (
 
   updateBossBackendState: (backendState) =>
     set((state) => ({
-      boss: { ...state.boss, backendState },
+      boss: {
+        ...state.boss,
+        backendState,
+        waitingSince: waitStart(
+          state.boss.backendState,
+          backendState,
+          state.boss.waitingSince,
+        ),
+      },
     })),
 
   updateBossTask: (task) =>

@@ -21,7 +21,7 @@ import type {
   AgentMovement,
 } from "./types";
 import { DESKS_PER_ROW } from "@/constants/positions";
-import { createEmptyBubbleState } from "./shared";
+import { createEmptyBubbleState, waitStart } from "./shared";
 import { parseProgress } from "@/utils/agentActivity";
 
 export type AgentSlice = {
@@ -97,6 +97,8 @@ export const createAgentSlice: StateCreator<GameStore, [], [], AgentSlice> = (
           parentId: backendAgent.parentId ?? null,
           agentType: backendAgent.agentType ?? null,
           restingSince: parseTime(backendAgent.restingSince),
+          waitingSince:
+            backendAgent.state === "waiting_permission" ? Date.now() : null,
           phase: "arriving",
           currentPosition: initialPosition,
           targetPosition: initialPosition,
@@ -162,6 +164,11 @@ export const createAgentSlice: StateCreator<GameStore, [], [], AgentSlice> = (
           meta.restingSince === undefined
             ? agent.restingSince
             : parseTime(meta.restingSince),
+        waitingSince: waitStart(
+          agent.backendState,
+          meta.backendState,
+          agent.waitingSince,
+        ),
       })),
 
     updateAgentQueueInfo: (agentId, queueType, queueIndex) =>

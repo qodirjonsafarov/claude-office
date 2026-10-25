@@ -57,7 +57,7 @@ export interface TeamRow {
  * The fields the rows need, flattened to primitives so `useShallow` skips the
  * per-frame position updates of the agents Map (ARC-006).
  */
-const FIELDS = 12;
+const FIELDS = 13;
 
 function useAgentFields(): readonly unknown[] {
   return useGameStore(
@@ -77,6 +77,7 @@ function useAgentFields(): readonly unknown[] {
           a.queueIndex,
           a.progress,
           a.restingSince,
+          a.waitingSince,
         );
       }
       return flat;
@@ -94,6 +95,7 @@ export function useTeamRows(): TeamRow[] {
       isTyping: s.boss.isTyping,
       task: s.boss.currentTask,
       progress: s.boss.progress,
+      waitingSince: s.boss.waitingSince,
     })),
   );
   const eventLog = useGameStore(selectEventLog);
@@ -119,6 +121,8 @@ export function useTeamRows(): TeamRow[] {
       phase: string;
       queue: string | null;
       restingSince?: number | null;
+      /** Start of a permission wait: "Waiting for permission · 1m" counts from it. */
+      waitingSince?: number | null;
     }): TeamRow => {
       const action = describeAction({
         state: input.state,
@@ -135,7 +139,12 @@ export function useTeamRows(): TeamRow[] {
         resting: input.state === "resting",
         action,
         task: input.task ? cleanPromptText(input.task) : null,
-        startedAt: input.isBoss ? bossStart : (starts.get(input.id) ?? null),
+        startedAt:
+          input.state === "waiting_permission" && input.waitingSince
+            ? input.waitingSince
+            : input.isBoss
+              ? bossStart
+              : (starts.get(input.id) ?? null),
         toolCount: counts.get(input.key) ?? 0,
         view: progressView(
           input.progress,
@@ -163,6 +172,7 @@ export function useTeamRows(): TeamRow[] {
         queueIndex,
         progress,
         restingSince,
+        waitingSince,
       ] = fields.slice(i, i + FIELDS) as [
         string,
         string | null,
@@ -175,6 +185,7 @@ export function useTeamRows(): TeamRow[] {
         string | null,
         number,
         AgentProgress | null,
+        number | null,
         number | null,
       ];
       agents.push({
@@ -191,6 +202,7 @@ export function useTeamRows(): TeamRow[] {
           busy: isAgentBusy(state, isTyping),
           phase,
           restingSince,
+          waitingSince,
           queue:
             queueType && queueIndex >= 0
               ? t("agentStatus.inQueue", {
@@ -218,6 +230,7 @@ export function useTeamRows(): TeamRow[] {
       busy: isBossBusy(boss.state),
       phase: "-",
       queue: null,
+      waitingSince: boss.waitingSince,
     });
     return [bossRow, ...agents];
   }, [fields, boss, tools, counts, starts, bossStart, t]);

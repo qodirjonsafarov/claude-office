@@ -20,5 +20,16 @@ export const initialBossState: BossAnimationState = {
   inUseBy: null,
   currentTask: null,
   isTyping: false,
+  waitingSince: null,
   progress: null,
 };
+
+/** Start of a permission wait: kept while waiting, set on entry, else null. */
+export function waitStart(
+  before: string,
+  after: string,
+  since: number | null,
+): number | null {
+  if (after !== "waiting_permission") return null;
+  return before === "waiting_permission" && since !== null ? since : Date.now();
+}

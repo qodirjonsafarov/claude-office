@@ -423,19 +423,6 @@ export const createAgentMachine = (actions: AgentMachineActions) =>
           queueIndex: ({ event }) => event.queueIndex,
         }),
       },
-      // Mid-session spawn — agent already in departure queue
-      SPAWN_IN_DEPARTURE_QUEUE: {
-        target: ".departure.in_queue",
-        actions: assign({
-          agentId: ({ event }) => event.agentId,
-          agentName: ({ event }) => event.name,
-          desk: ({ event }) => event.desk,
-          currentPosition: ({ event }) => event.position,
-          targetPosition: ({ event }) => event.position,
-          queueType: "departure" as const,
-          queueIndex: ({ event }) => event.queueIndex,
-        }),
-      },
     },
   });
 

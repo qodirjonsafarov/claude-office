@@ -348,29 +348,6 @@ describe("createAgentMachine — SPAWN variants", () => {
     expect(rec.calls[0].args).toEqual(["A", "in_arrival_queue"]);
     expect(rec.calls[2].args).toEqual(["A", "arrival", 1]);
   });
-
-  it("SPAWN_IN_DEPARTURE_QUEUE enters departure.in_queue (departure flow, mid-session)", () => {
-    const rec = makeRecordingActions();
-    const actor = createActor(createAgentMachine(rec));
-    actor.start();
-
-    actor.send({
-      type: "SPAWN_IN_DEPARTURE_QUEUE",
-      agentId: "A",
-      name: "Alice",
-      desk: 3,
-      position: P,
-      queueIndex: 0,
-    });
-
-    // NOTE: departure.in_queue does NOT close the elevator (asymmetric with
-    // arrival.in_queue above) — pin both shapes so a refactor can't silently
-    // merge them.
-    const methods = rec.calls.map((c) => c.method);
-    expect(methods).toEqual(["onPhaseChanged", "onQueueJoined"]);
-    expect(rec.calls[0].args).toEqual(["A", "in_departure_queue"]);
-    expect(rec.calls[1].args).toEqual(["A", "departure", 0]);
-  });
 });
 
 // ---------------------------------------------------------------------------

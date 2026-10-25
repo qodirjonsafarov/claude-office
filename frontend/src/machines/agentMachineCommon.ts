@@ -50,14 +50,6 @@ export type AgentMachineEvent =
       position: Position;
       queueIndex: number;
     }
-  | {
-      type: "SPAWN_IN_DEPARTURE_QUEUE";
-      agentId: string;
-      name: string | null;
-      desk: number | null;
-      position: Position;
-      queueIndex: number;
-    }
   | { type: "REMOVE" }
   | { type: "ARRIVED_AT_QUEUE" }
   | { type: "QUEUE_POSITION_CHANGED"; newIndex: number }

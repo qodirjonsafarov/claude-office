@@ -43,12 +43,13 @@ export interface SpawnDecision {
  * elevator arrival animation. Pure function of the backend agent and the
  * surrounding `GameState` snapshot.
  *
- * Four branches (mirrors the original inline comment):
+ * Three branches:
  *  1. `state === "arriving"`            → spawn from elevator (full arrival)
  *  2. in arrival queue (not arriving)   → spawn at queue position, skip arrival
- *  3. in departure queue                → spawn at queue position, skip arrival
- *  4. has desk (working)                → spawn at desk, skip arrival
+ *  3. has desk (working or resting)     → spawn at desk, skip arrival
  *  fallback                             → spawn from elevator
+ * (Finished agents rest at their desks instead of queueing to hand in work,
+ * so the backend's departure queue is always empty.)
  */
 export function resolveSpawn(
   backendAgent: Agent,
@@ -56,11 +57,7 @@ export function resolveSpawn(
 ): SpawnDecision {
   const isInArrivalQueue =
     state.arrivalQueue?.includes(backendAgent.id) ?? false;
-  const isInDepartureQueue =
-    state.departureQueue?.includes(backendAgent.id) ?? false;
   const arrivalQueueIndex = state.arrivalQueue?.indexOf(backendAgent.id) ?? -1;
-  const departureQueueIndex =
-    state.departureQueue?.indexOf(backendAgent.id) ?? -1;
 
   if (backendAgent.state === "arriving") {
     // Agent is still arriving — spawn from elevator.
@@ -76,21 +73,6 @@ export function resolveSpawn(
       skipArrival: true,
       queueType: "arrival",
       queueIndex: arrivalQueueIndex,
-    };
-  }
-
-  if (isInDepartureQueue) {
-    // Agent is in departure queue — spawn at their queue position.
-    // Queue position 0 = ready spot (D0), position 1+ = waiting spots.
-    const queuePosition = getQueuePosition(
-      "departure",
-      departureQueueIndex + 1,
-    );
-    return {
-      spawnPosition: queuePosition ?? getDeskPosition(backendAgent.desk ?? 1),
-      skipArrival: true,
-      queueType: "departure",
-      queueIndex: departureQueueIndex,
     };
   }
 

@@ -4,6 +4,7 @@ import { create } from "zustand";
 import type { EventType } from "@/types";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 import { apiFetch } from "@/utils/api";
+import { cleanPromptText } from "@/utils/promptText";
 
 // ============================================================================
 // TYPES
@@ -66,7 +67,8 @@ interface AttentionState {
 // CONSTANTS
 // ============================================================================
 
-const MAX_VISIBLE_TOASTS = 5;
+// Two at most: more would cover the panels under them.
+const MAX_VISIBLE_TOASTS = 2;
 
 /** Map event types to urgency scores and auto-dismiss timing. */
 function scoreEvent(eventType: EventType): {
@@ -82,6 +84,7 @@ function scoreEvent(eventType: EventType): {
       return { urgency: 70, level: "high", autoDismissMs: null };
     // "stop" = Claude finished its turn: good news, not an alarm.
     case "stop":
+    case "subagent_stop":
     case "task_completed":
       return {
         urgency: 30,
@@ -108,11 +111,19 @@ function scoreEvent(eventType: EventType): {
 const TOAST_TITLES: Partial<Record<EventType, string>> = {
   permission_request: "Needs permission",
   error: "Error",
-  stop: "Done",
   task_completed: "Task done",
   subagent_start: "Agent joined",
   background_task_notification: "Background task",
 };
+
+/** The headline: "Validator V finished", "Dev D · Needs permission". */
+function toastTitle(type: EventType, agentName: string | null): string {
+  if (type === "stop" || type === "subagent_stop") {
+    return `${agentName ?? "Boss"} finished`;
+  }
+  const base = TOAST_TITLES[type] ?? type.replace(/_/g, " ");
+  return agentName ? `${agentName} · ${base}` : base;
+}
 
 // ============================================================================
 // STORE
@@ -136,9 +147,10 @@ export const useAttentionStore = create<AttentionState>()((set, get) => ({
       eventType: event.type,
       urgency,
       urgencyLevel: level,
-      title: TOAST_TITLES[event.type] ?? event.type.replace(/_/g, " "),
-      description:
+      title: toastTitle(event.type, event.agentName ?? null),
+      description: cleanPromptText(
         event.taskDescription ?? event.errorType ?? event.message ?? "",
+      ),
       createdAt: Date.now(),
       autoDismissMs,
       dismissed: false,

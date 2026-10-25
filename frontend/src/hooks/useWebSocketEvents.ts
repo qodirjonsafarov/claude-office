@@ -170,12 +170,25 @@ export function useWebSocketEvents({
                   usePreferencesStore.getState(),
                 )
               ) {
+                // Who finished and what: the event's own fields, else the
+                // office state (the agent is still in the room when it stops).
+                const store = useGameStore.getState();
+                const known = eventAgentId
+                  ? store.agents.get(eventAgentId)
+                  : undefined;
+                const finishedTask =
+                  message.event.type === "stop"
+                    ? store.boss.currentTask
+                    : (known?.currentTask ?? null);
                 useAttentionStore.getState().processEvent({
                   type: message.event.type as EventType,
                   agentId: message.event.agentId ?? null,
-                  agentName: message.event.detail?.agentName ?? null,
+                  agentName:
+                    message.event.detail?.agentName ?? known?.name ?? null,
                   taskDescription:
-                    message.event.detail?.taskDescription ?? null,
+                    message.event.detail?.taskDescription ??
+                    finishedTask ??
+                    null,
                   errorType: message.event.detail?.errorType ?? null,
                   message: message.event.detail?.message ?? null,
                 });

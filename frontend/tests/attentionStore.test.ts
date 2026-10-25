@@ -23,7 +23,7 @@ describe("attention toasts", () => {
     useAttentionStore.getState().processEvent({ type: "stop" });
     const toast = lastToast();
     expect(toast?.urgencyLevel).toBe("low");
-    expect(toast?.title).toBe("Done");
+    expect(toast?.title).toBe("Boss finished");
     expect(toast?.autoDismissMs).toBe(
       usePreferencesStore.getState().toastAutoDismissLow,
     );
@@ -46,5 +46,43 @@ describe("attention toasts", () => {
     processEvent({ type: "error" });
     const queue = useAttentionStore.getState().toastQueue;
     expect(queue.map((t) => t.eventType)).toEqual(["error", "stop"]);
+  });
+
+  it("says which agent finished and what it did", () => {
+    useAttentionStore.getState().processEvent({
+      type: "subagent_stop",
+      agentId: "a1",
+      agentName: "Validator V",
+      taskDescription: "Check the office live",
+    });
+    expect(lastToast()?.title).toBe("Validator V finished");
+    expect(lastToast()?.description).toBe("Check the office live");
+    expect(lastToast()?.urgencyLevel).toBe("low");
+  });
+
+  it("puts the agent name in front of other titles", () => {
+    useAttentionStore
+      .getState()
+      .processEvent({ type: "permission_request", agentName: "Dev D" });
+    expect(lastToast()?.title).toBe("Dev D · Needs permission");
+  });
+
+  it("shows a summary instead of a raw agent-message envelope", () => {
+    useAttentionStore.getState().processEvent({
+      type: "stop",
+      taskDescription: '<agent-message from="a3eaf17">\n[Subag...',
+    });
+    expect(lastToast()?.description).toBe("Message from an agent");
+  });
+
+  it("keeps at most two toasts on screen", () => {
+    const { processEvent } = useAttentionStore.getState();
+    processEvent({ type: "stop" });
+    processEvent({ type: "stop" });
+    processEvent({ type: "stop" });
+    const active = useAttentionStore
+      .getState()
+      .toastQueue.filter((t) => !t.dismissed);
+    expect(active).toHaveLength(2);
   });
 });

@@ -21,6 +21,7 @@ const ATTENTION_EVENT_TYPES: ReadonlySet<EventType> = new Set<EventType>([
   "permission_request",
   "error",
   "stop",
+  "subagent_stop",
   "task_completed",
   "subagent_start",
   "background_task_notification",
@@ -40,6 +41,7 @@ function filterEnabled(eventType: EventType, prefs: PreferencesState): boolean {
     case "error":
       return prefs.toastFilterError;
     case "stop":
+    case "subagent_stop":
     case "task_completed":
       return prefs.toastFilterTaskComplete;
     case "subagent_start":

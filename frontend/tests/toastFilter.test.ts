@@ -79,6 +79,17 @@ describe("shouldShowToast", () => {
     });
   });
 
+  describe("subagent_stop", () => {
+    it("shows a finished agent like a finished boss", () => {
+      expect(shouldShowToast("subagent_stop", prefsAll(true))).toBe(true);
+    });
+    it("follows toastFilterTaskComplete (false ⇒ suppressed)", () => {
+      const prefs = prefsAll(true);
+      prefs.toastFilterTaskComplete = false;
+      expect(shouldShowToast("subagent_stop", prefs)).toBe(false);
+    });
+  });
+
   describe("task_completed", () => {
     it("respects toastFilterTaskComplete = true (shown)", () => {
       expect(shouldShowToast("task_completed", prefsAll(true))).toBe(true);

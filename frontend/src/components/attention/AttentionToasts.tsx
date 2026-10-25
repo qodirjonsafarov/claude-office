@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, type ReactNode } from "react";
+import { useEffect, useCallback, useRef, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
   AlertTriangle,
@@ -11,6 +11,20 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAttentionStore, type UrgencyLevel } from "@/stores/attentionStore";
+import { useLayoutMode, type LayoutMode } from "@/hooks/useLayoutMode";
+
+/**
+ * Where the stack sits, clear of panel headers and sheet close buttons:
+ * desktop over the top of the office (between the two sidebars), portrait
+ * just above the tab bar, landscape at the bottom beside the rail.
+ */
+const STACK_PLACES: Record<LayoutMode, string> = {
+  desktop: "top-[84px] left-1/2 -translate-x-1/2 w-80 flex-col",
+  portrait:
+    "left-3 right-3 bottom-[calc(var(--qo-bar-h)+env(safe-area-inset-bottom)+12px)] flex-col-reverse",
+  landscape:
+    "left-[calc(var(--qo-rail-w)+12px)] bottom-[max(12px,env(safe-area-inset-bottom))] w-80 flex-col-reverse",
+};
 
 /** Olymp tones per urgency: the card's left edge and the icon chip. */
 const URGENCY_TONES: Record<UrgencyLevel, { edge: string; chip: string }> = {
@@ -33,6 +47,7 @@ export default function AttentionToasts(): ReactNode {
   );
   const dismissToast = useAttentionStore((s) => s.dismissToast);
   const openFocusPopup = useAttentionStore((s) => s.openFocusPopup);
+  const layout = useLayoutMode();
 
   const handleToastClick = useCallback(
     (toast: (typeof toasts)[number]) => {
@@ -47,13 +62,16 @@ export default function AttentionToasts(): ReactNode {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-16 right-4 z-50 flex flex-col gap-2 w-80 pointer-events-none">
-      {toasts.slice(0, 5).map((toast) => (
+    <div
+      className={`fixed z-50 flex gap-2 pointer-events-none ${STACK_PLACES[layout]}`}
+    >
+      {toasts.slice(0, 2).map((toast) => (
         <ToastItem
           key={toast.id}
           toast={toast}
           onClick={() => handleToastClick(toast)}
           onDismiss={() => dismissToast(toast.id)}
+          compact={layout === "desktop"}
         />
       ))}
     </div>
@@ -64,6 +82,7 @@ function ToastItem({
   toast,
   onClick,
   onDismiss,
+  compact,
 }: {
   toast: {
     id: string;
@@ -75,18 +94,24 @@ function ToastItem({
   };
   onClick: () => void;
   onDismiss: () => void;
+  /** Desktop: a 32px close button; phones keep the 44px touch target. */
+  compact: boolean;
 }): ReactNode {
   const tone = URGENCY_TONES[toast.urgencyLevel];
   const Icon = URGENCY_ICONS[toast.urgencyLevel];
-  const headline = toast.agentName
-    ? `${toast.agentName} · ${toast.title}`
-    : toast.title;
+  const headline = toast.title;
 
+  // The parent passes a fresh onDismiss each render: keep the latest in a ref
+  // so a re-render does not restart the timer (it used to never fire).
+  const dismissRef = useRef(onDismiss);
+  useEffect(() => {
+    dismissRef.current = onDismiss;
+  });
   useEffect(() => {
     if (toast.autoDismissMs === null) return;
-    const timer = setTimeout(onDismiss, toast.autoDismissMs);
+    const timer = setTimeout(() => dismissRef.current(), toast.autoDismissMs);
     return () => clearTimeout(timer);
-  }, [toast.autoDismissMs, toast.id, onDismiss]);
+  }, [toast.autoDismissMs, toast.id]);
 
   return (
     <div
@@ -114,7 +139,7 @@ function ToastItem({
           e.stopPropagation();
           onDismiss();
         }}
-        className="qo-icon-btn !w-8 !h-8 shrink-0"
+        className={`qo-icon-btn shrink-0 ${compact ? "!w-8 !h-8" : ""}`}
         aria-label="Dismiss"
       >
         <X size={15} strokeWidth={2.2} />

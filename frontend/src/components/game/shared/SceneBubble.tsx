@@ -14,6 +14,7 @@ import { useSceneTick } from "./useSceneTick";
 import type { TextStyle } from "pixi.js";
 import type { BubbleContent } from "@/types";
 import { truncateBubbleText } from "@/utils/bubbleText";
+import { bubbleSize } from "@/systems/bubbleLayout";
 import { toolKindFromIcon } from "@/systems/sceneSignals";
 import {
   BUBBLE_POP_MS,
@@ -65,14 +66,8 @@ function SceneBubbleComponent({
   const scale = reduced ? 1 : bubblePopScale(ms);
   const alpha = reduced ? fadeIn(ms) : 1;
 
-  const charWidth = 11.5;
-  const paddingH = 34;
-  const maxW = 340;
-  const rawWidth = text.length * charWidth + paddingH;
-  const bWidth = Math.min(maxW, Math.max(90, rawWidth));
-  const capacity = (bWidth - paddingH) / charWidth;
-  const lines = Math.max(1, Math.ceil(text.length / capacity));
-  const bHeight = 30 + lines * 21;
+  // Same size the office layout stacks with (systems/bubbleLayout.ts)
+  const { w: bWidth, h: bHeight } = bubbleSize(text);
 
   const textStyle = useMemo<Partial<TextStyle>>(
     () => ({

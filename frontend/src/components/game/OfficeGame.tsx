@@ -57,6 +57,9 @@ import { wireGameRuntime, unwireGameRuntime } from "@/systems/gameRuntime";
 import { useCompactionAnimation } from "@/systems/compactionAnimation";
 import { CrowdLayoutCache } from "@/systems/crowdLayout";
 import { autoFit } from "@/systems/autoFit";
+import { bubbleSize, stackBubbles, type Box } from "@/systems/bubbleLayout";
+import { truncateBubbleText } from "@/utils/bubbleText";
+import { nameTagWidth } from "./NameTag";
 import { AgentLookCache } from "@/systems/agentLooks";
 import { SceneSignalsCache, type PersonSignals } from "@/systems/sceneSignals";
 import { useOfficeTextures } from "@/hooks/useOfficeTextures";
@@ -399,6 +402,48 @@ export function OfficeGame(): ReactNode {
     () => crowdCache.compute(agents),
     [agents, crowdCache],
   );
+
+  // Bubbles stack instead of covering each other and the name tags
+  const bubbleLifts = useMemo(() => {
+    const boxes: Array<Box & { id: string }> = [];
+    const at = (id: string, x: number, y: number, text: string) => {
+      const size = bubbleSize(truncateBubbleText(text));
+      // SceneBubble draws at (x + 45, y - 80), growing up, badge top-left
+      boxes.push({
+        id,
+        x: x + 45 - size.w / 2 - 22,
+        y: y - 80 - size.h - 10,
+        w: size.w + 22,
+        h: size.h + 10,
+      });
+    };
+    if (boss.bubble.content) {
+      at("boss", boss.position.x, boss.position.y, boss.bubble.content.text);
+    }
+    const tags: Box[] = [
+      { x: boss.position.x - 30, y: boss.position.y - 71, w: 60, h: 22 },
+    ];
+    for (const agent of agents.values()) {
+      if (isInElevatorZone(agent.currentPosition)) continue;
+      const pos = labelPositions.get(agent.id) ?? agent.currentPosition;
+      if (agent.name) {
+        const w = nameTagWidth(agent.name);
+        tags.push({ x: pos.x - w / 2, y: pos.y - 83, w, h: 22 });
+      }
+      if (agent.bubble.content) {
+        const x =
+          agent.currentPosition.x + (crowdOffsets.get(agent.id)?.x ?? 0);
+        at(agent.id, x, agent.currentPosition.y, agent.bubble.content.text);
+      }
+    }
+    return stackBubbles(boxes, tags);
+  }, [
+    agents,
+    boss.bubble.content,
+    boss.position,
+    labelPositions,
+    crowdOffsets,
+  ]);
 
   // Keyboard shortcuts for debug
   useEffect(() => {
@@ -935,13 +980,16 @@ export function OfficeGame(): ReactNode {
                       >
                         <AgentBubble
                           content={agent.bubble.content!}
-                          yOffset={-80}
+                          yOffset={-80 + (bubbleLifts.get(agent.id) ?? 0)}
                         />
                       </pixiContainer>
                     ))}
                   {boss.bubble.content && (
                     <pixiContainer x={boss.position.x} y={boss.position.y}>
-                      <BossBubble content={boss.bubble.content} yOffset={-80} />
+                      <BossBubble
+                        content={boss.bubble.content}
+                        yOffset={-80 + (bubbleLifts.get("boss") ?? 0)}
+                      />
                     </pixiContainer>
                   )}
                 </>

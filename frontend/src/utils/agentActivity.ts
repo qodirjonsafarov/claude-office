@@ -5,6 +5,7 @@
  */
 
 import type { AgentLifespan } from "@/types";
+import { friendlyToolName } from "@/utils/toolNames";
 
 // ============================================================================
 // PROGRESS
@@ -154,7 +155,7 @@ export function describeTool(
     case "TaskUpdate":
       return "Planning";
     default:
-      return `Using ${name}`;
+      return friendlyToolName(name, input);
   }
 }
 
@@ -206,17 +207,76 @@ export function personKey(agentId: string | null | undefined): string {
   return !agentId || agentId === "main" ? "boss" : agentId;
 }
 
-/** How many tools each person called (keyed by agent id, the boss = "boss"). */
+/**
+ * How many tools each person called (keyed by agent id, the boss = "boss").
+ * Pre and post events are counted apart and the larger count wins: for some
+ * subagents only one of the two reaches the log under their own id.
+ */
 export function toolCountsByAgent(
   log: Iterable<LogEvent>,
 ): Map<string, number> {
-  const counts = new Map<string, number>();
+  const pre = new Map<string, number>();
+  const post = new Map<string, number>();
   for (const event of log) {
-    if (event.type !== "pre_tool_use") continue;
+    const counts =
+      event.type === "pre_tool_use"
+        ? pre
+        : event.type === "post_tool_use"
+          ? post
+          : null;
+    if (!counts) continue;
     const key = personKey(event.agentId);
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
-  return counts;
+  const total = new Map(pre);
+  for (const [key, n] of post) total.set(key, Math.max(n, total.get(key) ?? 0));
+  return total;
+}
+
+/** When the boss's current turn began: his latest prompt (ms), or null. */
+export function bossTurnStart(
+  log: Iterable<{ type: string; agentId?: string | null; timestamp: Date }>,
+): number | null {
+  for (const event of log) {
+    if (
+      event.type === "user_prompt_submit" &&
+      personKey(event.agentId) === "boss"
+    )
+      return event.timestamp.getTime();
+  }
+  return null;
+}
+
+/**
+ * The two text lines of a team row. Without a todo list the status is
+ * "Working · 4m · 37 tools" and the action ("Running tests") goes below;
+ * with real progress the status is the list's own label.
+ */
+export function activityLines(input: {
+  view: ProgressView;
+  action: string;
+  toolCount: number;
+  startedAt: number | null;
+  now: number;
+}): { status: string; action: string | null } {
+  const { view, action, toolCount, startedAt, now } = input;
+  const time = startedAt !== null ? formatDuration(now - startedAt) : null;
+  const tools =
+    toolCount > 0 ? `${toolCount} ${toolCount === 1 ? "tool" : "tools"}` : null;
+  const join = (parts: (string | null)[]) => parts.filter(Boolean).join(" · ");
+  switch (view.kind) {
+    case "bar":
+      return { status: view.label, action };
+    case "busy":
+      return {
+        status: join(["Working", time, tools]),
+        action: action === "Working" ? null : action,
+      };
+    case "wait":
+      return { status: join([action, time]), action: null };
+    default:
+      return { status: join([action, tools]), action: null };
+  }
 }
 
 /** Each person's latest tool call (the log is newest first). */

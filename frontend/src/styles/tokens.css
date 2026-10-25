@@ -594,17 +594,11 @@
     background: var(--qo-bar, var(--qo-accent));
     transition: width 0.5s ease;
   }
-  /* No numbers to show: stripes drift along the track ("working"). */
+  /* No numbers to show: a short bar sweeps along the track ("working"). */
   .qo-progress-busy > span {
-    width: 100%;
-    opacity: 0.6;
-    background: repeating-linear-gradient(
-      -45deg,
-      var(--qo-bar, var(--qo-accent)) 0 6px,
-      transparent 6px 12px
-    );
-    background-size: 17px 100%;
-    animation: qo-stripes 0.9s linear infinite;
+    width: 38%;
+    background: var(--qo-bar, var(--qo-accent));
+    animation: qo-sweep 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   }
   /* Waiting for the user: a steady gold bar that blinks softly. */
   .qo-progress-wait > span {
@@ -672,9 +666,12 @@
     opacity: 0.8;
   }
 }
-@keyframes qo-stripes {
+@keyframes qo-sweep {
+  from {
+    transform: translateX(-100%);
+  }
   to {
-    background-position: 17px 0;
+    transform: translateX(265%);
   }
 }
 @keyframes qo-blink {

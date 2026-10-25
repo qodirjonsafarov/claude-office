@@ -5,7 +5,9 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  activityLines,
   agentRunTimes,
+  bossTurnStart,
   describeAction,
   describeTool,
   formatDuration,
@@ -66,7 +68,10 @@ describe("describeTool", () => {
   });
 
   it("falls back to the tool name", () => {
-    expect(describeTool("mcp__figma__get", {})).toBe("Using mcp__figma__get");
+    expect(describeTool("mcp__figma__get", {})).toBe("Figma · get");
+    expect(
+      describeTool("mcp__claude-in-chrome__computer", { action: "left_click" }),
+    ).toBe("Browser · click");
   });
 });
 
@@ -243,5 +248,92 @@ describe("formatDuration", () => {
 
   it("clamps negatives to zero", () => {
     expect(formatDuration(-5)).toBe("0s");
+  });
+});
+
+describe("tool counts without pre events", () => {
+  it("counts posts when an agent's pre events are missing", () => {
+    const counts = toolCountsByAgent([
+      { type: "post_tool_use", agentId: "a2" },
+      { type: "post_tool_use", agentId: "a2" },
+      { type: "pre_tool_use", agentId: "a2", detail: { toolName: "Bash" } },
+    ]);
+    expect(counts.get("a2")).toBe(2);
+  });
+});
+
+describe("bossTurnStart", () => {
+  it("is the time of the boss's latest prompt", () => {
+    const at = bossTurnStart([
+      { type: "pre_tool_use", agentId: "main", timestamp: new Date(3000) },
+      { type: "user_prompt_submit", agentId: "a1", timestamp: new Date(2500) },
+      {
+        type: "user_prompt_submit",
+        agentId: "main",
+        timestamp: new Date(2000),
+      },
+      {
+        type: "user_prompt_submit",
+        agentId: "main",
+        timestamp: new Date(1000),
+      },
+    ]);
+    expect(at).toBe(2000);
+  });
+
+  it("is null without a prompt", () => {
+    expect(bossTurnStart([])).toBeNull();
+  });
+});
+
+describe("activityLines", () => {
+  const base = { toolCount: 37, startedAt: 0, now: 4 * 60_000 };
+
+  it("gives a busy person without a list 'Working · 4m · 37 tools'", () => {
+    expect(
+      activityLines({
+        ...base,
+        view: { kind: "busy" },
+        action: "Running tests",
+      }),
+    ).toEqual({ status: "Working · 4m · 37 tools", action: "Running tests" });
+  });
+
+  it("drops a plain 'Working' action and missing numbers", () => {
+    expect(
+      activityLines({
+        view: { kind: "busy" },
+        action: "Working",
+        toolCount: 0,
+        startedAt: null,
+        now: 0,
+      }),
+    ).toEqual({ status: "Working", action: null });
+  });
+
+  it("keeps the real progress label", () => {
+    expect(
+      activityLines({
+        ...base,
+        view: { kind: "bar", percent: 50, label: "Fix · 2/4" },
+        action: "Editing a.ts",
+      }),
+    ).toEqual({ status: "Fix · 2/4", action: "Editing a.ts" });
+  });
+
+  it("shows an idle person's state", () => {
+    expect(
+      activityLines({ ...base, view: { kind: "none" }, action: "Idle" }),
+    ).toEqual({ status: "Idle · 37 tools", action: null });
+  });
+
+  it("says waiting for permission first", () => {
+    expect(
+      activityLines({
+        ...base,
+        view: { kind: "wait" },
+        action: "Waiting for permission",
+      }).status,
+    ).toBe("Waiting for permission · 4m");
   });
 });

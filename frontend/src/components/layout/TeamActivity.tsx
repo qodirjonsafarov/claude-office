@@ -14,9 +14,10 @@ import { useShallow } from "zustand/react/shallow";
 import { useGameStore, selectEventLog } from "@/stores/gameStore";
 import { useTranslation } from "@/hooks/useTranslation";
 import {
+  activityLines,
   agentRunTimes,
+  bossTurnStart,
   describeAction,
-  formatDuration,
   lastToolByAgent,
   progressView,
   toolCountsByAgent,
@@ -24,6 +25,7 @@ import {
   type ProgressView,
 } from "@/utils/agentActivity";
 import { isAgentBusy, isBossBusy } from "@/utils/workStatus";
+import { cleanPromptText } from "@/utils/promptText";
 
 // ============================================================================
 // TYPES
@@ -97,6 +99,7 @@ export function useTeamRows(): TeamRow[] {
   const tools = useMemo(() => lastToolByAgent(eventLog), [eventLog]);
   const counts = useMemo(() => toolCountsByAgent(eventLog), [eventLog]);
   const starts = useMemo(() => agentRunTimes(lifespans ?? []), [lifespans]);
+  const bossStart = useMemo(() => bossTurnStart(eventLog), [eventLog]);
 
   return useMemo(() => {
     const row = (input: {
@@ -126,8 +129,8 @@ export function useTeamRows(): TeamRow[] {
         busy: input.busy,
         waiting: input.state === "waiting_permission",
         action,
-        task: input.task,
-        startedAt: input.isBoss ? null : (starts.get(input.id) ?? null),
+        task: input.task ? cleanPromptText(input.task) : null,
+        startedAt: input.isBoss ? bossStart : (starts.get(input.id) ?? null),
         toolCount: counts.get(input.key) ?? 0,
         view: progressView(input.progress, input.state, action, input.isTyping),
         debug: { state: input.state, phase: input.phase, queue: input.queue },
@@ -203,7 +206,7 @@ export function useTeamRows(): TeamRow[] {
       queue: null,
     });
     return [bossRow, ...agents];
-  }, [fields, boss, tools, counts, starts, t]);
+  }, [fields, boss, tools, counts, starts, bossStart, t]);
 }
 
 /** A clock that ticks every `ms` (for "4m" labels). */
@@ -278,14 +281,13 @@ function TeamRowItemComponent({
 }: TeamRowItemProps): ReactNode {
   const { t } = useTranslation();
   const md = size === "md";
-  const meta: string[] = [];
-  if (row.view.kind === "bar") {
-    meta.push(row.view.label);
-  } else {
-    meta.push(row.action);
-    if (row.toolCount > 0) meta.push(t("team.tools", { count: row.toolCount }));
-    if (row.startedAt !== null) meta.push(formatDuration(now - row.startedAt));
-  }
+  const lines = activityLines({
+    view: row.view,
+    action: row.action,
+    toolCount: row.toolCount,
+    startedAt: row.startedAt,
+    now,
+  });
 
   return (
     <li
@@ -333,10 +335,19 @@ function TeamRowItemComponent({
         className={`m-0 pl-[18px] ${md ? "text-[12.5px]" : "text-[12px]"} font-bold truncate ${
           row.waiting ? "text-max" : row.busy ? "text-accent" : "text-ink-faint"
         }`}
-        title={meta.join(" · ")}
+        title={lines.status}
       >
-        {meta.join(" · ")}
+        {lines.status}
       </p>
+
+      {lines.action && (
+        <p
+          className={`m-0 pl-[18px] -mt-1 ${md ? "text-[12.5px]" : "text-[12px]"} font-bold text-ink truncate`}
+          title={lines.action}
+        >
+          {lines.action}
+        </p>
+      )}
 
       {row.view.kind !== "none" && (
         <div className="pl-[18px]">

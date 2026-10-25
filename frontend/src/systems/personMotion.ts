@@ -260,8 +260,10 @@ export function walkStepPx(
   progress: number,
   deltaSeconds: number,
   maxSpeed: number,
-  options: { easeIn?: boolean } = {},
+  options: { easeIn?: boolean; instant?: boolean } = {},
 ): number {
+  // Reduced motion: no walking, the character appears at the target
+  if (options.instant) return Number.POSITIVE_INFINITY;
   const { traveled, remaining } = pathDistances(
     waypoints,
     currentIndex,

@@ -18,6 +18,7 @@ import {
 import { calculatePath, updateAgentObstacle } from "./pathfinding";
 import { collisionManager } from "./agentCollision";
 import { walkStepPx } from "./personMotion";
+import { isReducedMotion } from "./reducedMotion";
 import { CoffeeBreakPlanner } from "./coffeeBreak";
 import { getDeskPosition } from "./queuePositions";
 import type { Position } from "@/types";
@@ -296,7 +297,7 @@ class AnimationSystem {
       progress,
       deltaSeconds,
       MOVEMENT_SPEED,
-      { easeIn },
+      { easeIn, instant: isReducedMotion() },
     );
 
     // Advance through waypoints until we've used all our movement distance

@@ -56,8 +56,10 @@ import {
 import { SceneBubble } from "./shared/SceneBubble";
 import { characterMood, type PersonSignals } from "@/systems/sceneSignals";
 import {
+  FADE_MS,
   SHAKE_MS,
   SQUASH_MS,
+  fadeIn,
   shakeOffset,
   squashScale,
 } from "@/systems/sceneMotion";
@@ -217,6 +219,17 @@ function AgentSpriteComponent({
             : null;
   const feetY = personMode === "sit" || personMode === "sleep" ? 30 : 22;
 
+  // Reduced motion: no walking, so fade in wherever the agent lands
+  const [landed, setLanded] = useState({ x: position.x, y: position.y, n: 0 });
+  if (
+    reduced &&
+    Math.hypot(landed.x - position.x, landed.y - position.y) > 0.5
+  ) {
+    setLanded({ x: position.x, y: position.y, n: landed.n + 1 });
+  }
+  const landedMs = useSince(reduced && landed.n > 0 ? landed.n : null, FADE_MS);
+  const landAlpha = reduced && landed.n > 0 ? fadeIn(landedMs) : 1;
+
   // Click handler for focus popup
   const handlePointerTap = useCallback(() => {
     if (!clickToFocusEnabled) return;
@@ -250,7 +263,7 @@ function AgentSpriteComponent({
         x={shakeX}
         y={feetY}
         scale={squash}
-        alpha={sleeping ? 0.7 : 1}
+        alpha={(sleeping ? 0.7 : 1) * landAlpha}
       >
         <pixiContainer y={-feetY}>
           <PersonSprite

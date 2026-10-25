@@ -154,6 +154,10 @@ export function useWebSocketEvents({
                   typingTrackerRef.current?.onPreToolUse(typingKey);
                 } else {
                   typingTrackerRef.current?.onPostToolUse(typingKey);
+                  // The tool ran: any permission wait for it is over
+                  useAttentionStore
+                    .getState()
+                    .resolvePermission(agentId ?? null);
                 }
               }
 
@@ -177,7 +181,17 @@ export function useWebSocketEvents({
 
               // Attention toasts — wire event processing into attention store.
               // `shouldShowToast` (pure) owns the type + preference gate.
+              // A start without a name for an agent we don't know is a
+              // resumed agent (it gets "<Name> is back" from the state).
+              const anonymousStart =
+                message.event.type === "subagent_start" &&
+                !message.event.detail?.agentName &&
+                !(
+                  eventAgentId &&
+                  useGameStore.getState().agents.has(eventAgentId)
+                );
               if (
+                !anonymousStart &&
                 shouldShowToast(
                   message.event.type as EventType,
                   usePreferencesStore.getState(),

@@ -97,3 +97,57 @@ describe("attention toasts", () => {
     expect(queue.filter((t) => t.dismissed).length).toBeLessThanOrEqual(20);
   });
 });
+
+describe("permission toasts are resolved", () => {
+  beforeEach(() => {
+    useAttentionStore.setState({ toastQueue: [] });
+  });
+
+  it("dismisses the agent's permission toast once the wait is over", () => {
+    const store = useAttentionStore.getState();
+    store.processEvent({
+      type: "permission_request",
+      agentId: "a",
+      agentName: "A",
+    });
+    store.processEvent({
+      type: "permission_request",
+      agentId: "b",
+      agentName: "B",
+    });
+    store.resolvePermission("a");
+
+    const active = useAttentionStore
+      .getState()
+      .toastQueue.filter((t) => !t.dismissed)
+      .map((t) => t.agentId);
+    expect(active).toEqual(["b"]);
+  });
+
+  it("treats 'main' and no id as the boss", () => {
+    const store = useAttentionStore.getState();
+    store.processEvent({ type: "permission_request", agentId: null });
+    store.resolvePermission("main");
+
+    expect(
+      useAttentionStore.getState().toastQueue.every((t) => t.dismissed),
+    ).toBe(true);
+  });
+});
+
+describe("resumed agents", () => {
+  beforeEach(() => {
+    useAttentionStore.setState({ toastQueue: [] });
+  });
+
+  it("says '<Name> is back'", () => {
+    useAttentionStore
+      .getState()
+      .processEvent({
+        type: "subagent_start",
+        agentName: "Builder",
+        resumed: true,
+      });
+    expect(lastToast()?.title).toBe("Builder is back");
+  });
+});

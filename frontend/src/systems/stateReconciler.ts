@@ -21,6 +21,9 @@ import {
   getQueuePosition,
 } from "@/systems/queuePositions";
 import type { Agent, GameState, Position } from "@/types";
+import { useAttentionStore } from "@/stores/attentionStore";
+import { usePreferencesStore } from "@/stores/preferencesStore";
+import { shouldShowToast } from "@/systems/toastFilter";
 import { MIN_DESK_COUNT } from "@/constants/positions";
 
 // ============================================================================
@@ -86,6 +89,25 @@ export function resolveSpawn(
 
   // Fallback — spawn from elevator.
   return { spawnPosition: getNextSpawnPosition(), skipArrival: false };
+}
+
+// ============================================================================
+// AGENT TRANSITIONS
+// ============================================================================
+
+/**
+ * What changed for an agent between two backend states: it woke up from
+ * rest (a resumed agent) or its permission wait ended.
+ */
+export function agentTransition(
+  before: string,
+  after: string,
+): { recalled: boolean; permissionResolved: boolean } {
+  return {
+    recalled: before === "resting" && after !== "resting",
+    permissionResolved:
+      before === "waiting_permission" && after !== "waiting_permission",
+  };
 }
 
 // ============================================================================
@@ -166,6 +188,27 @@ export function reconcileState(state: GameState, ctx: ReconcilerContext): void {
     } else if (currentAgentIds.has(backendAgent.id)) {
       // Update existing agent's backend state, name, and task.
       // (Name and task may have been enriched by AI after initial spawn.)
+      const before = store.agents.get(backendAgent.id)?.backendState;
+      const change = before
+        ? agentTransition(before, backendAgent.state)
+        : { recalled: false, permissionResolved: false };
+      if (change.permissionResolved) {
+        useAttentionStore.getState().resolvePermission(backendAgent.id);
+      }
+      if (
+        change.recalled &&
+        shouldShowToast("subagent_start", usePreferencesStore.getState())
+      ) {
+        useAttentionStore.getState().processEvent({
+          type: "subagent_start",
+          agentId: backendAgent.id,
+          agentName:
+            backendAgent.name ??
+            store.agents.get(backendAgent.id)?.name ??
+            null,
+          resumed: true,
+        });
+      }
       store.updateAgentMeta(backendAgent.id, {
         backendState: backendAgent.state,
         name: backendAgent.name ?? null,
@@ -211,6 +254,12 @@ export function reconcileState(state: GameState, ctx: ReconcilerContext): void {
   }
 
   // ---- Update boss state ----
+  if (
+    agentTransition(store.boss.backendState, state.boss.state)
+      .permissionResolved
+  ) {
+    useAttentionStore.getState().resolvePermission(null);
+  }
   store.updateBossBackendState(state.boss.state);
   store.updateBossTask(state.boss.currentTask ?? null);
 

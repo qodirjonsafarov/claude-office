@@ -49,8 +49,12 @@ interface AttentionState {
     taskDescription?: string | null;
     errorType?: string | null;
     message?: string | null;
+    /** A resting agent came back (subagent_start): "<Name> is back". */
+    resumed?: boolean;
   }) => void;
   dismissToast: (id: string) => void;
+  /** The wait is over: dismiss this person's "Needs permission" toasts. */
+  resolvePermission: (agentId: string | null) => void;
   clearAllToasts: () => void;
   openCommandBar: () => void;
   closeCommandBar: () => void;
@@ -116,6 +120,11 @@ const TOAST_TITLES: Partial<Record<EventType, string>> = {
   background_task_notification: "Background task",
 };
 
+/** "main" and no id are the boss. */
+function personOf(agentId: string | null): string {
+  return !agentId || agentId === "main" ? "boss" : agentId;
+}
+
 /** Dismissed toasts kept (the newest); older ones are dropped. */
 const MAX_DISMISSED_TOASTS = 20;
 
@@ -163,7 +172,10 @@ export const useAttentionStore = create<AttentionState>()((set, get) => ({
       eventType: event.type,
       urgency,
       urgencyLevel: level,
-      title: toastTitle(event.type, event.agentName ?? null),
+      title:
+        event.resumed && event.agentName
+          ? `${event.agentName} is back`
+          : toastTitle(event.type, event.agentName ?? null),
       description: cleanPromptText(
         event.taskDescription ?? event.errorType ?? event.message ?? "",
       ),
@@ -190,6 +202,30 @@ export const useAttentionStore = create<AttentionState>()((set, get) => ({
       return { toastQueue: pruneDismissed(queue) };
     });
   },
+
+  resolvePermission: (agentId) =>
+    set((state) => {
+      const who = personOf(agentId);
+      if (
+        !state.toastQueue.some(
+          (t) =>
+            !t.dismissed &&
+            t.eventType === "permission_request" &&
+            personOf(t.agentId) === who,
+        )
+      ) {
+        return state;
+      }
+      return {
+        toastQueue: pruneDismissed(
+          state.toastQueue.map((t) =>
+            t.eventType === "permission_request" && personOf(t.agentId) === who
+              ? { ...t, dismissed: true }
+              : t,
+          ),
+        ),
+      };
+    }),
 
   dismissToast: (id) =>
     set((state) => ({

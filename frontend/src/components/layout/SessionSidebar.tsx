@@ -17,6 +17,7 @@ import type { Session } from "@/hooks/useSessions";
 import { getProjectKey, groupSessionsByProject } from "@/utils/sessionGroups";
 import { usageLabel } from "@/utils/tokenUsage";
 import { useDragResize } from "@/hooks/useDragResize";
+import { useGameStore, selectGitStatus } from "@/stores/gameStore";
 import { useTranslation } from "@/hooks/useTranslation";
 
 // ============================================================================
@@ -180,6 +181,8 @@ export function SessionSidebar({
   });
 
   const isDragging = isWidthDragging || isHeightDragging;
+  // No repository (or no status yet): no Git panel, the sessions take the room.
+  const hasGit = useGameStore(selectGitStatus) !== null;
 
   const groups = groupSessionsByProject(sessions);
 
@@ -211,8 +214,10 @@ export function SessionSidebar({
         <>
           {/* Session Browser */}
           <div
-            className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden flex-shrink-0 flex flex-col"
-            style={{ height: sessionsHeight }}
+            className={`bg-slate-950 border border-slate-800 rounded-lg overflow-hidden flex flex-col ${
+              hasGit ? "flex-shrink-0" : "flex-1 min-h-0"
+            }`}
+            style={hasGit ? { height: sessionsHeight } : undefined}
           >
             <div className="bg-slate-900 px-3 py-2 border-b border-slate-800 flex items-center gap-2 flex-shrink-0">
               <History size={14} className="text-ink-faint" />
@@ -421,19 +426,23 @@ export function SessionSidebar({
             </div>
           </div>
 
-          {/* Vertical Resize Handle (sessions ↕ git status) */}
-          <div
-            className="flex-shrink-0 h-3 cursor-ns-resize flex items-center justify-center group -my-1"
-            onMouseDown={handleHeightDragStart}
-            title={t("sessions.dragToResize")}
-          >
-            <div className="w-10 h-1 rounded-full bg-line-strong group-hover:bg-accent group-active:bg-accent-dark transition-colors" />
-          </div>
+          {hasGit && (
+            <>
+              {/* Vertical Resize Handle (sessions ↕ git status) */}
+              <div
+                className="flex-shrink-0 h-3 cursor-ns-resize flex items-center justify-center group -my-1"
+                onMouseDown={handleHeightDragStart}
+                title={t("sessions.dragToResize")}
+              >
+                <div className="w-10 h-1 rounded-full bg-line-strong group-hover:bg-accent group-active:bg-accent-dark transition-colors" />
+              </div>
 
-          {/* Git Status Panel */}
-          <div className="flex-grow min-h-0">
-            <GitStatusPanel />
-          </div>
+              {/* Git Status Panel */}
+              <div className="flex-grow min-h-0">
+                <GitStatusPanel />
+              </div>
+            </>
+          )}
         </>
       )}
 

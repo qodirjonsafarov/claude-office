@@ -112,19 +112,18 @@ export function MobileSessionList({
                     >
                       {primary.displayName ?? projectKey}
                     </span>
-                  </div>
-                  <div className="mt-1 pl-[18px] flex justify-between gap-3 text-[12px] font-bold text-ink-faint">
-                    <span className="truncate">
-                      {[
-                        t("sessions.events", { count: primary.eventCount }),
-                        usageLabel(primary.tokenUsage),
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                    <span className="truncate flex-shrink-0">
+                    <span className="flex-shrink-0 text-[12px] font-bold text-ink-faint">
                       {ago(primary.updatedAt)}
                     </span>
+                  </div>
+                  {/* Its own line, wrapping if needed: the tokens are never cut. */}
+                  <div className="mt-1 pl-[18px] text-[12px] font-bold text-ink-faint">
+                    {[
+                      t("sessions.events", { count: primary.eventCount }),
+                      usageLabel(primary.tokenUsage),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </div>
                 </button>
 

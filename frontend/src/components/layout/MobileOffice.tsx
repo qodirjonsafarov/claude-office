@@ -17,6 +17,7 @@ import { MobileAgentActivity } from "@/components/layout/MobileAgentActivity";
 import { MobileSessionList } from "@/components/layout/MobileSessionList";
 import { MobileSheet } from "@/components/layout/MobileSheet";
 import { MobileTabBar, type MobileTab } from "@/components/layout/MobileTabBar";
+import { SwitchMark } from "@/components/ui/SwitchMark";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { Session } from "@/hooks/useSessions";
 import {
@@ -298,18 +299,22 @@ export function MobileOffice({
               </button>
             </div>
 
-            <div className="qo-eyebrow px-1">{t("header.more")}</div>
+            <div className="qo-eyebrow px-1">{t("header.developer")}</div>
             <div className="flex flex-col gap-1">
               <button
                 type="button"
+                role="switch"
                 onClick={onToggleDebug}
-                aria-pressed={debugMode}
-                className={`${actionClass} hover:bg-panel-2 ${
-                  debugMode ? "text-accent" : "text-ink"
-                }`}
+                aria-checked={debugMode}
+                className={`${actionClass} text-ink hover:bg-panel-2`}
               >
                 <Bug size={20} className="text-ink-faint" />
-                {debugMode ? t("header.debugOn") : t("header.debugOff")}
+                {t("header.debugMode")}
+                <SwitchMark
+                  on={debugMode}
+                  onLabel={t("header.on")}
+                  offLabel={t("header.off")}
+                />
               </button>
               {/* Developer actions: only in debug mode */}
               {debugMode && (
@@ -330,17 +335,26 @@ export function MobileOffice({
                     <RefreshCw size={20} className="text-warn" />
                     {t("header.reset")}
                   </button>
-                  <button
-                    type="button"
-                    onClick={run(onClearDB)}
-                    className={`${actionClass} text-danger bg-danger-dim mt-2`}
-                  >
-                    <Trash2 size={20} />
-                    {t("header.clearDb")}
-                  </button>
                 </>
               )}
             </div>
+
+            {/* The destructive action: its own group, well apart from Reset. */}
+            {debugMode && (
+              <div className="mt-4 pt-4 border-t border-line flex flex-col gap-2">
+                <div className="qo-eyebrow px-1 !text-danger">
+                  {t("header.dangerZone")}
+                </div>
+                <button
+                  type="button"
+                  onClick={run(onClearDB)}
+                  className={`${actionClass} text-danger bg-danger-dim border border-danger/40`}
+                >
+                  <Trash2 size={20} />
+                  {t("header.clearDb")}
+                </button>
+              </div>
+            )}
           </div>
         </MobileSheet>
       )}

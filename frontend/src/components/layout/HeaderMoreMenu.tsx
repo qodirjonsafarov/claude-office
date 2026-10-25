@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal, Play, RefreshCw, Trash2, Bug } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
+import { SwitchMark } from "@/components/ui/SwitchMark";
 
 // ============================================================================
 // TYPES
@@ -74,7 +75,7 @@ export function HeaderMoreMenu({
       {open && (
         <div
           role="menu"
-          className="qo-pop absolute right-0 top-full mt-2 z-50 min-w-[12rem] p-1.5 bg-panel border border-line-strong rounded-xl3 shadow-[0_8px_24px_var(--qo-float-shade)]"
+          className="qo-pop absolute right-0 top-full mt-2 z-50 min-w-[14rem] p-1.5 bg-panel border border-line-strong rounded-xl3 shadow-[0_8px_24px_var(--qo-float-shade)]"
         >
           <button
             role="menuitemcheckbox"
@@ -83,14 +84,15 @@ export function HeaderMoreMenu({
               onToggleDebug();
             }}
             aria-checked={debugMode}
-            className={`${itemClass} ${
-              debugMode
-                ? "text-accent hover:bg-accent-dim"
-                : "text-ink-soft hover:bg-panel-2"
-            }`}
+            className={`${itemClass} text-ink hover:bg-panel-2`}
           >
-            <Bug size={14} />
-            {debugMode ? t("header.debugOn") : t("header.debugOff")}
+            <Bug size={14} className="text-ink-faint" />
+            {t("header.debugMode")}
+            <SwitchMark
+              on={debugMode}
+              onLabel={t("header.on")}
+              offLabel={t("header.off")}
+            />
           </button>
 
           {/* Developer actions: only in debug mode */}
@@ -121,6 +123,11 @@ export function HeaderMoreMenu({
                 {t("header.reset")}
               </button>
 
+              {/* The destructive action sits apart from Reset. */}
+              <div aria-hidden="true" className="h-px mt-2 mb-1 bg-line" />
+              <div className="px-3 pt-1 pb-1 qo-eyebrow !text-[10px] text-danger">
+                {t("header.dangerZone")}
+              </div>
               <button
                 role="menuitem"
                 onClick={() => {

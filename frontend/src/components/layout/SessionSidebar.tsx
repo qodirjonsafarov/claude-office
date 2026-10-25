@@ -12,11 +12,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import {
-  ptBR as dateFnsPtBR,
-  es as dateFnsEs,
-  ru as dateFnsRu,
-} from "date-fns/locale";
+import { ptBR as dateFnsPtBR, es as dateFnsEs } from "date-fns/locale";
 import { GitStatusPanel } from "@/components/layout/GitStatusPanel";
 import type { Session } from "@/hooks/useSessions";
 import { useDragResize } from "@/hooks/useDragResize";
@@ -185,9 +181,7 @@ export function SessionSidebar({
       ? dateFnsPtBR
       : language === "es"
         ? dateFnsEs
-        : language === "ru"
-          ? dateFnsRu
-          : undefined;
+        : undefined;
 
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);

@@ -1,15 +1,13 @@
 import en, { type TranslationKey } from "./en";
 import ptBR from "./pt-BR";
 import es from "./es";
-import ru from "./ru";
 
-export type Locale = "en" | "pt-BR" | "es" | "ru";
+export type Locale = "en" | "pt-BR" | "es";
 
 export const locales: Record<Locale, string> = {
   en: "English",
   "pt-BR": "Português (BR)",
   es: "Español",
-  ru: "Русский",
 };
 
 export function isLocale(value: string): value is Locale {
@@ -20,7 +18,6 @@ const translations: Record<Locale, Record<TranslationKey, string>> = {
   en,
   "pt-BR": ptBR,
   es,
-  ru,
 };
 
 const i18nDebug =

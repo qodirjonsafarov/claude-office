@@ -13,11 +13,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import {
-  ptBR as dateFnsPtBR,
-  es as dateFnsEs,
-  ru as dateFnsRu,
-} from "date-fns/locale";
+import { ptBR as dateFnsPtBR, es as dateFnsEs } from "date-fns/locale";
 import { GitStatusPanel } from "@/components/layout/GitStatusPanel";
 import { EventLog } from "@/components/layout/EventLog";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -102,9 +98,7 @@ export function MobileDrawer({
       ? dateFnsPtBR
       : language === "es"
         ? dateFnsEs
-        : language === "ru"
-          ? dateFnsRu
-          : undefined;
+        : undefined;
 
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 

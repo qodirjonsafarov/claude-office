@@ -165,8 +165,8 @@ body {
   }
 }
 
-/* Qodirjon: крупнее и контрастнее текст в панелях, чтобы легче читать.
-   Стоит вне @layer, поэтому перекрывает классы Tailwind. Удалить блок = вернуть как было. */
+/* Qodirjon: larger, higher-contrast panel text for easier reading.
+   Lives outside @layer, so it overrides Tailwind classes. Remove this block to restore the original. */
 .text-\[8px\] { font-size: 10px; }
 .text-\[9px\] { font-size: 11px; }
 .text-\[10px\] { font-size: 12px; }
@@ -180,9 +180,9 @@ body {
 .text-slate-300 { color: #dde2ea; }
 
 /* ======================================================================
-   Qodirjon Office: игровой HUD.
-   Тёмное стекло, рамки с уголками как в играх, пиксельный шрифт заголовков,
-   «объёмные» кнопки. Вне @layer, поэтому перекрывает классы Tailwind.
+   Qodirjon Office: game-style HUD.
+   Dark glass, game-like corner-bracket frames, a pixel font for titles,
+   "raised" buttons. Outside @layer, so it overrides Tailwind classes.
    ====================================================================== */
 :root {
   --qo-bg: #060a14;
@@ -203,7 +203,7 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
-/* ---------- Фон: глубокий космос с мягким светом и сеткой ---------- */
+/* ---------- Background: deep space with a soft glow and a grid ---------- */
 .qo-bg {
   background:
     radial-gradient(1100px 600px at 6% -12%, rgba(255, 138, 61, 0.17), transparent 60%),
@@ -214,7 +214,7 @@ body {
     var(--qo-bg) !important;
 }
 
-/* ---------- Пиксельный шрифт для заголовков, вкладок и кнопок ---------- */
+/* ---------- Pixel font for titles, tabs and buttons ---------- */
 .qo-bg .uppercase,
 .qo-bg header button,
 .qo-subtitle {
@@ -223,7 +223,7 @@ body {
   font-weight: 600 !important;
 }
 
-/* ---------- Панели: HUD-рамка с уголками ---------- */
+/* ---------- Panels: HUD frame with corner brackets ---------- */
 .qo-bg .bg-slate-950 {
   background: var(--qo-panel) !important;
   backdrop-filter: blur(16px) saturate(150%);
@@ -238,7 +238,7 @@ body {
     inset 0 0 0 1px rgba(0, 0, 0, 0.35),
     0 20px 40px -20px rgba(0, 0, 0, 0.85);
 }
-/* Светящиеся уголки */
+/* Glowing corners */
 .qo-bg .flex.flex-col.bg-slate-950::before,
 .qo-bg .flex.flex-col.bg-slate-950::after {
   content: "";
@@ -265,7 +265,7 @@ body {
   filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.8));
 }
 
-/* Шапки панелей */
+/* Panel headers */
 .qo-bg .bg-slate-900 {
   background: var(--qo-panel-head) !important;
 }
@@ -279,18 +279,18 @@ body {
 .qo-bg .rounded-lg { border-radius: 12px; }
 .qo-bg .rounded-xl { border-radius: 16px; }
 
-/* Строки списков: подсветка при наведении */
+/* List rows: highlight on hover */
 .qo-bg .hover\:bg-slate-900\/50:hover {
   background: linear-gradient(90deg, rgba(255, 138, 61, 0.12), rgba(139, 92, 246, 0.06)) !important;
 }
 
-/* Вкладки справа */
+/* Right-hand tabs */
 .qo-bg aside .border-b-2 {
   background: linear-gradient(180deg, transparent, rgba(255, 138, 61, 0.10)) !important;
   text-shadow: 0 0 10px currentColor;
 }
 
-/* ---------- Сцена офиса: «экран» игры ---------- */
+/* ---------- Office scene: the game "screen" ---------- */
 .qo-stage {
   border: 1px solid var(--qo-line-strong) !important;
   border-radius: 16px !important;
@@ -309,7 +309,7 @@ body {
 .qo-stage canvas {
   border-radius: 10px;
 }
-/* Сцена держит пропорции 1280x1024 и стоит по центру */
+/* The scene keeps its 1280x1024 aspect ratio and stays centered */
 .qo-stage-inner {
   position: absolute;
   inset: 0;
@@ -331,7 +331,7 @@ body {
     0 0 40px -4px rgba(139, 92, 246, 0.45),
     0 24px 50px -20px rgba(0, 0, 0, 0.9);
 }
-/* Лёгкие «линии экрана» и затемнение по краям поверх сцены */
+/* Subtle scanlines and an edge vignette over the scene */
 .qo-stage-screen::after {
   content: "";
   position: absolute;
@@ -346,7 +346,7 @@ body {
   z-index: 5;
 }
 
-/* ---------- Счётчики в шапке ---------- */
+/* ---------- Header counters ---------- */
 .qo-chip {
   display: flex;
   align-items: center;
@@ -392,7 +392,7 @@ body {
 .qo-bar-warn { background: linear-gradient(90deg, var(--qo-gold), var(--qo-orange)); }
 .qo-bar-danger { background: linear-gradient(90deg, #fb7185, #ef4444); box-shadow: 0 0 10px rgba(239, 68, 68, 0.8); }
 
-/* ---------- Шапка: HUD-полоса ---------- */
+/* ---------- Header: HUD bar ---------- */
 .qo-bg header {
   background: linear-gradient(180deg, rgba(22, 30, 56, 0.85), rgba(13, 19, 36, 0.75));
   border: 1px solid var(--qo-line-strong);
@@ -441,7 +441,7 @@ body {
   color: #8f9ab3;
 }
 
-/* Кнопки в шапке: объёмные игровые кнопки */
+/* Header buttons: raised game-style buttons */
 .qo-bg header button {
   border-radius: 10px !important;
   padding: 7px 14px !important;
@@ -469,7 +469,7 @@ body {
     0 1px 0 rgba(8, 12, 24, 0.9);
 }
 
-/* Кнопки масштаба на сцене */
+/* Zoom buttons on the scene */
 .qo-stage button {
   border-radius: 10px !important;
   background: linear-gradient(180deg, rgba(58, 72, 120, 0.95), rgba(32, 42, 76, 0.95)) !important;
@@ -479,11 +479,11 @@ body {
 }
 .qo-stage button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(8, 12, 24, 0.9); }
 
-/* Полоса прокрутки под тему */
+/* Themed scrollbar */
 ::-webkit-scrollbar-thumb { background: rgba(130, 150, 200, 0.25) !important; }
 ::-webkit-scrollbar-thumb:hover { background: var(--qo-violet) !important; }
 
-/* Записи журнала: карточки с цветной полосой слева */
+/* Event log entries: cards with a colored left stripe */
 .qo-bg .border-l-2.cursor-pointer {
   background: rgba(30, 41, 76, 0.28);
   border-radius: 8px !important;
@@ -496,20 +496,20 @@ body {
   border-left-color: var(--qo-violet) !important;
   transform: translateX(2px);
 }
-/* Выбранная сессия слева */
+/* Selected session in the left sidebar */
 .qo-bg .bg-purple-500\/20,
 .qo-bg .bg-purple-900\/30 {
   background: linear-gradient(90deg, rgba(139, 92, 246, 0.28), rgba(255, 138, 61, 0.10)) !important;
   box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.45), 0 0 18px -6px rgba(139, 92, 246, 0.7);
 }
 
-/* На средних экранах прячем подписи у счётчиков, остаются значки и числа */
+/* On medium screens hide counter labels, keep icons and numbers */
 @media (max-width: 1535px) {
   .qo-chip-label { display: none; }
   .qo-bar { width: 64px; }
 }
 
-/* Пустые состояния: аккуратная плашка вместо серого курсива */
+/* Empty states: a tidy badge instead of gray italics */
 .qo-bg .italic.text-center {
   font-style: normal !important;
   font-family: var(--qo-pixel);
@@ -538,6 +538,6 @@ body {
 }
 .qo-bg .flex.italic.text-center { flex-direction: column; flex-grow: 0 !important; margin: auto 10px; }
 
-/* Кнопки масштаба не закрывают сцену: полупрозрачные, пока не навели */
+/* Zoom buttons don't cover the scene: translucent until hovered */
 .qo-stage-screen .absolute:has(> button[aria-label]) { opacity: 0.55; transition: opacity 150ms ease; }
 .qo-stage-screen .absolute:has(> button[aria-label]):hover { opacity: 1; }

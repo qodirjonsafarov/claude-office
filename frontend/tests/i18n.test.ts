@@ -15,6 +15,7 @@ describe("isLocale", () => {
 
   it("rejects invalid strings", () => {
     expect(isLocale("fr")).toBe(false);
+    expect(isLocale("ru")).toBe(false);
     expect(isLocale("")).toBe(false);
     expect(isLocale("EN")).toBe(false);
     expect(isLocale("pt-br")).toBe(false);

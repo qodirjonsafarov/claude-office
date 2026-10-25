@@ -98,7 +98,8 @@ export function HudStats({
       {usage && (
         <button
           type="button"
-          className="qo-pill hover:border-line-strong transition-colors"
+          // A tap target: at least 44 px tall on touch screens
+          className="qo-pill hover:border-line-strong transition-colors [@media(pointer:coarse)]:min-h-11"
           title={`${t("hud.tokens")}\n${usageTooltip(usage)}`}
           aria-haspopup="dialog"
           onClick={() => setCostOpen(true)}

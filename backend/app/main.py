@@ -91,6 +91,9 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
 
     # Web chat: keep pane checks fresh off the broadcast path (see chat_status).
     chat_watcher = asyncio.create_task(chat_status_loop()) if settings.ENABLE_WEB_PROMPT else None
+    # Resting agents walk out after AGENT_REST_MINUTES, also in quiet sessions
+    # and in sessions restored from the DB after a restart.
+    rest_sweeper = asyncio.create_task(_rest_sweep_loop(get_event_processor(), interval=30))
 
     yield
 
@@ -100,9 +103,10 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
             await chat_watcher
     # Cancel any pending debounced overview broadcast so shutdown is clean.
     await get_event_processor().shutdown()
-    idle_evictor.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await idle_evictor
+    for task in (idle_evictor, rest_sweeper):
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
     await git_service.stop()
     await get_engine().dispose()
 
@@ -180,6 +184,23 @@ async def _idle_eviction_loop(
                 evict_logger.exception("Idle eviction sweep failed")
     except asyncio.CancelledError:
         evict_logger.info("Idle eviction loop stopped")
+
+
+async def _rest_sweep_loop(event_processor: EventProcessor, interval: float) -> None:
+    """Periodically send long-resting agents home and rest stuck workers.
+
+    Runs as a background task started in ``lifespan`` (like the idle
+    evictor); per-tick errors are logged and the loop goes on.
+    """
+    sweep_logger = logging.getLogger("claude-office.rest-sweeper")
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            await event_processor.send_rested_agents_home()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            sweep_logger.exception("Resting-agent sweep failed")
 
 
 app = FastAPI(

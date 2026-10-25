@@ -101,7 +101,6 @@ class AgentMachineService implements AnimationListener {
    * Supports three spawn modes for mid-session joining:
    * - At desk: Agent is already working at their desk (SPAWN_AT_DESK)
    * - In arrival queue: Agent is waiting to get work from boss (SPAWN_IN_ARRIVAL_QUEUE)
-   * - In departure queue: Agent is waiting to turn in work (SPAWN_IN_DEPARTURE_QUEUE)
    * - Normal: Agent arrives from elevator (SPAWN)
    */
   spawnAgent(
@@ -130,19 +129,6 @@ class AgentMachineService implements AnimationListener {
 
     if (options?.queueType === "arrival" && options.queueIndex !== undefined) {
       this.spawnInArrivalQueue(
-        actor,
-        agentId,
-        name,
-        desk,
-        initialPosition,
-        options.queueIndex,
-        store,
-      );
-    } else if (
-      options?.queueType === "departure" &&
-      options.queueIndex !== undefined
-    ) {
-      this.spawnInDepartureQueue(
         actor,
         agentId,
         name,
@@ -338,31 +324,6 @@ class AgentMachineService implements AnimationListener {
     store.updateAgentQueueInfo(agentId, "arrival", queueIndex);
     if (!store.arrivalQueue.includes(agentId)) {
       store.enqueueArrival(agentId);
-    }
-  }
-
-  private spawnInDepartureQueue(
-    actor: ReturnType<typeof createActor>,
-    agentId: string,
-    name: string | null,
-    desk: number | null,
-    position: Position,
-    queueIndex: number,
-    store: ReturnType<typeof useGameStore.getState>,
-  ): void {
-    actor.send({
-      type: "SPAWN_IN_DEPARTURE_QUEUE",
-      agentId,
-      name,
-      desk,
-      position,
-      queueIndex,
-    });
-    store.updateAgentPosition(agentId, position);
-    store.updateAgentPhase(agentId, "in_departure_queue");
-    store.updateAgentQueueInfo(agentId, "departure", queueIndex);
-    if (!store.departureQueue.includes(agentId)) {
-      store.enqueueDeparture(agentId);
     }
   }
 

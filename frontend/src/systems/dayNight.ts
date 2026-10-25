@@ -5,8 +5,13 @@
  * override ("?time=22:30") fixes the time for screenshots. Pure TS.
  */
 
-/** Strongest night tint (multiply alpha). */
-export const NIGHT_ALPHA = 0.32;
+/** Strongest night tint (multiply alpha), reached late at night. */
+export const NIGHT_ALPHA = 0.35;
+/** Tint right after dusk: the evening is visibly lighter than late night. */
+const EVENING_ALPHA = 0.16;
+/** Late night: from 22:00 to 04:00 the office is darkest. */
+const DEEP_START = 22;
+const DEEP_END = 4;
 /** Deep blue night tint, multiplied over the scene. */
 export const NIGHT_TINT = 0x1f2a55;
 
@@ -19,7 +24,15 @@ function smooth(u: number): number {
   return x * x * (3 - 2 * x);
 }
 
-/** Night tint strength at `hours` (0..24, fractional). */
+function lerp(from: number, to: number, u: number): number {
+  return from + (to - from) * smooth(u);
+}
+
+/**
+ * Night tint strength at `hours` (0..24, fractional): clear by day, dusk
+ * fades in to an evening tint, the evening deepens to the full night by
+ * 22:00, and before dawn it lifts again.
+ */
 export function nightAlpha(
   hours: number,
   times: DayTimes = DEFAULT_TIMES,
@@ -28,10 +41,24 @@ export function nightAlpha(
   const h = ((hours % 24) + 24) % 24;
   if (h >= dawnEnd && h <= duskStart) return 0;
   if (h > duskStart && h < duskEnd) {
-    return NIGHT_ALPHA * smooth((h - duskStart) / (duskEnd - duskStart));
+    return lerp(0, EVENING_ALPHA, (h - duskStart) / (duskEnd - duskStart));
+  }
+  if (h >= duskEnd && h < DEEP_START) {
+    return lerp(
+      EVENING_ALPHA,
+      NIGHT_ALPHA,
+      (h - duskEnd) / (DEEP_START - duskEnd),
+    );
   }
   if (h > dawnStart && h < dawnEnd) {
-    return NIGHT_ALPHA * (1 - smooth((h - dawnStart) / (dawnEnd - dawnStart)));
+    return lerp(EVENING_ALPHA, 0, (h - dawnStart) / (dawnEnd - dawnStart));
+  }
+  if (h > DEEP_END && h <= dawnStart) {
+    return lerp(
+      NIGHT_ALPHA,
+      EVENING_ALPHA,
+      (h - DEEP_END) / (dawnStart - DEEP_END),
+    );
   }
   return NIGHT_ALPHA;
 }

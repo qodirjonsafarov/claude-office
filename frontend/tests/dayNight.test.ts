@@ -65,8 +65,29 @@ describe("seasonal night", () => {
   it("follows the given dawn/dusk hours (same as the city window)", () => {
     // Winter: dark early
     const winter: [number, number, number, number] = [7, 8.5, 16, 17.5];
-    expect(nightAlpha(17.75, winter)).toBe(NIGHT_ALPHA);
+    expect(nightAlpha(23, winter)).toBe(NIGHT_ALPHA);
     expect(nightAlpha(12, winter)).toBe(0);
     expect(nightAlpha(16.75, winter)).toBeGreaterThan(0);
+  });
+});
+
+describe("evening vs late night", () => {
+  const fall: [number, number, number, number] = [6, 7.5, 17.5, 19.5];
+
+  it("22:30 is visibly darker than 19:00, still at most 0.35", () => {
+    const evening = nightAlpha(19, fall);
+    const late = nightAlpha(22.5, fall);
+    expect(late).toBeLessThanOrEqual(0.35);
+    expect(late - evening).toBeGreaterThan(0.1);
+  });
+
+  it("keeps getting darker through the evening and lighter before dawn", () => {
+    let last = 0;
+    for (let h = 17.5; h <= 23; h += 0.25) {
+      const a = nightAlpha(h, fall);
+      expect(a).toBeGreaterThanOrEqual(last - 1e-9);
+      last = a;
+    }
+    expect(nightAlpha(5, fall)).toBeLessThan(nightAlpha(2, fall));
   });
 });

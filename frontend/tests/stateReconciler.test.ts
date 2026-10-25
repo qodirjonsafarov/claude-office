@@ -14,7 +14,6 @@ import { resolveSpawn } from "@/systems/stateReconciler";
 import { resetSpawnIndex } from "@/systems/queuePositions";
 import {
   ARRIVAL_QUEUE_POSITIONS,
-  DEPARTURE_QUEUE_POSITIONS,
   ELEVATOR_SPAWN_POSITIONS,
   getDeskPosition,
 } from "@/systems/queuePositions";
@@ -75,20 +74,18 @@ describe("resolveSpawn", () => {
     expect(decision.spawnPosition).toEqual(ARRIVAL_QUEUE_POSITIONS[1]);
   });
 
-  it("branch 3: agent in departure queue spawns at queue position and skips arrival", () => {
-    const agent = makeAgent({ id: "a1", state: "waiting" });
-    const state = makeState({
-      agents: [agent],
-      departureQueue: ["a1"],
-    });
+  it("an id in a departure queue is not special: finished agents rest at their desks", () => {
+    // The backend no longer queues agents to hand in work (they rest), so the
+    // old "spawn in the departure queue" path is gone: such an agent simply
+    // sits at its desk.
+    const agent = makeAgent({ id: "a1", state: "resting", desk: 2 });
+    const state = makeState({ agents: [agent], departureQueue: ["a1"] });
 
     const decision = resolveSpawn(agent, state);
 
     expect(decision.skipArrival).toBe(true);
-    expect(decision.queueType).toBe("departure");
-    expect(decision.queueIndex).toBe(0);
-    // departureQueueIndex 0 → getQueuePosition("departure", 1) = DEPARTURE_QUEUE_POSITIONS[1].
-    expect(decision.spawnPosition).toEqual(DEPARTURE_QUEUE_POSITIONS[1]);
+    expect(decision.queueType).toBeUndefined();
+    expect(decision.spawnPosition).toEqual(getDeskPosition(2));
   });
 
   it("branch 4: working agent with a desk spawns at the desk and skips arrival", () => {
@@ -113,22 +110,6 @@ describe("resolveSpawn", () => {
     expect(decision.queueType).toBeUndefined();
     expect(decision.queueIndex).toBeUndefined();
     expect(decision.spawnPosition).toEqual(ELEVATOR_SPAWN_POSITIONS[0]);
-  });
-
-  it("arrival queue takes precedence over departure queue when both contain the id", () => {
-    // (Backend should never put an id in both, but the branch order matters:
-    // arrival is checked first.)
-    const agent = makeAgent({ id: "a1", state: "waiting" });
-    const state = makeState({
-      agents: [agent],
-      arrivalQueue: ["a1"],
-      departureQueue: ["a1"],
-    });
-
-    const decision = resolveSpawn(agent, state);
-
-    expect(decision.queueType).toBe("arrival");
-    expect(decision.queueIndex).toBe(0);
   });
 
   it("non-arriving state in arrival queue still uses the queue-position branch (only 'arriving' forces branch 1)", () => {

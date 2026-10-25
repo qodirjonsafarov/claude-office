@@ -16,7 +16,7 @@
  */
 
 import { memo, useEffect, useRef, useState, type ReactNode } from "react";
-import { useTick } from "@pixi/react";
+import { useSceneTick } from "./shared/useSceneTick";
 import { Assets, Graphics, Rectangle, Texture } from "pixi.js";
 import type { Position } from "@/types";
 import {
@@ -195,7 +195,7 @@ function PersonSpriteComponent({
     };
   }, [sheet]);
 
-  useTick((ticker) => {
+  useSceneTick((ticker) => {
     lifeRef.current += ticker.deltaMS;
     const key = mode === "gesture" ? `${gesture}` : "";
     if (gestureRef.current.key !== key) {
@@ -205,7 +205,7 @@ function PersonSpriteComponent({
     }
     const next = sheetCell(input, lifeRef.current, gestureRef.current.elapsed);
     if (next.x !== cell.x || next.row !== cell.row) setCell(next);
-  });
+  }, true);
 
   if (!texture) return null;
 
@@ -241,7 +241,7 @@ export function useActivityClock(active: boolean): number | null {
   const sinceActiveRef = useRef(TYPING_LINGER_MS);
   const [elapsed, setElapsed] = useState<number | null>(null);
 
-  useTick((ticker) => {
+  useSceneTick((ticker) => {
     sinceActiveRef.current = active
       ? 0
       : sinceActiveRef.current + ticker.deltaMS;
@@ -254,7 +254,7 @@ export function useActivityClock(active: boolean): number | null {
     const stepped =
       Math.floor(elapsedRef.current / TYPING_STEP_MS) * TYPING_STEP_MS;
     if (stepped !== elapsed) setElapsed(stepped);
-  });
+  }, true);
 
   return elapsed;
 }

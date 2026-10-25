@@ -72,6 +72,8 @@ export interface AgentAnimationState {
   agentType: string | null;
   /** When a finished agent started resting (ms), null while it works. */
   restingSince: number | null;
+  /** When the current permission wait started (ms), null when not waiting. */
+  waitingSince: number | null;
 
   // Phase tracking (frontend owned)
   phase: AgentPhase;
@@ -109,6 +111,8 @@ export type CompactionAnimationPhase =
  */
 export interface BossAnimationState {
   backendState: BossState;
+  /** When the boss's current permission wait started (ms), else null. */
+  waitingSince: number | null;
   position: Position;
   bubble: BubbleState;
   inUseBy: "arrival" | "departure" | null;

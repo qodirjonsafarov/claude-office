@@ -52,3 +52,46 @@ describe("restingSince in the store", () => {
     expect(useGameStore.getState().agents.get("a")?.restingSince).toBeNull();
   });
 });
+
+describe("waitingSince in the store", () => {
+  it("starts when the agent starts waiting for permission and clears after", () => {
+    const store = useGameStore.getState();
+    store.addAgent(
+      { id: "w", color: "#3b82f6", number: 1, state: "working" },
+      { x: 0, y: 0 },
+    );
+    expect(useGameStore.getState().agents.get("w")?.waitingSince).toBeNull();
+
+    const before = Date.now();
+    store.updateAgentMeta("w", {
+      backendState: "waiting_permission",
+      name: "W",
+      currentTask: null,
+    });
+    const since = useGameStore.getState().agents.get("w")?.waitingSince ?? 0;
+    expect(since).toBeGreaterThanOrEqual(before);
+
+    // Still waiting: the start time stays
+    store.updateAgentMeta("w", {
+      backendState: "waiting_permission",
+      name: "W",
+      currentTask: null,
+    });
+    expect(useGameStore.getState().agents.get("w")?.waitingSince).toBe(since);
+
+    store.updateAgentMeta("w", {
+      backendState: "working",
+      name: "W",
+      currentTask: null,
+    });
+    expect(useGameStore.getState().agents.get("w")?.waitingSince).toBeNull();
+  });
+
+  it("tracks the boss's wait too", () => {
+    const store = useGameStore.getState();
+    store.updateBossBackendState("waiting_permission");
+    expect(useGameStore.getState().boss.waitingSince).not.toBeNull();
+    store.updateBossBackendState("working");
+    expect(useGameStore.getState().boss.waitingSince).toBeNull();
+  });
+});

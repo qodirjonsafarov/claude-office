@@ -21,6 +21,9 @@ import {
   getQueuePosition,
 } from "@/systems/queuePositions";
 import type { Agent, GameState, Position } from "@/types";
+import { useAttentionStore } from "@/stores/attentionStore";
+import { usePreferencesStore } from "@/stores/preferencesStore";
+import { shouldShowToast } from "@/systems/toastFilter";
 import { MIN_DESK_COUNT } from "@/constants/positions";
 
 // ============================================================================
@@ -43,12 +46,13 @@ export interface SpawnDecision {
  * elevator arrival animation. Pure function of the backend agent and the
  * surrounding `GameState` snapshot.
  *
- * Four branches (mirrors the original inline comment):
+ * Three branches:
  *  1. `state === "arriving"`            → spawn from elevator (full arrival)
  *  2. in arrival queue (not arriving)   → spawn at queue position, skip arrival
- *  3. in departure queue                → spawn at queue position, skip arrival
- *  4. has desk (working)                → spawn at desk, skip arrival
+ *  3. has desk (working or resting)     → spawn at desk, skip arrival
  *  fallback                             → spawn from elevator
+ * (Finished agents rest at their desks instead of queueing to hand in work,
+ * so the backend's departure queue is always empty.)
  */
 export function resolveSpawn(
   backendAgent: Agent,
@@ -56,11 +60,7 @@ export function resolveSpawn(
 ): SpawnDecision {
   const isInArrivalQueue =
     state.arrivalQueue?.includes(backendAgent.id) ?? false;
-  const isInDepartureQueue =
-    state.departureQueue?.includes(backendAgent.id) ?? false;
   const arrivalQueueIndex = state.arrivalQueue?.indexOf(backendAgent.id) ?? -1;
-  const departureQueueIndex =
-    state.departureQueue?.indexOf(backendAgent.id) ?? -1;
 
   if (backendAgent.state === "arriving") {
     // Agent is still arriving — spawn from elevator.
@@ -79,21 +79,6 @@ export function resolveSpawn(
     };
   }
 
-  if (isInDepartureQueue) {
-    // Agent is in departure queue — spawn at their queue position.
-    // Queue position 0 = ready spot (D0), position 1+ = waiting spots.
-    const queuePosition = getQueuePosition(
-      "departure",
-      departureQueueIndex + 1,
-    );
-    return {
-      spawnPosition: queuePosition ?? getDeskPosition(backendAgent.desk ?? 1),
-      skipArrival: true,
-      queueType: "departure",
-      queueIndex: departureQueueIndex,
-    };
-  }
-
   if (backendAgent.desk) {
     // Agent is at their desk working.
     return {
@@ -104,6 +89,25 @@ export function resolveSpawn(
 
   // Fallback — spawn from elevator.
   return { spawnPosition: getNextSpawnPosition(), skipArrival: false };
+}
+
+// ============================================================================
+// AGENT TRANSITIONS
+// ============================================================================
+
+/**
+ * What changed for an agent between two backend states: it woke up from
+ * rest (a resumed agent) or its permission wait ended.
+ */
+export function agentTransition(
+  before: string,
+  after: string,
+): { recalled: boolean; permissionResolved: boolean } {
+  return {
+    recalled: before === "resting" && after !== "resting",
+    permissionResolved:
+      before === "waiting_permission" && after !== "waiting_permission",
+  };
 }
 
 // ============================================================================
@@ -184,6 +188,27 @@ export function reconcileState(state: GameState, ctx: ReconcilerContext): void {
     } else if (currentAgentIds.has(backendAgent.id)) {
       // Update existing agent's backend state, name, and task.
       // (Name and task may have been enriched by AI after initial spawn.)
+      const before = store.agents.get(backendAgent.id)?.backendState;
+      const change = before
+        ? agentTransition(before, backendAgent.state)
+        : { recalled: false, permissionResolved: false };
+      if (change.permissionResolved) {
+        useAttentionStore.getState().resolvePermission(backendAgent.id);
+      }
+      if (
+        change.recalled &&
+        shouldShowToast("subagent_start", usePreferencesStore.getState())
+      ) {
+        useAttentionStore.getState().processEvent({
+          type: "subagent_start",
+          agentId: backendAgent.id,
+          agentName:
+            backendAgent.name ??
+            store.agents.get(backendAgent.id)?.name ??
+            null,
+          resumed: true,
+        });
+      }
       store.updateAgentMeta(backendAgent.id, {
         backendState: backendAgent.state,
         name: backendAgent.name ?? null,
@@ -229,6 +254,12 @@ export function reconcileState(state: GameState, ctx: ReconcilerContext): void {
   }
 
   // ---- Update boss state ----
+  if (
+    agentTransition(store.boss.backendState, state.boss.state)
+      .permissionResolved
+  ) {
+    useAttentionStore.getState().resolvePermission(null);
+  }
   store.updateBossBackendState(state.boss.state);
   store.updateBossTask(state.boss.currentTask ?? null);
 

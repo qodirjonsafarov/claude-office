@@ -13,7 +13,6 @@ Responsibilities:
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any
 
 from app.core.broadcast_service import broadcast_state
 from app.core.jsonl_parser import get_first_user_prompt, get_last_assistant_response
@@ -25,7 +24,6 @@ from app.models.common import BubbleContent, BubbleType
 from app.models.events import (
     AgentEvent,
     AgentEventData,
-    EventDataBase,
     EventType,
 )
 
@@ -44,9 +42,6 @@ logger = logging.getLogger(__name__)
 # Callback type aliases used for the poller initialisation and state-update hooks.
 EnsureTranscriptPollFn = Callable[[], None]
 UpdateAgentStateFn = Callable[[str, str, AgentState], Awaitable[None]]
-PersistSyntheticEventFn = Callable[
-    [str, EventType, "EventDataBase | dict[str, Any] | None"], Awaitable[None]
-]
 
 
 async def handle_subagent_start(
@@ -155,11 +150,11 @@ async def handle_subagent_info(
     ensure_transcript_poller_fn()
     poller = get_transcript_poller()
     if poller:
-        for agent_id, agent in sm.agents.items():
-            # Only this native agent's own character (or a not yet linked one):
-            # resting agents of other transcripts must not pick it up.
-            if agent.native_id not in (None, native_agent_id):
-                continue
+        # The character linked to this native id (state_machine.link_native)
+        # first; only without one fall back to the first unlinked character.
+        linked = [(aid, a) for aid, a in sm.agents.items() if a.native_id == native_agent_id]
+        candidates = linked or [(aid, a) for aid, a in sm.agents.items() if a.native_id is None]
+        for agent_id, agent in candidates:
             # Link and enrich agents that have not yet been assigned a native_id.
             if agent.native_id is None:
                 agent.native_id = native_agent_id
@@ -194,18 +189,18 @@ async def handle_subagent_info(
 async def handle_subagent_stop(
     sm: StateMachine,
     event: AgentEvent,
-    persist_synthetic_event_fn: PersistSyntheticEventFn,
 ) -> None:
-    """Handle a SUBAGENT_STOP event.
+    """Handle a SUBAGENT_STOP event (after the sync transition set RESTING).
 
-    Resolves the agent by ID or native ID, extracts a completion speech bubble,
-    removes the agent from the StateMachine, and persists a CLEANUP synthetic
-    event.
+    Resolves the agent by ID or native ID, stops its transcript polling right
+    away (a late poller tool call must not race the stop), credits its tool
+    uses, extracts a completion speech bubble and broadcasts. The agent stays
+    in the office resting; it leaves later (EventProcessor.send_rested_agents_home,
+    desk pressure or session end).
 
     Args:
         sm: The StateMachine for this session.
         event: The SUBAGENT_STOP event.
-        persist_synthetic_event_fn: Async callable to persist a synthetic event.
     """
     # Use shared resolution logic with fallback linking
     resolved = resolve_agent_for_stop(
@@ -226,6 +221,12 @@ async def handle_subagent_stop(
 
     resolved_agent_id = resolved.agent_id
 
+    # Stop polling first: an await below would let the poller read one more
+    # tool_use for an agent that is already resting.
+    poller = get_transcript_poller()
+    if poller:
+        await poller.stop_polling(resolved_agent_id)
+
     # Credit subagent tool uses to the safety-sign counter. Offloaded via
     # asyncio.to_thread because count_tool_uses_from_jsonl may read up to
     # _MAX_TRANSCRIPT_BYTES (50 MB) synchronously — doing this inline would
@@ -242,15 +243,8 @@ async def handle_subagent_stop(
             sm.tool_uses_since_compaction += tool_count
             logger.debug(f"Credited {tool_count} subagent tool uses to safety counter")
 
-    poller = get_transcript_poller()
-    if poller:
-        await poller.stop_polling(resolved_agent_id)
-
     await extract_and_set_agent_speech(sm, resolved_agent_id, event.data.agent_transcript_path)
 
-    # The agent stays in the office RESTING (state_machine._handle_subagent_stop):
-    # it leaves later via EventProcessor.send_rested_agents_home, on desk
-    # pressure or at session end, which is when CLEANUP gets persisted.
     await broadcast_state(event.session_id, sm)
 
 

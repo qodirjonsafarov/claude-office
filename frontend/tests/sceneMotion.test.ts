@@ -16,6 +16,7 @@ import {
   celebration,
   fadeIn,
   pulse,
+  quantize,
   shakeOffset,
   squashScale,
 } from "@/systems/sceneMotion";
@@ -92,5 +93,13 @@ describe("celebration", () => {
     const a = celebration(3).map((p) => p.at(200));
     const b = celebration(3).map((p) => p.at(200));
     expect(a).toEqual(b);
+  });
+});
+
+describe("quantize", () => {
+  it("rounds to the step so a loop only re-renders when the value moves", () => {
+    expect(quantize(0.43, 0.05)).toBeCloseTo(0.45);
+    expect(quantize(0.42, 0.05)).toBeCloseTo(0.4);
+    expect(quantize(2.4, 1)).toBe(2);
   });
 });

@@ -40,10 +40,7 @@ export function MarqueeText({
   const textContainerRef = useRef<Container | null>(null);
 
   // Normalize text to single line (remove newlines, carriage returns, collapse whitespace)
-  const normalizedText = text
-    .replace(/[\r\n]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const normalizedText = clipMarqueeText(text);
 
   // Estimate text width (approx 5.5px per char at fontSize 9)
   const estimatedTextWidth = normalizedText.length * 5.5;
@@ -160,4 +157,17 @@ export function MarqueeText({
       </pixiContainer>
     </pixiContainer>
   );
+}
+
+/**
+ * Longest marquee line. A whole long prompt drawn as one Pixi text at a
+ * high resolution overflows the 32767 px texture pool limit (console spam).
+ */
+export const MARQUEE_MAX_CHARS = 240;
+
+/** One line, collapsed whitespace, cut to MARQUEE_MAX_CHARS with an ellipsis. */
+export function clipMarqueeText(text: string): string {
+  const line = text.replace(/\s+/g, " ").trim();
+  if (line.length <= MARQUEE_MAX_CHARS) return line;
+  return line.slice(0, MARQUEE_MAX_CHARS - 1).trimEnd() + "…";
 }

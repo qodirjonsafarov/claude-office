@@ -55,7 +55,7 @@ from app.core.room_orchestrator import RoomOrchestrator
 from app.core.state_machine import WEB_PROMPT_NOTIFICATION, StateMachine, is_phantom_stop
 from app.core.task_file_poller import init_task_file_poller
 from app.core.task_persistence import load_tasks, save_tasks
-from app.core.transcript_poller import init_transcript_poller
+from app.core.transcript_poller import get_transcript_poller, init_transcript_poller
 from app.db.database import AsyncSessionLocal
 from app.db.models import EventRecord, SessionRecord
 from app.models.agents import AgentState
@@ -261,9 +261,6 @@ class EventProcessor:
         # per event (O(N x events/sec)). See ``_schedule_overview_broadcast``.
         self._overview_flush_task: asyncio.Task[None] | None = None
         self._overview_flush_interval = 0.05  # 50 ms debounce window
-        # Sends long-resting agents home (see ``send_rested_agents_home``)
-        self._rest_sweep_task: asyncio.Task[None] | None = None
-        self._rest_sweep_interval = 30.0
         # Single source of truth for post-broadcast async enrichment.
         #
         # The sync mutation of every event type runs through
@@ -459,7 +456,6 @@ class EventProcessor:
         Args:
             event: The incoming hook event to process.
         """
-        self._ensure_rest_sweep()
         # Claude Code's hidden side-agents (e.g. the auto-mode permission
         # classifier) fire the native SubagentStop hook on every tool call.
         # They were never started and leave no transcript: drop them before
@@ -519,7 +515,7 @@ class EventProcessor:
 
     async def _enrich_subagent_stop(self, sm: StateMachine, event: AnyEvent, agent_id: str) -> None:
         assert isinstance(event, AgentEvent), "dispatch routes SUBAGENT_STOP only"
-        await handle_subagent_stop(sm, event, self._persist_synthetic_event)
+        await handle_subagent_stop(sm, event)
 
     async def _enrich_stop(self, sm: StateMachine, event: AnyEvent, agent_id: str) -> None:
         assert isinstance(event, LifecycleEvent), "dispatch routes STOP only"
@@ -765,11 +761,11 @@ class EventProcessor:
         Without this the flush task is left pending at loop close and asyncio
         logs "Task was destroyed but it is pending!".
         """
-        for task in (self._overview_flush_task, self._rest_sweep_task):
-            if task is not None and not task.done():
-                task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await task
+        task = self._overview_flush_task
+        if task is not None and not task.done():
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
 
     # ------------------------------------------------------------------
     # Resting agents
@@ -779,14 +775,26 @@ class EventProcessor:
         """Walk out agents that rested longer than the limit, in every session.
 
         Event processing does the same on each event (``StateMachine.transition``);
-        this sweep covers quiet sessions. Persists CLEANUP for replay fidelity.
+        this sweep (started in the app lifespan) covers quiet sessions. It also
+        rests stuck workers: a working subagent with no events for
+        ``AGENT_QUIET_REST_MINUTES`` and no live transcript poller. Persists
+        CLEANUP for replay fidelity.
         """
         moment = now or datetime.now(UTC)
+        quiet_minutes = get_settings().AGENT_QUIET_REST_MINUTES
+        poller = get_transcript_poller()
         async with self._sessions_lock:
-            expired = [(sid, sm, sm.expire_resting(moment)) for sid, sm in self.sessions.items()]
+            sessions = list(self.sessions.items())
         count = 0
-        for sid, sm, gone in expired:
-            if not gone:
+        for sid, sm in sessions:
+            rested = False
+            for agent_id in sm.quiet_workers(moment, quiet_minutes):
+                if poller is not None and await poller.is_polling(agent_id):
+                    continue
+                sm.rest_agent(agent_id, moment)
+                rested = True
+            gone = sm.expire_resting(moment)
+            if not gone and not rested:
                 continue
             for agent_id in gone:
                 await self._persist_synthetic_event(
@@ -795,20 +803,6 @@ class EventProcessor:
             await broadcast_state(sid, sm)
             count += len(gone)
         return count
-
-    def _ensure_rest_sweep(self) -> None:
-        """Start the background sweep once there is a running loop and events."""
-        if self._rest_sweep_task is not None and not self._rest_sweep_task.done():
-            return
-        self._rest_sweep_task = asyncio.create_task(self._rest_sweep_loop())
-
-    async def _rest_sweep_loop(self) -> None:
-        while True:
-            await asyncio.sleep(self._rest_sweep_interval)
-            try:
-                await self.send_rested_agents_home()
-            except Exception:
-                logger.exception("Resting-agent sweep failed")
 
     async def build_overview_snapshot(self) -> OverviewState:
         """Build a cross-session overview under ``_sessions_lock``.

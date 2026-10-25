@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Mapping
-from datetime import UTC
+from datetime import UTC, datetime
 from typing import Annotated, Any, TypedDict
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -636,6 +636,24 @@ async def get_session_replay(
 
         if effective_limit is not None and len(replay_data) >= effective_limit:
             break
+    else:
+        # The replay reached the end: agents that have rested past the limit
+        # by now have walked out (the live sweep does the same).
+        now = datetime.now(UTC)
+        gone = sm.expire_resting(now)
+        if gone and valid_idx > offset:
+            replay_data.append(
+                {
+                    "event": {
+                        "id": f"rest-expiry-{now.timestamp()}",
+                        "type": EventType.CLEANUP.value,
+                        "agentId": gone[0],
+                        "summary": "Resting agents left the office",
+                        "timestamp": now.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                    },
+                    "state": sm.to_game_state(session_id).model_dump(mode="json", by_alias=True),
+                }
+            )
 
     return replay_data
 

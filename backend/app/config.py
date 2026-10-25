@@ -98,6 +98,9 @@ class Settings(BaseSettings):
     # A finished subagent rests in the office (the manager may resume it)
     # and walks out after resting this many minutes.
     AGENT_REST_MINUTES: float = 20
+    # Safety net: a working subagent with no events for this long and no live
+    # transcript poller is treated as finished (goes to rest).
+    AGENT_QUIET_REST_MINUTES: float = 10
 
     # API key for authenticating hook requests. When set, all requests
     # must include this value in the X-API-Key header. When empty, a

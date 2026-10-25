@@ -32,6 +32,7 @@ async def migrate_schema(conn: AsyncConnection) -> None:
         "teammate_name": "TEXT DEFAULT NULL",
         "is_lead": "BOOLEAN DEFAULT 0",
         "tmux_pane": "TEXT DEFAULT NULL",
+        "tmux_socket": "TEXT DEFAULT NULL",
     }
 
     result = await conn.execute(text("PRAGMA table_info(sessions)"))

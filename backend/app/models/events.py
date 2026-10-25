@@ -117,6 +117,8 @@ class EventData(BaseModel):
     task_list_id: str | None = None
     # tmux pane the session runs in (TMUX_PANE), for prompts sent from the web UI
     tmux_pane: str | None = None
+    # tmux server socket of that pane (from $TMUX)
+    tmux_socket: str | None = None
     # Room assignment (populated by ProductMapper)
     floor_id: str | None = None
     room_id: str | None = None
@@ -217,6 +219,8 @@ class EventDataBase(BaseModel):
     # so the office can paste a prompt typed in the web UI. Its format is
     # checked where it is used (tmux_service.is_valid_pane_id).
     tmux_pane: str | None = None
+    # Socket of that pane's tmux server (from $TMUX); pins %N to one server.
+    tmux_socket: str | None = None
     # Token accounting (token_tracker.update_from_event fast path).
     input_tokens: int | None = None
     output_tokens: int | None = None

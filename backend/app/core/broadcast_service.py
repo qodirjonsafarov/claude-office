@@ -46,7 +46,10 @@ async def broadcast_state(session_id: str, sm: StateMachine) -> None:
     # Local import: event_processor imports this module.
     from app.core.event_processor import get_event_processor
 
-    game_state.chat = await chat_status_for(session_id, sm, get_event_processor().sessions)
+    # Cached pane check only: a broadcast never waits for tmux.
+    game_state.chat = await chat_status_for(
+        session_id, sm, get_event_processor().sessions, live=False
+    )
     await get_manager().broadcast(
         {
             "type": "state_update",

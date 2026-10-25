@@ -214,24 +214,29 @@ async def list_sessions(
     return sessions
 
 
-def _pane_owners(records: list[SessionRecord]) -> dict[str, str]:
-    """tmux pane -> the active session that reported it most recently.
+PaneKey = tuple[str | None, str]
+
+
+def _pane_owners(records: list[SessionRecord]) -> dict[PaneKey, str]:
+    """(tmux socket, pane) -> the active session that reported it most recently.
 
     *records* come newest first, so the first active one per pane wins.
     """
-    owners: dict[str, str] = {}
+    owners: dict[PaneKey, str] = {}
     for rec in records:
-        if rec.status == "active" and rec.tmux_pane and rec.tmux_pane not in owners:
-            owners[rec.tmux_pane] = rec.id
+        if rec.status == "active" and rec.tmux_pane:
+            owners.setdefault((rec.tmux_socket, rec.tmux_pane), rec.id)
     return owners
 
 
-async def _session_chat(rec: SessionRecord, pane_owners: dict[str, str]) -> dict[str, Any]:
+async def _session_chat(rec: SessionRecord, pane_owners: dict[PaneKey, str]) -> dict[str, Any]:
     sm = get_event_processor().sessions.get(rec.id)
-    status, _ = await chat_status(
+    pane = rec.tmux_pane
+    status = await chat_status(
         active=rec.status == "active",
-        pane=rec.tmux_pane,
-        pane_taken=bool(rec.tmux_pane) and pane_owners.get(rec.tmux_pane or "") != rec.id,
+        pane=pane,
+        socket=rec.tmux_socket,
+        pane_taken=bool(pane) and pane_owners.get((rec.tmux_socket, pane or "")) != rec.id,
         waiting_permission=permission_pending(sm),
         label=rec.project_name,
     )

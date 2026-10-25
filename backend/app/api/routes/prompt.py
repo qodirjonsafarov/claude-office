@@ -34,7 +34,12 @@ from app.core.web_prompt import (
 from app.db.database import get_db
 from app.db.models import SessionRecord
 from app.models.events import EventAdapter, EventType
-from app.services.tmux_service import TmuxError, get_tmux_service
+from app.services.tmux_service import (
+    PaneBusyError,
+    PaneChangedError,
+    TmuxError,
+    get_tmux_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -65,14 +70,20 @@ _CONFLICT_MESSAGES = {
     "pane_gone": "The tmux pane is gone",
     "not_claude": "The tmux pane is not running Claude",
     "permission_pending": "A permission request is waiting in the terminal",
+    "terminal_busy": "Claude is busy with a dialog — answer it in the terminal",
 }
 
 
-async def _pane_owner(db: AsyncSession, pane: str) -> str | None:
-    """The active session that reported *pane* most recently."""
+async def _pane_owner(db: AsyncSession, socket: str | None, pane: str) -> str | None:
+    """The active session that reported *pane* on this tmux server most recently."""
+    same_socket = (
+        SessionRecord.tmux_socket.is_(None)
+        if socket is None
+        else SessionRecord.tmux_socket == socket
+    )
     result = await db.execute(
         select(SessionRecord.id)
-        .where(SessionRecord.tmux_pane == pane, SessionRecord.status == "active")
+        .where(SessionRecord.tmux_pane == pane, same_socket, SessionRecord.status == "active")
         .order_by(SessionRecord.updated_at.desc())
         .limit(1)
     )
@@ -89,7 +100,9 @@ async def send_prompt(
     """Paste *body.text* into the session's Claude Code terminal and press Enter."""
     settings = get_settings()
     if not settings.ENABLE_WEB_PROMPT:
-        raise _fail(403, "disabled", "Chat is off (ENABLE_WEB_PROMPT)")
+        raise _fail(
+            403, "disabled", "Chat is off — enable it in the office settings (backend .env)"
+        )
     if not settings.has_explicit_key:
         raise _fail(403, "no_key", "Chat needs an explicit CLAUDE_OFFICE_API_KEY")
     # The middleware checks the key too; this route never trusts the auto token.
@@ -97,52 +110,63 @@ async def send_prompt(
     if not hmac.compare_digest(provided, settings.CLAUDE_OFFICE_API_KEY.encode("utf-8")):
         raise HTTPException(status_code=401, detail="Invalid API key")
 
+    # Everything past the key check is audited, refusals included.
     client_ip = request.client.host if request.client else None
-    if not is_allowed_client_ip(client_ip):
-        raise _fail(403, "client_ip", "Chat is only allowed from this machine or Tailscale")
-    if not is_allowed_origin(request.headers.get("origin"), settings.BACKEND_CORS_ORIGINS):
-        raise _fail(403, "origin", "Origin not allowed")
-
-    try:
-        text = sanitize_prompt(body.text)
-    except PromptRejectedError as exc:
-        raise _fail(422, "invalid_text", str(exc)) from exc
-
-    if not _SESSION_ID.fullmatch(session_id):
-        raise HTTPException(status_code=404, detail="Session not found")
-    rec = (
-        await db.execute(select(SessionRecord).where(SessionRecord.id == session_id))
-    ).scalar_one_or_none()
-    if rec is None:
-        raise HTTPException(status_code=404, detail="Session not found")
-
+    origin = request.headers.get("origin")
     audit_path = Path(settings.WEB_PROMPT_AUDIT_LOG)
+    pane: str | None = None
 
-    def audit(outcome: str) -> None:
+    def audit(outcome: str, text: str = body.text) -> None:
         try:
             append_audit(
                 audit_path,
+                key=settings.CLAUDE_OFFICE_API_KEY,
                 client_ip=client_ip,
-                session_id=session_id,
-                pane=rec.tmux_pane,
+                origin=origin,
+                session_id=session_id[:128],
+                pane=pane,
                 text=text,
                 outcome=outcome,
             )
         except OSError:
             logger.exception("Could not write the web prompt audit log")
 
+    tailnet = settings.WEB_PROMPT_TAILNET_HOST
+    if not is_allowed_client_ip(client_ip, tailnet=bool(tailnet)):
+        audit("client_ip")
+        raise _fail(403, "client_ip", "Chat is only allowed from this machine or the tailnet")
+    if not is_allowed_origin(origin, settings.BACKEND_CORS_ORIGINS, tailnet):
+        audit("origin")
+        raise _fail(403, "origin", "Origin not allowed")
+
+    try:
+        text = sanitize_prompt(body.text)
+    except PromptRejectedError as exc:
+        audit("invalid_text")
+        raise _fail(422, "invalid_text", str(exc)) from exc
+
+    rec = None
+    if _SESSION_ID.fullmatch(session_id):
+        rec = (
+            await db.execute(select(SessionRecord).where(SessionRecord.id == session_id))
+        ).scalar_one_or_none()
+    if rec is None:
+        audit("not_found", text)
+        raise HTTPException(status_code=404, detail="Session not found")
+    pane, socket = rec.tmux_pane, rec.tmux_socket
+
     if not _limiter.allow(session_id):
-        audit("rate_limited")
+        audit("rate_limited", text)
         raise _fail(429, "rate_limited", "Too many messages, try again in a minute")
 
     processor = get_event_processor()
     await processor.get_current_state(session_id)  # loads the session if evicted
     sm = processor.sessions.get(session_id)
-    pane = rec.tmux_pane
-    owner = await _pane_owner(db, pane) if pane else None
-    status, _ = await chat_status(
+    owner = await _pane_owner(db, socket, pane) if pane else None
+    status = await chat_status(
         active=rec.status == "active",
         pane=pane,
+        socket=socket,
         pane_taken=bool(pane) and owner not in (None, session_id),
         waiting_permission=permission_pending(sm),
         label=rec.project_name,
@@ -150,16 +174,23 @@ async def send_prompt(
     )
     if not status.can_send or pane is None:
         reason = status.reason or "no_tmux"
-        audit(reason)
+        audit(reason, text)
         raise _fail(409, reason, _CONFLICT_MESSAGES.get(reason, "Cannot send to this session"))
 
     try:
-        await get_tmux_service().send_prompt(pane, text)
+        await get_tmux_service().send_prompt(pane, text, socket)
+    except PaneBusyError as exc:
+        audit(f"terminal_busy:{exc.reason}", text)
+        raise _fail(409, "terminal_busy", _CONFLICT_MESSAGES["terminal_busy"]) from exc
+    except PaneChangedError as exc:
+        reason = "pane_gone" if exc.state == "gone" else "not_claude"
+        audit(reason, text)
+        raise _fail(409, reason, _CONFLICT_MESSAGES[reason]) from exc
     except (TmuxError, ValueError) as exc:
-        audit("tmux_error")
+        audit("tmux_error", text)
         logger.warning("Web prompt to %s failed: %s", pane, exc)
         raise _fail(502, "tmux_error", "Could not send to the terminal") from exc
-    audit("sent")
+    audit("sent", text)
 
     # The boss shows a short "Message received" bubble; the log gets a row.
     await processor.process_event(

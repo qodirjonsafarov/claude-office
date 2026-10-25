@@ -240,3 +240,22 @@ class TestProgressTools:
         result = map_event("pre_tool_use", self._raw("TodoWrite"), SESSION_ID)
         assert result is not None
         assert "native_agent_id" not in result["data"]
+
+
+class TestTmuxPane:
+    """The tmux pane Claude runs in lets the office send prompts back to it."""
+
+    def _raw(self) -> dict:
+        return {"session_id": SESSION_ID, "transcript_path": TRANSCRIPT, "prompt": "hi"}
+
+    def test_pane_from_env_is_sent(self, monkeypatch) -> None:
+        monkeypatch.setenv("TMUX_PANE", "%7")
+        result = map_event("user_prompt_submit", self._raw(), SESSION_ID)
+        assert result is not None
+        assert result["data"]["tmux_pane"] == "%7"
+
+    def test_no_pane_outside_tmux(self, monkeypatch) -> None:
+        monkeypatch.delenv("TMUX_PANE", raising=False)
+        result = map_event("session_start", self._raw(), SESSION_ID)
+        assert result is not None
+        assert "tmux_pane" not in result["data"]

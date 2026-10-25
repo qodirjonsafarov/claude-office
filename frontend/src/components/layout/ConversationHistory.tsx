@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type { ConversationEntry } from "@/types";
 import { useTranslation } from "@/hooks/useTranslation";
+import { PromptComposer } from "@/components/layout/PromptComposer";
 
 // Tool icon mapping
 function getToolIcon(toolName?: string): string {
@@ -359,6 +360,7 @@ export function ConversationHistory() {
             <ConversationEntries visible={visible} bottomRef={bottomRef} />
           )}
         </div>
+        <PromptComposer />
       </div>
 
       {/* Expanded modal */}
@@ -385,6 +387,7 @@ export function ConversationHistory() {
                 />
               )}
             </div>
+            <PromptComposer />
           </div>
         </div>
       )}

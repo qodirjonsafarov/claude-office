@@ -23,6 +23,7 @@ import { agentMachineService } from "@/machines/agentMachineService";
 import { resetSpawnIndex } from "@/systems/queuePositions";
 import { TypingTracker } from "@/systems/typingTracker";
 import { reconcileState } from "@/systems/stateReconciler";
+import { useChatStore } from "@/stores/chatStore";
 import { shouldShowToast } from "@/systems/toastFilter";
 import { WebSocketController } from "@/systems/webSocketController";
 import { reportBackgroundEvent } from "@/hooks/useBackgroundAlerts";
@@ -114,6 +115,10 @@ export function useWebSocketEvents({
               useGameStore
                 .getState()
                 .setTokenUsage(message.state.office?.tokenUsage);
+              // Can the composer send into this session's terminal?
+              useChatStore
+                .getState()
+                .setStatus(message.state.chat, message.state.sessionId);
               // The backend's recent history: fills the log on load and on
               // reconnect (de-duplicated against the live stream).
               useGameStore

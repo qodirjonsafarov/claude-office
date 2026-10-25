@@ -178,3 +178,101 @@ describe("auth required", () => {
     expect(new Headers(init.headers).get("X-API-Key")).toBe("k1");
   });
 });
+
+describe("sendPrompt", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("posts the text with the key to the session's prompt route", async () => {
+    const api = await freshApi();
+    api.saveApiKey("k1");
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ status: "sent" }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await api.sendPrompt("abc-123", "hello");
+
+    expect(result).toEqual({ ok: true });
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(url.endsWith("/api/v1/sessions/abc-123/prompt")).toBe(true);
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({ text: "hello" });
+    const headers = new Headers(init.headers);
+    expect(headers.get("X-API-Key")).toBe("k1");
+    expect(headers.get("Content-Type")).toBe("application/json");
+  });
+
+  it("returns the backend's reason and message on a refusal", async () => {
+    const api = await freshApi();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              detail: {
+                reason: "not_claude",
+                message: "The tmux pane is not running Claude",
+              },
+            }),
+            { status: 409 },
+          ),
+      ),
+    );
+    expect(await api.sendPrompt("s1", "hi")).toEqual({
+      ok: false,
+      reason: "not_claude",
+      message: "The tmux pane is not running Claude",
+    });
+  });
+
+  it("explains a validation error without a reason", async () => {
+    const api = await freshApi();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ detail: [{ msg: "too long" }] }), {
+            status: 422,
+          }),
+      ),
+    );
+    const result = await api.sendPrompt("s1", "hi");
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.message).toBe("Could not send (422)");
+  });
+
+  it("reports an unreachable backend", async () => {
+    const api = await freshApi();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("NetworkError");
+      }),
+    );
+    expect(await api.sendPrompt("s1", "hi")).toEqual({
+      ok: false,
+      reason: null,
+      message: "Could not reach the office backend",
+    });
+  });
+
+  it("encodes the session id in the path", async () => {
+    const api = await freshApi();
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await api.sendPrompt("a/b", "hi");
+    const [url] = fetchMock.mock.calls[0] as unknown as [string];
+    expect(url.endsWith("/api/v1/sessions/a%2Fb/prompt")).toBe(true);
+  });
+});

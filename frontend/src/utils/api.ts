@@ -136,6 +136,11 @@ export function initApiKeyFromBrowser(): void {
   if (legacy) {
     setApiKey(legacy);
     persistKey(legacy);
+    try {
+      sessionStorage.removeItem(KEY_STORAGE);
+    } catch {
+      // storage blocked: nothing to clean up
+    }
   }
 }
 
@@ -150,24 +155,7 @@ export async function apiFetch(
   if (_apiKey) {
     headers.set("X-API-Key", _apiKey);
   }
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE}${path}`, { ...init, headers });
-  } catch (error) {
-    // The backend's 401 carries no CORS headers, so the browser reports it
-    // as a network error. If the server is up (/health is public), it was
-    // the key.
-    if (await serverIsUp()) setAuthRequired(true);
-    throw error;
-  }
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
   if (res.status === 401) setAuthRequired(true);
   return res;
-}
-
-async function serverIsUp(): Promise<boolean> {
-  try {
-    return (await fetch(`${API_BASE}/health`)).ok;
-  } catch {
-    return false;
-  }
 }

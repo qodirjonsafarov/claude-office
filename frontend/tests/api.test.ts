@@ -54,6 +54,7 @@ describe("api key intake", () => {
     api.initApiKeyFromBrowser();
     expect(api.getApiKey()).toBe("legacy");
     expect(localStorage.getItem("claude-office-api-key")).toBe("legacy");
+    expect(sessionStorage.getItem("claude-office-api-key")).toBeNull();
   });
 
   it("still uses the key in memory when storage is blocked", async () => {
@@ -120,7 +121,7 @@ describe("auth required", () => {
     expect(seen).toEqual([true]);
   });
 
-  it("flags a request the browser blocked while the server is up (401 without CORS headers)", async () => {
+  it("does not flag a network error even when the server is up", async () => {
     const api = await freshApi();
     vi.stubGlobal(
       "fetch",
@@ -130,7 +131,8 @@ describe("auth required", () => {
       }),
     );
     await expect(api.apiFetch("/api/v1/sessions")).rejects.toThrow(TypeError);
-    expect(api.isAuthRequired()).toBe(true);
+    // 401s carry CORS headers now: a blip is not a missing key.
+    expect(api.isAuthRequired()).toBe(false);
   });
 
   it("does not flag a server that is down", async () => {

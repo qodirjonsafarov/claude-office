@@ -296,6 +296,11 @@ const en = {
   "settings.filterError": "Errors and stops",
   "settings.filterTaskComplete": "Task completions",
   "settings.filterArrival": "Agent arrivals",
+  "auth.title": "Paste access token",
+  "auth.hint":
+    "The server refused this browser. Paste the token or the ?token= link from the server console.",
+  "auth.placeholder": "Token or launch link",
+  "auth.connect": "Connect",
 } as const;
 
 export type TranslationKey = keyof typeof en;

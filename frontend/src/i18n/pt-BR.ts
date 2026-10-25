@@ -298,6 +298,11 @@ const ptBR: Record<TranslationKey, string> = {
   "settings.filterError": "Erros e paradas",
   "settings.filterTaskComplete": "Tarefas concluídas",
   "settings.filterArrival": "Chegadas de agentes",
+  "auth.title": "Cole o token de acesso",
+  "auth.hint":
+    "O servidor recusou este navegador. Cole o token ou o link ?token= do console do servidor.",
+  "auth.placeholder": "Token ou link de início",
+  "auth.connect": "Conectar",
 };
 
 export default ptBR;

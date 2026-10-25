@@ -32,6 +32,7 @@ import { Map } from "lucide-react";
 import { SessionSidebar } from "@/components/layout/SessionSidebar";
 import { MobileOffice } from "@/components/layout/MobileOffice";
 import { BrandMark } from "@/components/layout/BrandMark";
+import { AccessTokenPrompt } from "@/components/layout/AccessTokenPrompt";
 import { RightSidebar } from "@/components/layout/RightSidebar";
 import { HudStats } from "@/components/layout/HudStats";
 import { HeaderControls } from "@/components/layout/HeaderControls";
@@ -528,6 +529,9 @@ export default function V2TestPage(): React.ReactNode {
       <CommandBar />
       <AttentionToasts />
       <AgentPopup />
+
+      {/* The backend answered 401: ask for the access token */}
+      <AccessTokenPrompt onSaved={() => void fetchSessions()} />
 
       {/* ----------------------------------------------------------------
           Tour Overlay

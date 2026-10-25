@@ -402,6 +402,94 @@
     color: var(--qo-on-accent);
   }
 
+  /* A text field. */
+  .qo-input {
+    height: 44px;
+    padding: 0 14px;
+    border-radius: 14px;
+    background: var(--qo-panel-2);
+    border: 1px solid var(--qo-line);
+    color: var(--qo-ink);
+    font-size: 14px;
+    font-weight: 600;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .qo-input::placeholder {
+    color: var(--qo-ink-faint);
+  }
+  .qo-input:focus {
+    border-color: var(--qo-accent);
+  }
+  .qo-input-sm {
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 12px;
+    font-size: 13px;
+  }
+
+  /* A filter chip: pressed means the filter is on. */
+  .qo-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: var(--qo-panel-2);
+    border: 1px solid var(--qo-line);
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--qo-ink-soft);
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+  .qo-chip:hover {
+    color: var(--qo-ink);
+  }
+  .qo-chip[aria-pressed="true"] {
+    background: var(--qo-accent);
+    border-color: transparent;
+    color: var(--qo-on-accent);
+  }
+
+  /* A progress bar. The fill takes its colour from --qo-bar (the agent). */
+  .qo-progress {
+    position: relative;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--qo-panel-3);
+    overflow: hidden;
+  }
+  .qo-progress > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--qo-bar, var(--qo-accent));
+    transition: width 0.5s ease;
+  }
+  /* No numbers to show: stripes drift along the track ("working"). */
+  .qo-progress-busy > span {
+    width: 100%;
+    opacity: 0.6;
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--qo-bar, var(--qo-accent)) 0 6px,
+      transparent 6px 12px
+    );
+    background-size: 17px 100%;
+    animation: qo-stripes 0.9s linear infinite;
+  }
+  /* Waiting for the user: a steady gold bar that blinks softly. */
+  .qo-progress-wait > span {
+    width: 100%;
+    background: var(--qo-max);
+    animation: qo-blink 1.4s ease-in-out infinite;
+  }
+
   /* A live dot: breathes softly while something is running. */
   .qo-live-dot {
     width: 8px;
@@ -470,6 +558,20 @@
     opacity: 0.8;
   }
 }
+@keyframes qo-stripes {
+  to {
+    background-position: 17px 0;
+  }
+}
+@keyframes qo-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
 @keyframes qo-spin {
   to {
     transform: rotate(360deg);
@@ -522,6 +624,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .qo-live-dot,
+  .qo-progress-busy > span,
+  .qo-progress-wait > span,
   .qo-spinner,
   .qo-shimmer,
   .qo-sheet-up,

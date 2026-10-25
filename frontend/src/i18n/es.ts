@@ -298,6 +298,11 @@ const es: Record<TranslationKey, string> = {
   "settings.filterError": "Errores y paradas",
   "settings.filterTaskComplete": "Tareas completadas",
   "settings.filterArrival": "Llegadas de agentes",
+  "auth.title": "Pega el token de acceso",
+  "auth.hint":
+    "El servidor rechazó este navegador. Pega el token o el enlace ?token= de la consola del servidor.",
+  "auth.placeholder": "Token o enlace de inicio",
+  "auth.connect": "Conectar",
 };
 
 export default es;

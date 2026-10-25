@@ -1,10 +1,8 @@
 "use client";
 
-import { API_BASE } from "@/utils/api";
+import { apiFetch } from "@/utils/api";
 import { useEffect } from "react";
 import { useNavigationStore } from "@/stores/navigationStore";
-
-const API_URL = `${API_BASE}/api/v1`;
 
 /**
  * Fetches building configuration from the backend and stores it
@@ -18,8 +16,11 @@ export function useFloorConfig(): void {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`${API_URL}/floors`)
-      .then((res) => res.json())
+    apiFetch("/api/v1/floors")
+      .then((res) => {
+        if (!res.ok) throw new Error(`floors: ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
         // Backend returns camelCase (Pydantic to_camel alias)
         const config = {

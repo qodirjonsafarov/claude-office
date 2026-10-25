@@ -10,7 +10,7 @@
  */
 
 import { memo, useCallback, useRef, useState, type ReactNode } from "react";
-import { useTick } from "@pixi/react";
+import { useSceneTick } from "./shared/useSceneTick";
 import { Graphics } from "pixi.js";
 import { thinkingDots } from "@/systems/personPoses";
 
@@ -28,13 +28,13 @@ function ThinkingDotsComponent({
   const idleRef = useRef(0);
   const [state, setState] = useState(() => thinkingDots(0));
 
-  useTick((ticker) => {
+  useSceneTick((ticker) => {
     idleRef.current = active ? idleRef.current + ticker.deltaMS : 0;
     const next = thinkingDots(idleRef.current);
     if (next.visible !== state.visible || next.lit !== state.lit) {
       setState(next);
     }
-  });
+  }, true);
 
   const draw = useCallback(
     (g: Graphics) => {

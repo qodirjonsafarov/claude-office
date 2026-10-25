@@ -109,3 +109,8 @@ export function celebration(seed: number): Particle[] {
   }
   return particles;
 }
+
+/** Round to a step (e.g. 0.05 alpha), so tick loops update React rarely. */
+export function quantize(value: number, step: number): number {
+  return Math.round(value / step) * step;
+}

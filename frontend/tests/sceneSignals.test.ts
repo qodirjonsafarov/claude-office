@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   ERROR_SHOW_MS,
   SLEEP_AFTER_MS,
+  SceneSignalsCache,
   characterMood,
   sceneSignals,
   toolKind,
@@ -165,5 +166,34 @@ describe("failing", () => {
       event("post_tool_use", "a", 2_000, { toolName: "Bash", errorType: "x" }),
     ];
     expect(sceneSignals(log).get("a")?.failing).toBe(false);
+  });
+});
+
+describe("SceneSignalsCache", () => {
+  it("hands back the same object for a person whose signals didn't change", () => {
+    const cache = new SceneSignalsCache();
+    const a = event("pre_tool_use", "a", 1_000, { toolName: "Read" });
+    const first = cache.compute([a]);
+    const second = cache.compute([
+      event("pre_tool_use", "b", 2_000, { toolName: "Bash" }),
+      a,
+    ]);
+
+    expect(second.get("a")).toBe(first.get("a"));
+    expect(second.get("b")).not.toBe(first.get("b"));
+  });
+
+  it("gives a new object once the person's signals change", () => {
+    const cache = new SceneSignalsCache();
+    const first = cache.compute([
+      event("pre_tool_use", "a", 1_000, { toolName: "Read" }),
+    ]);
+    const second = cache.compute([
+      event("pre_tool_use", "a", 3_000, { toolName: "Bash" }),
+      event("pre_tool_use", "a", 1_000, { toolName: "Read" }),
+    ]);
+
+    expect(second.get("a")).not.toBe(first.get("a"));
+    expect(second.get("a")?.tool).toBe("terminal");
   });
 });

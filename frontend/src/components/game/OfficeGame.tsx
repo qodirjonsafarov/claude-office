@@ -58,7 +58,7 @@ import { useCompactionAnimation } from "@/systems/compactionAnimation";
 import { CrowdLayoutCache } from "@/systems/crowdLayout";
 import { autoFit } from "@/systems/autoFit";
 import { AgentLookCache } from "@/systems/agentLooks";
-import { sceneSignals, type PersonSignals } from "@/systems/sceneSignals";
+import { SceneSignalsCache, type PersonSignals } from "@/systems/sceneSignals";
 import { useOfficeTextures } from "@/hooks/useOfficeTextures";
 import {
   CANVAS_WIDTH,
@@ -349,10 +349,18 @@ export function OfficeGame(): ReactNode {
   // tag lifts so tags never overlap (systems/crowdLayout.ts)
   // Per-person activity, failures and current tool (systems/sceneSignals.ts)
   const eventLog = useGameStore(selectEventLog);
-  const signals = useMemo(() => sceneSignals(eventLog), [eventLog]);
+  // Cached: a person's object stays the same until their signals change,
+  // so memoized sprites of everybody else skip re-rendering
+  const [signalsCache] = useState(() => new SceneSignalsCache());
+  const signals = useMemo(
+    () => signalsCache.compute(eventLog),
+    [eventLog, signalsCache],
+  );
+  const officeSignals = signals.get("*");
+  const ownBossSignals = signals.get("boss");
   const bossSignals = useMemo<PersonSignals | undefined>(() => {
-    const own = signals.get("boss");
-    const office = signals.get("*");
+    const own = ownBossSignals;
+    const office = officeSignals;
     if (!own && !office) return undefined;
     // The boss dozes off only when the whole office has been quiet
     return {
@@ -361,7 +369,7 @@ export function OfficeGame(): ReactNode {
       tool: own?.tool ?? "other",
       failing: own?.failing ?? false,
     };
-  }, [signals]);
+  }, [officeSignals, ownBossSignals]);
 
   // Desks whose worker is running a shell command (monitor glow)
   const terminalDesks = useMemo(() => {
@@ -440,7 +448,26 @@ export function OfficeGame(): ReactNode {
   }, []);
   useEffect(() => {
     window.addEventListener("resize", applyAutoFit);
-    return () => window.removeEventListener("resize", applyAutoFit);
+    // Also when the panel itself changes size (sidebars, a container that
+    // had no size yet at load). Ignore sub-pixel reflows: they used to make
+    // the canvas drift.
+    const el = containerRef.current;
+    let last = { w: el?.clientWidth ?? 0, h: el?.clientHeight ?? 0 };
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      const w = el?.clientWidth ?? 0;
+      const h = el?.clientHeight ?? 0;
+      if (Math.abs(w - last.w) < 2 && Math.abs(h - last.h) < 2) return;
+      last = { w, h };
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(applyAutoFit);
+    });
+    if (el) observer.observe(el);
+    return () => {
+      window.removeEventListener("resize", applyAutoFit);
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, [applyAutoFit]);
   useEffect(() => {
     if (spritesLoaded) requestAnimationFrame(applyAutoFit);

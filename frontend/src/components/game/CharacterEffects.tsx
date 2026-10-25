@@ -14,14 +14,15 @@
  */
 
 import { memo, useCallback, useEffect, useState, type ReactNode } from "react";
-import { useTick } from "@pixi/react";
 import type { Graphics } from "pixi.js";
 import {
   CELEBRATION_MS,
   celebration,
   pulse,
+  quantize,
   type Particle,
 } from "@/systems/sceneMotion";
+import { useSceneTick, useTickValue } from "./shared/useSceneTick";
 import { useReducedMotion } from "@/systems/reducedMotion";
 import { PixelIcon } from "./shared/PixelIcon";
 import {
@@ -53,23 +54,14 @@ export function useSince(key: string | number | null, limit: number): number {
   const [state, setState] = useState({ key, ms: limit });
   if (state.key !== key) setState({ key, ms: key === null ? limit : 0 });
   const running = key !== null && state.key === key && state.ms < limit;
-  useTick((ticker) => {
-    if (!running) return;
+  // Attached only while the short animation runs (stable callback)
+  useSceneTick((ticker) => {
     setState((s) => ({
       key: s.key,
       ms: Math.min(limit, s.ms + ticker.deltaMS),
     }));
-  });
+  }, running);
   return state.key === key ? state.ms : key === null ? limit : 0;
-}
-
-/** Ms since the component mounted (while `active`), for loops like pulses. */
-function useLoopClock(active: boolean): number {
-  const [ms, setMs] = useState(0);
-  useTick((ticker) => {
-    if (active) setMs((v) => v + ticker.deltaMS);
-  });
-  return ms;
 }
 
 // ============================================================================
@@ -83,9 +75,10 @@ interface RingProps {
 
 function NeedsYouRingComponent({ y = 22, width = 26 }: RingProps): ReactNode {
   const reduced = useReducedMotion();
-  const ms = useLoopClock(!reduced);
-  // Breathe between 45% and 95% opacity; steady under reduced motion
-  const alpha = reduced ? 0.8 : 0.45 + 0.5 * pulse(ms);
+  // Breathe between 45% and 95% opacity (20 steps: few re-renders);
+  // steady under reduced motion
+  const breath = useTickValue(!reduced, (ms) => quantize(pulse(ms), 0.05));
+  const alpha = reduced ? 0.8 : 0.45 + 0.5 * breath;
   const draw = useCallback(
     (g: Graphics) => {
       g.clear();
@@ -144,18 +137,21 @@ function StatusMarkComponent({
   y = -48,
 }: StatusMarkProps): ReactNode {
   const reduced = useReducedMotion();
-  const ms = useLoopClock(kind === "sleeping" && !reduced);
+  // Whole pixels only: the z's redraw just when they move by a pixel
+  const drift = useTickValue(kind === "sleeping" && !reduced, (ms) =>
+    Math.round(3 * pulse(ms / 2.5)),
+  );
 
   const drawZzz = useCallback(
     (g: Graphics) => {
       g.clear();
       // Three z's growing up and to the right; they drift 3 px over 3 s
-      const drift = reduced ? 0 : Math.round(3 * pulse(ms / 2.5));
-      drawZ(g, 0, 8 - drift, 1.5, 0xe4ebe6);
-      drawZ(g, 9, 0 - drift, 2, 0xe4ebe6);
-      drawZ(g, 21, -10 - drift, 2.5, 0xe4ebe6);
+      const dy = reduced ? 0 : drift;
+      drawZ(g, 0, 8 - dy, 1.5, 0xe4ebe6);
+      drawZ(g, 9, 0 - dy, 2, 0xe4ebe6);
+      drawZ(g, 21, -10 - dy, 2.5, 0xe4ebe6);
     },
-    [ms, reduced],
+    [drift, reduced],
   );
   const drawAmber = useCallback(
     (g: Graphics) => drawBadge(g, SCENE_AMBER, 0x5a4310),

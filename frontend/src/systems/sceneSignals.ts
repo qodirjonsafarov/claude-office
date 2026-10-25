@@ -168,3 +168,31 @@ export function characterMood(input: MoodInput): Mood {
   }
   return "normal";
 }
+
+function sameSignals(a: PersonSignals, b: PersonSignals): boolean {
+  return (
+    a.lastEventAt === b.lastEventAt &&
+    a.lastErrorAt === b.lastErrorAt &&
+    a.tool === b.tool &&
+    a.failing === b.failing
+  );
+}
+
+/**
+ * {@link sceneSignals} that keeps the previous object for every person whose
+ * signals did not change, so memoized character sprites skip re-rendering
+ * when somebody else's event arrives.
+ */
+export class SceneSignalsCache {
+  private last = new Map<string, PersonSignals>();
+
+  compute(log: Iterable<LogEvent>): Map<string, PersonSignals> {
+    const next = sceneSignals(log);
+    for (const [key, value] of next) {
+      const old = this.last.get(key);
+      if (old && sameSignals(old, value)) next.set(key, old);
+    }
+    this.last = next;
+    return next;
+  }
+}

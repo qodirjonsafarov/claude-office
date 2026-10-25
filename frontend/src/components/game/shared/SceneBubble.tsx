@@ -10,7 +10,7 @@
  */
 
 import { memo, useMemo, useState, type ReactNode } from "react";
-import { useTick } from "@pixi/react";
+import { useSceneTick } from "./useSceneTick";
 import type { TextStyle } from "pixi.js";
 import type { BubbleContent } from "@/types";
 import { truncateBubbleText } from "@/utils/bubbleText";
@@ -39,10 +39,9 @@ export function useEntrance(key: string, duration: number): number {
   const [state, setState] = useState({ key, ms: 0 });
   if (state.key !== key) setState({ key, ms: 0 });
   const running = state.key === key && state.ms < duration;
-  useTick((ticker) => {
-    if (!running) return;
+  useSceneTick((ticker) => {
     setState((s) => ({ key: s.key, ms: s.ms + ticker.deltaMS }));
-  });
+  }, running);
   return state.key === key ? state.ms : 0;
 }
 

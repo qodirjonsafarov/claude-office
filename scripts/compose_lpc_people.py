@@ -15,6 +15,8 @@ Sheet layout (x offsets, every animation has 4 rows: up, left, down, right):
     1216  spellcast  (7)  - talking / gesturing / waving
     1664  thrust     (8)  - handing something over
     2176  blink      (2: idle frame 0 and the chair sit frame, eyes closed)
+    2304  sleep      (1: seated, head bowed 2px, eyes closed - resting / dozing)
+    2368  read       (1: seated, head bowed 1px - reading at the desk)
 
 Order matters:
   1. layers are composed in LPC z order, split into "under" (up to the eyes)
@@ -50,7 +52,11 @@ ANIMS = (
 SIT_CHAIR_FRAME = 2
 # Blink frames: (animation, frame index) drawn again with closed eyes
 BLINKS = (("idle", 0), ("sit", SIT_CHAIR_FRAME))
-SHEET_WIDTH = sum(w for _, w in ANIMS) + len(BLINKS) * FRAME
+# Seated poses with the head group (head, eyes, hair, beard, glasses) moved
+# down: (dy px, eyes closed)
+BOWED = ((2, True), (1, False))
+HEAD_PATHS = ("head/", "eyes/", "hair/", "beards/", "facial/")
+SHEET_WIDTH = sum(w for _, w in ANIMS) + (len(BLINKS) + len(BOWED)) * FRAME
 TYPING_X = 896
 LASH = (39, 25, 32, 255)  # the head outline color
 EYES_Z = 105  # layers above this (beard, glasses, hair) go on after blinking
@@ -248,8 +254,12 @@ class Lpc:
         return img
 
 
-def compose(lpc, spec, anim, width):
-    """(under, over, eyes) images of one animation, split at the eyes layer."""
+def compose(lpc, spec, anim, width, head_dy=0):
+    """(under, over, eyes) images of one animation, split at the eyes layer.
+
+    `head_dy` moves the head group (head, eyes, hair, beard, glasses) down,
+    for a bowed head; the body stays where it is.
+    """
     under = Image.new("RGBA", (width, 4 * FRAME))
     over = Image.new("RGBA", (width, 4 * FRAME))
     eyes = None
@@ -259,9 +269,11 @@ def compose(lpc, spec, anim, width):
         img = lpc.load(path, anim, kind, color)
         if img.size != under.size:
             raise SystemExit(f"{path}{anim}: size {img.size}, expected {under.size}")
-        (under if z <= EYES_Z else over).alpha_composite(img)
+        dy = head_dy if path.startswith(HEAD_PATHS) else 0
+        (under if z <= EYES_Z else over).alpha_composite(img, (0, dy))
         if path.startswith("eyes/"):
-            eyes = img
+            eyes = Image.new("RGBA", img.size)
+            eyes.alpha_composite(img, (0, dy))
     return under, over, eyes
 
 
@@ -335,6 +347,18 @@ def build(lpc, spec):
         for row in range(4):
             box = (index * FRAME, row * FRAME, (index + 1) * FRAME, (row + 1) * FRAME)
             frame = close_eyes(under.crop(box), eyes.crop(box))
+            frame.alpha_composite(over.crop(box))
+            sheet.alpha_composite(frame, (x, row * FRAME))
+        x += FRAME
+    # Bowed seated poses: sleeping (eyes closed) and reading
+    for dy, closed in BOWED:
+        _, under, over, eyes = (None, *compose(lpc, spec, "sit", 192, head_dy=dy))
+        for row in range(4):
+            box = (SIT_CHAIR_FRAME * FRAME, row * FRAME,
+                   (SIT_CHAIR_FRAME + 1) * FRAME, (row + 1) * FRAME)
+            frame = under.crop(box)
+            if closed:
+                frame = close_eyes(frame, eyes.crop(box))
             frame.alpha_composite(over.crop(box))
             sheet.alpha_composite(frame, (x, row * FRAME))
         x += FRAME

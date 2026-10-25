@@ -52,3 +52,28 @@ describe("sheetCell", () => {
     ).toBe(3);
   });
 });
+
+describe("sheetCell bowed poses", () => {
+  it("dozes with the head down and eyes closed", () => {
+    expect(sheetCell({ ...base, mode: "sleep" }, 0, 0)).toEqual({
+      x: SHEET_X.sleep,
+      row: 2,
+    });
+  });
+
+  it("reads at the desk with the head down instead of typing", () => {
+    expect(sheetCell({ ...base, mode: "sit", reading: true }, 0, 0).x).toBe(
+      SHEET_X.read,
+    );
+  });
+
+  it("types when a key is pressed even if it was reading before", () => {
+    expect(
+      sheetCell(
+        { ...base, mode: "sit", reading: false, pressed: "right" },
+        0,
+        0,
+      ).x,
+    ).toBe(SHEET_X.typeRight);
+  });
+});

@@ -30,6 +30,8 @@ export const SHEET_X = {
   thrust: 1664,
   blinkIdle: 2176, // idle frame 0 with closed eyes
   blinkSit: 2240, // chair sit frame with closed eyes
+  sleep: 2304, // seated, head bowed, eyes closed (resting / dozing)
+  read: 2368, // seated, head bowed a little (reading at the desk)
 } as const;
 
 const GESTURE_X: Record<GestureAnim, number> = {
@@ -47,7 +49,7 @@ export const ROW: Record<Facing, number> = {
   right: 3,
 };
 
-export type PersonMode = "walk" | "idle" | "sit" | "gesture";
+export type PersonMode = "walk" | "idle" | "sit" | "gesture" | "sleep";
 
 export interface CellInput {
   mode: PersonMode;
@@ -60,6 +62,8 @@ export interface CellInput {
   glance: boolean;
   /** Seated typing: which hand presses a key right now. */
   pressed: "left" | "right" | null;
+  /** Seated and reading (Read / Grep): head bowed instead of typing. */
+  reading?: boolean;
 }
 
 export interface SheetCell {
@@ -104,9 +108,12 @@ export function sheetCell(
       const frame = gestureFrame(g, gestureMs);
       return { x: GESTURE_X[GESTURES[g].anim] + frame * FRAME, row };
     }
+    case "sleep":
+      return { x: SHEET_X.sleep, row: ROW[direction] };
     case "sit": {
       if (input.pressed === "left") return { x: SHEET_X.typeLeft, row };
       if (input.pressed === "right") return { x: SHEET_X.typeRight, row };
+      if (input.reading) return { x: SHEET_X.read, row };
       if (blink) return { x: SHEET_X.blinkSit, row };
       return { x: SHEET_X.sitChair, row };
     }

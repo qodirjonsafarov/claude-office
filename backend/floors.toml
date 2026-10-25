@@ -1,29 +1,14 @@
-building_name = "Tesseron"
+# Building layout for multi-floor navigation (dev/testing input for
+# load_building_config_from_toml). No building or floors are configured.
+#
+# Example:
+#   building_name = "Office"
+#
+#   [[floors]]
+#   name = "Team"
+#   floor_number = 1
+#   accent = "#6366f1"
+#   icon = "🏢"
+#   repos = ["my-repo"]
 
-[[floors]]
-name = "Herramientas"
-floor_number = 4
-accent = "#f59e0b"
-icon = "🔧"
-repos = ["panoptica", "prometeo-arius"]
-
-[[floors]]
-name = "Recepthor"
-floor_number = 3
-accent = "#2563eb"
-icon = "⚖️"
-repos = ["recepthor-api", "recepthor-hub", "recepthor-scraper", "recepthor-web", "recepthor-serverless"]
-
-[[floors]]
-name = "Lexio"
-floor_number = 2
-accent = "#7c3aed"
-icon = "📚"
-repos = ["lexio"]
-
-[[floors]]
-name = "entreperros"
-floor_number = 1
-accent = "#059669"
-icon = "🐕"
-repos = ["entreperros"]
+floors = []

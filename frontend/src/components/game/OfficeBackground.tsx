@@ -5,6 +5,7 @@
  */
 
 import { type ReactNode, useCallback } from "react";
+import { shade } from "@/systems/colorShade";
 import { Graphics, Texture } from "pixi.js";
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from "@/constants/canvas";
 
@@ -102,8 +103,12 @@ function drawWalls(g: Graphics): void {
 
 // Modern floor: light ash planks with staggered seams
 const PLANK_HEIGHT = 32;
-const PLANK_COLORS = [0xa3927f, 0x9a8a78, 0xad9c88, 0x958572, 0xa8978a];
-const PLANK_SEAM = 0x6f6252;
+// Toned down ~16% so the light floor doesn't glare next to the dark UI
+const FLOOR_TONE = 0.84;
+const PLANK_COLORS = [0xa3927f, 0x9a8a78, 0xad9c88, 0x958572, 0xa8978a].map(
+  (c) => shade(c, FLOOR_TONE),
+);
+const PLANK_SEAM = shade(0x6f6252, FLOOR_TONE);
 
 // Team zone carpet under the desk grid
 const TEAM_ZONE = { x: 150, y: 360, w: 980, h: 400 };
@@ -188,6 +193,20 @@ function drawLighting(g: Graphics): void {
     const h = 40;
     g.rect(0, CANVAS_HEIGHT - (i + 1) * h, CANVAS_WIDTH, h);
     g.fill({ color: 0x05070f, alpha: (0.05 * (8 - i)) / 8 });
+  }
+  // Soft side vignette: the floor fades into the dark stage
+  for (let i = 0; i < 6; i++) {
+    const w = 22;
+    const a = (0.05 * (6 - i)) / 6;
+    g.rect(i * w, WALL_HEIGHT, w, CANVAS_HEIGHT - WALL_HEIGHT);
+    g.fill({ color: 0x05070f, alpha: a });
+    g.rect(
+      CANVAS_WIDTH - (i + 1) * w,
+      WALL_HEIGHT,
+      w,
+      CANVAS_HEIGHT - WALL_HEIGHT,
+    );
+    g.fill({ color: 0x05070f, alpha: a });
   }
 }
 

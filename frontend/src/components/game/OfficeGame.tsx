@@ -56,6 +56,7 @@ import { useAnimationSystem } from "@/systems/animationSystem";
 import { wireGameRuntime, unwireGameRuntime } from "@/systems/gameRuntime";
 import { useCompactionAnimation } from "@/systems/compactionAnimation";
 import { CrowdLayoutCache } from "@/systems/crowdLayout";
+import { autoFit } from "@/systems/autoFit";
 import { AgentLookCache } from "@/systems/agentLooks";
 import { sceneSignals, type PersonSignals } from "@/systems/sceneSignals";
 import { useOfficeTextures } from "@/hooks/useOfficeTextures";
@@ -101,6 +102,7 @@ import { OfficeDecor } from "./OfficeDecor";
 import { Elevator, isAgentInElevator } from "./Elevator";
 import { PrinterStation } from "./PrinterStation";
 import { DebugOverlays } from "./DebugOverlays";
+import { DayNightLayer } from "./DayNightLayer";
 import {
   DeskSurfacesBase,
   DeskSurfacesTop,
@@ -361,6 +363,22 @@ export function OfficeGame(): ReactNode {
     };
   }, [signals]);
 
+  // Desks whose worker is running a shell command (monitor glow)
+  const terminalDesks = useMemo(() => {
+    const desks = new Set<number>();
+    for (const agent of agents.values()) {
+      if (
+        agent.desk &&
+        agent.phase === "idle" &&
+        agent.isTyping &&
+        signals.get(agent.id)?.tool === "terminal"
+      ) {
+        desks.add(agent.desk);
+      }
+    }
+    return desks;
+  }, [agents, signals]);
+
   // Character look per agent by role (systems/agentLooks.ts)
   const [lookCache] = useState(() => new AgentLookCache());
   const agentLooks = useMemo(
@@ -404,11 +422,29 @@ export function OfficeGame(): ReactNode {
   // Reset pan/zoom only on actual window resize — NOT on container reflows.
   // ResizeObserver was causing progressive canvas drift because the event log
   // and sidebar content changes triggered micro-resizes on every update.
-  useEffect(() => {
-    const handleResize = () => transformRef.current?.resetTransform(0);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+  // Auto-fit: fill the panel (cropping a little at most) and centre the
+  // scene, on load and on window resize; manual zoom still works on top.
+  const fitScaleRef = useRef(1);
+  const applyAutoFit = useCallback(() => {
+    const el = containerRef.current;
+    const ref = transformRef.current;
+    if (!el || !ref) return;
+    const fit = autoFit(
+      el.clientWidth,
+      el.clientHeight,
+      CANVAS_WIDTH,
+      CANVAS_HEIGHT,
+    );
+    fitScaleRef.current = fit.scale;
+    ref.setTransform(fit.x, fit.y, fit.scale, 0);
   }, []);
+  useEffect(() => {
+    window.addEventListener("resize", applyAutoFit);
+    return () => window.removeEventListener("resize", applyAutoFit);
+  }, [applyAutoFit]);
+  useEffect(() => {
+    if (spritesLoaded) requestAnimationFrame(applyAutoFit);
+  }, [spritesLoaded, applyAutoFit]);
 
   return (
     <div ref={containerRef} className="w-full h-full overflow-hidden relative">
@@ -428,12 +464,9 @@ export function OfficeGame(): ReactNode {
             if (zoomTimerRef.current) clearTimeout(zoomTimerRef.current);
             zoomTimerRef.current = setTimeout(syncResolution, 150);
           }
-          // Auto-reset pan offset when zooming back out to 1:1
-          if (
-            state.scale <= 1 &&
-            (state.positionX !== 0 || state.positionY !== 0)
-          ) {
-            ref.resetTransform(0);
+          // Zooming out below the fit (or "1:1") snaps back to the fit
+          if (state.scale < fitScaleRef.current - 0.01) {
+            applyAutoFit();
           }
         }}
       >
@@ -686,6 +719,7 @@ export function OfficeGame(): ReactNode {
                     deskCount={deskCount}
                     occupiedDesks={occupiedDesks}
                     deskTasks={deskTasks}
+                    terminalDesks={terminalDesks}
                     monitorTexture={textures.monitor}
                     coffeeMugTexture={textures.coffeeMug}
                     staplerTexture={textures.stapler}
@@ -741,6 +775,9 @@ export function OfficeGame(): ReactNode {
                     isCompacting={isCompacting}
                     isStomping={compactionAnimation.isStomping}
                   />
+
+                  {/* Day / night grading (labels and bubbles stay untinted) */}
+                  <DayNightLayer />
 
                   {/* Debug overlays */}
                   {debugMode && (

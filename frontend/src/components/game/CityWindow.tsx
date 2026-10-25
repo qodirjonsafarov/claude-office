@@ -15,6 +15,12 @@ import {
   selectSessionId,
 } from "@/stores/gameStore";
 
+import {
+  URL_TIME_OVERRIDE,
+  sceneClock,
+  useSceneHours,
+} from "@/systems/sceneClock";
+
 // City sub-modules
 import {
   computeTimeState,
@@ -195,12 +201,21 @@ export function CityWindow(): ReactNode {
   // DERIVED STATE
   // ============================================================================
 
+  // The office tint and lamps follow the same hours (systems/sceneClock.ts)
+  const sceneHours = useSceneHours();
+  useEffect(() => {
+    if (!fastTimeEnabled) return;
+    sceneClock.getState().setOverride(debugHour);
+  }, [fastTimeEnabled, debugHour]);
+  useEffect(() => {
+    if (fastTimeEnabled) return;
+    sceneClock.getState().setOverride(URL_TIME_OVERRIDE);
+  }, [fastTimeEnabled]);
+
   const timeState = useMemo(() => {
-    const hour = fastTimeEnabled
-      ? debugHour
-      : time.getHours() + time.getMinutes() / 60;
+    const hour = fastTimeEnabled ? debugHour : sceneHours;
     return computeTimeState(hour, time);
-  }, [time, debugHour, fastTimeEnabled]);
+  }, [time, debugHour, fastTimeEnabled, sceneHours]);
 
   // ============================================================================
   // DRAW CALLBACKS

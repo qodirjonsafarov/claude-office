@@ -47,6 +47,7 @@ import {
 import { useAnimationSystem } from "@/systems/animationSystem";
 import { wireGameRuntime, unwireGameRuntime } from "@/systems/gameRuntime";
 import { useCompactionAnimation } from "@/systems/compactionAnimation";
+import { computeCrowdLayout, displayPosition } from "@/systems/crowdLayout";
 import { useOfficeTextures } from "@/hooks/useOfficeTextures";
 import {
   CANVAS_WIDTH,
@@ -332,6 +333,13 @@ export function OfficeGame(): ReactNode {
   // Desk positions for Y-sorted rendering
   const deskPositions = useDeskPositions(deskCount, occupiedDesks);
 
+  // Render-only nudges so people never stand inside each other, and name
+  // tag lifts so tags never overlap (systems/crowdLayout.ts)
+  const { crowdOffsets, labelLifts } = useMemo(
+    () => computeCrowdLayout(agents),
+    [agents],
+  );
+
   // Keyboard shortcuts for debug
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -592,6 +600,7 @@ export function OfficeGame(): ReactNode {
                             renderBubble={false}
                             renderLabel={false}
                             isTyping={agent.isTyping}
+                            offset={crowdOffsets.get(agent.id)}
                           />
                         </pixiContainer>
                       ))}
@@ -723,7 +732,12 @@ export function OfficeGame(): ReactNode {
                       <AgentLabel
                         key={`label-${agent.id}`}
                         name={agent.name!}
-                        position={agent.currentPosition}
+                        position={displayPosition(
+                          agent.id,
+                          agent.currentPosition,
+                          crowdOffsets,
+                          labelLifts.get(agent.id) ?? 0,
+                        )}
                         color={agent.color}
                       />
                     ))}
@@ -806,7 +820,10 @@ export function OfficeGame(): ReactNode {
                     .map((agent) => (
                       <pixiContainer
                         key={`bubble-${agent.id}`}
-                        x={agent.currentPosition.x}
+                        x={
+                          agent.currentPosition.x +
+                          (crowdOffsets.get(agent.id)?.x ?? 0)
+                        }
                         y={agent.currentPosition.y}
                       >
                         <AgentBubble

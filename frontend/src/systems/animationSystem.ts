@@ -17,13 +17,16 @@ import {
 } from "@/stores/gameStore";
 import { calculatePath, updateAgentObstacle } from "./pathfinding";
 import { collisionManager } from "./agentCollision";
+import { walkStepPx } from "./personMotion";
+import { CoffeeBreakPlanner } from "./coffeeBreak";
+import { getDeskPosition } from "./queuePositions";
 import type { Position } from "@/types";
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
-const MOVEMENT_SPEED = 200; // pixels per second
+const MOVEMENT_SPEED = 170; // pixels per second at full stride (eased in/out)
 const BUBBLE_DURATION_MS = 3000; // 3 seconds per bubble
 
 // ============================================================================
@@ -56,6 +59,8 @@ class AnimationSystem {
   };
 
   private listener: AnimationListener | null = null;
+
+  private coffeeBreaks = new CoffeeBreakPlanner();
 
   /**
    * Wire the machine-layer listener. Called once from the composition root
@@ -173,6 +178,7 @@ class AnimationSystem {
     this.updateAgentPositions(deltaSeconds);
     this.updateBubbleTimers();
     this.checkQueueAdvancement();
+    this.updateCoffeeBreaks();
 
     // Schedule next frame
     this.state.rafId = requestAnimationFrame(this.tick);
@@ -270,8 +276,14 @@ class AnimationSystem {
       };
     }
 
-    // Calculate total distance to move this frame
-    let remainingDistance = MOVEMENT_SPEED * deltaSeconds;
+    // Distance to move this frame: eased in at the start, out at the end
+    let remainingDistance = walkStepPx(
+      waypoints,
+      currentIndex,
+      progress,
+      deltaSeconds,
+      MOVEMENT_SPEED,
+    );
 
     // Advance through waypoints until we've used all our movement distance
     while (remainingDistance > 0 && currentIndex < waypoints.length - 1) {
@@ -340,6 +352,30 @@ class AnimationSystem {
 
   private handleArrival(agentId: string, phase: AgentPhase): void {
     this.listener?.notifyArrival(agentId, phase);
+  }
+
+  // ==========================================================================
+  // COFFEE BREAKS
+  // ==========================================================================
+
+  /** Send long-idle workers to the coffee machine and back (coffeeBreak.ts). */
+  private updateCoffeeBreaks(): void {
+    const store = useGameStore.getState();
+    const agents = Array.from(store.agents.values(), (agent) => ({
+      id: agent.id,
+      phase: agent.phase,
+      position: agent.currentPosition,
+      desk: agent.desk ? getDeskPosition(agent.desk) : null,
+      hasPath: agent.path !== null,
+      isTyping: agent.isTyping,
+      backendState: agent.backendState,
+    }));
+    for (const { agentId, target } of this.coffeeBreaks.update(
+      Date.now(),
+      agents,
+    )) {
+      this.setAgentPath(agentId, target);
+    }
   }
 
   // ==========================================================================

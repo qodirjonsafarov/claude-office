@@ -22,6 +22,10 @@ import {
   usePersonMotion,
 } from "./PersonSprite";
 import { bossDirectingDirection } from "@/systems/typingPose";
+import { faceToward } from "@/systems/personMotion";
+import { bossStance, seedFromId } from "@/systems/personPoses";
+import { useGameStore } from "@/stores/gameStore";
+import type { AgentPhase } from "@/stores/gameStore";
 import { NameTag } from "./NameTag";
 
 // ============================================================================
@@ -55,6 +59,34 @@ const SHOW_CAPSULE_PARTS = false;
 
 /** Feet offset while the boss stands behind the desk (sitting is 30). */
 const BOSS_STANDING_FEET_Y = 26;
+
+const BOSS_SEED = seedFromId("boss");
+
+/** Agent phases in which the boss is dealing with that agent in person. */
+const CONVERSANT_PHASES: ReadonlySet<AgentPhase> = new Set([
+  "conversing",
+  "walking_to_boss",
+  "at_boss",
+]);
+
+/**
+ * The agent the boss is talking to, as "phase|x|y" (a string so the store
+ * selector stays stable), or "" when there is none.
+ */
+function selectConversantKey(state: {
+  agents: Map<
+    string,
+    { phase: AgentPhase; currentPosition: { x: number; y: number } }
+  >;
+}): string {
+  for (const agent of state.agents.values()) {
+    if (CONVERSANT_PHASES.has(agent.phase)) {
+      const { x, y } = agent.currentPosition;
+      return `${agent.phase}|${Math.round(x)}|${Math.round(y)}`;
+    }
+  }
+  return "";
+}
 
 const BOSS_WIDTH = 48; // 1.5 blocks × 32px
 const STROKE_WIDTH = 4;
@@ -174,7 +206,7 @@ function Bubble({ content, yOffset }: BubbleProps): ReactNode {
 
 function BossSpriteComponent({
   position,
-  state: _state,
+  state,
   bubble,
   inUseBy: _inUseBy,
   currentTask,
@@ -190,7 +222,21 @@ function BossSpriteComponent({
   isAway = false,
 }: BossSpriteProps): ReactNode {
   // Busy boss (tool use, with a short linger) stands up and directs the team
-  const directingElapsed = useActivityClock(isTyping && !isAway);
+  const directingElapsed = useActivityClock(
+    (isTyping || state === "delegating") && !isAway,
+  );
+
+  // Talking to / handing over to an agent in front of the desk
+  const conversantKey = useGameStore(selectConversantKey);
+  const [conversantPhase, cx, cy] = conversantKey
+    ? (conversantKey.split("|") as [AgentPhase, string, string])
+    : [null, "0", "0"];
+  const stance = bossStance({
+    conversantPhase,
+    isTyping: directingElapsed !== null,
+    backendState: state,
+  });
+  const towardConversant = faceToward(position, { x: +cx, y: +cy });
 
   // Animation state for typing
   const [typingTime, setTypingTime] = useState(0);
@@ -256,14 +302,35 @@ function BossSpriteComponent({
         <pixiContainer y={6}>
           {/* Boss: LPC pixel-art worker. He doesn't type: while busy he
               stands behind the desk and looks over the team (directing). */}
-          {directingElapsed === null ? (
-            <PersonSprite sheet="boss" mode="sit" direction="down" feetY={30} />
-          ) : (
+          {stance === "sit" && (
+            <PersonSprite
+              sheet="boss"
+              mode="sit"
+              direction="down"
+              feetY={30}
+              seed={BOSS_SEED}
+              glance
+            />
+          )}
+          {stance === "direct" && (
             <PersonSprite
               sheet="boss"
               mode="idle"
-              direction={bossDirectingDirection(directingElapsed)}
+              direction={bossDirectingDirection(directingElapsed ?? 0)}
               feetY={BOSS_STANDING_FEET_Y}
+              seed={BOSS_SEED}
+              shadow={false}
+            />
+          )}
+          {(stance === "talk" || stance === "handoff") && (
+            <PersonSprite
+              sheet="boss"
+              mode="gesture"
+              gesture={stance}
+              direction={towardConversant}
+              feetY={BOSS_STANDING_FEET_Y}
+              seed={BOSS_SEED}
+              shadow={false}
             />
           )}
         </pixiContainer>
@@ -373,6 +440,8 @@ function MobileBossComponent({
         sheet="boss"
         mode={motion.moving ? "walk" : "idle"}
         direction={motion.direction}
+        walkDistance={motion.distance}
+        seed={BOSS_SEED}
       />
 
       {/* Boss label */}

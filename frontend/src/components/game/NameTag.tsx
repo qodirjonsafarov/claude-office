@@ -30,7 +30,7 @@ function NameTagComponent({
   x = 0,
   y = 0,
 }: NameTagProps): ReactNode {
-  const width = Math.max(36, name.length * CHAR_WIDTH + PAD_X * 2);
+  const width = nameTagWidth(name);
 
   const drawPill = useCallback(
     (g: Graphics) => {
@@ -64,6 +64,14 @@ function NameTagComponent({
 }
 
 export const NameTag = memo(NameTagComponent);
+
+/** Width of the name pill on the canvas (px). */
+export function nameTagWidth(name: string): number {
+  return Math.max(36, name.length * CHAR_WIDTH + PAD_X * 2);
+}
+
+/** Height of the name pill on the canvas (px). */
+export const NAME_TAG_HEIGHT = HEIGHT;
 
 /** Parse a "#rrggbb" color into a number for NameTag's accent. */
 export function accentFromHex(color: string): number {

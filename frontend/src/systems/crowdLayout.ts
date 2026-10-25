@@ -1,0 +1,81 @@
+/**
+ * Crowd layout for the office scene: render-only offsets so people never
+ * stand inside each other, and lifts so their name tags never overlap.
+ * Logical positions (pathfinding, queues, arrival checks) are not touched.
+ */
+
+import type { AgentAnimationState } from "@/stores/slices/types";
+import type { Position } from "@/types";
+import { nameTagWidth, NAME_TAG_HEIGHT } from "@/components/game/NameTag";
+import { separationOffsets, stackLabels } from "./personMotion";
+import { getDeskPosition, isInElevatorZone } from "./queuePositions";
+
+/** Shared "no nudge" offset, so memoized sprites of still people don't re-render. */
+const NO_OFFSET: Position = Object.freeze({ x: 0, y: 0 });
+
+/** Name tag center above the feet (matches AgentLabel). */
+const LABEL_Y = -72;
+
+type CrowdAgent = Pick<
+  AgentAnimationState,
+  "id" | "name" | "phase" | "desk" | "currentPosition"
+>;
+
+function seatedAtDesk(agent: CrowdAgent): boolean {
+  if (agent.phase !== "idle" || !agent.desk) return false;
+  const seat = getDeskPosition(agent.desk);
+  return (
+    Math.abs(seat.x - agent.currentPosition.x) <= 6 &&
+    Math.abs(seat.y - agent.currentPosition.y) <= 6
+  );
+}
+
+export function computeCrowdLayout(agents: Map<string, CrowdAgent>): {
+  crowdOffsets: Map<string, Position>;
+  labelLifts: Map<string, number>;
+} {
+  const onFloor = [...agents.values()].filter(
+    (a) => !isInElevatorZone(a.currentPosition),
+  );
+  const rawOffsets = separationOffsets(
+    onFloor.map((a) => ({
+      id: a.id,
+      x: a.currentPosition.x,
+      y: a.currentPosition.y,
+      fixed: seatedAtDesk(a),
+    })),
+  );
+  const crowdOffsets = new Map<string, Position>();
+  for (const [id, offset] of rawOffsets) {
+    crowdOffsets.set(id, offset.x === 0 && offset.y === 0 ? NO_OFFSET : offset);
+  }
+  const labelLifts = stackLabels(
+    onFloor
+      .filter((a) => a.name)
+      .map((a) => {
+        const offset = crowdOffsets.get(a.id) ?? { x: 0, y: 0 };
+        return {
+          id: a.id,
+          x: a.currentPosition.x + offset.x,
+          y: a.currentPosition.y + offset.y + LABEL_Y,
+          width: nameTagWidth(a.name!),
+        };
+      }),
+    NAME_TAG_HEIGHT,
+  );
+  return { crowdOffsets, labelLifts };
+}
+
+/** Logical position plus the crowd offset and a vertical lift. */
+export function displayPosition(
+  id: string,
+  position: Position,
+  offsets: Map<string, Position>,
+  lift: number,
+): Position {
+  const offset = offsets.get(id);
+  return {
+    x: position.x + (offset?.x ?? 0),
+    y: position.y + (offset?.y ?? 0) + lift,
+  };
+}

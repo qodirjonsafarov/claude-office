@@ -7,19 +7,47 @@
 
 "use client";
 
-import { memo, useMemo, useState, useCallback, type ReactNode } from "react";
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  type ReactNode,
+} from "react";
 import { useTick } from "@pixi/react";
 import { Graphics, TextStyle, Texture } from "pixi.js";
 import type { Position, BubbleContent } from "@/types";
 import type { AgentPhase } from "@/stores/gameStore";
 import { useAttentionStore } from "@/stores/attentionStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
-import { isInElevatorZone } from "@/systems/queuePositions";
+import { useGameStore } from "@/stores/gameStore";
+import {
+  BOSS_POSITION,
+  getDeskPosition,
+  isInElevatorZone,
+} from "@/systems/queuePositions";
+import { faceToward, type Facing } from "@/systems/personMotion";
+import {
+  COFFEE_FACING,
+  GREET_MS,
+  agentStance,
+  facesBoss,
+  seedFromId,
+  type AgentStance,
+} from "@/systems/personPoses";
+import { isAtCoffeeSpot } from "@/systems/coffeeBreak";
 import { ICON_MAP } from "./shared/iconMap";
 import { drawBubble, drawIconBadge } from "./shared/drawBubble";
 import { drawRightArm, drawLeftArm } from "./shared/drawArm";
 import { truncateBubbleText } from "@/utils/bubbleText";
-import { PersonSprite, sheetForColor, usePersonMotion } from "./PersonSprite";
+import {
+  PersonSprite,
+  sheetForColor,
+  usePersonMotion,
+  type PersonMode,
+} from "./PersonSprite";
+import { ThinkingDots } from "./ThinkingDots";
 import { NameTag, accentFromHex } from "./NameTag";
 
 // ============================================================================
@@ -39,6 +67,8 @@ export interface AgentSpriteProps {
   renderBubble?: boolean; // Whether to render bubble (default true)
   renderLabel?: boolean; // Whether to render name label (default true)
   isTyping?: boolean; // Whether agent is typing (animates arms)
+  /** Render-only nudge so people don't stand inside each other. */
+  offset?: Position;
 }
 
 // ============================================================================
@@ -147,13 +177,30 @@ function AgentSpriteComponent({
   renderBubble = true,
   renderLabel = true,
   isTyping = false,
+  offset,
 }: AgentSpriteProps): ReactNode {
   const clickToFocusEnabled = usePreferencesStore((s) => s.clickToFocusEnabled);
   const openFocusPopup = useAttentionStore((s) => s.openFocusPopup);
 
   const sheet = useMemo(() => sheetForColor(color, id), [color, id]);
+  const seed = useMemo(() => seedFromId(id), [id]);
   const motion = usePersonMotion(position);
-  const personMode = motion.moving ? "walk" : phase === "idle" ? "sit" : "idle";
+  const desk = useGameStore((s) => s.agents.get(id)?.desk ?? null);
+  const greeting = useFirstMoments(phase === "in_arrival_queue", GREET_MS);
+
+  const atDesk =
+    phase === "idle" &&
+    desk !== null &&
+    isNear(position, getDeskPosition(desk));
+  const stance = agentStance({
+    phase,
+    moving: motion.moving,
+    atDesk,
+    atCoffee: isAtCoffeeSpot(position),
+    msInPhase: greeting ? 0 : GREET_MS,
+  });
+  const look = facingFor(stance, phase, position, motion.direction);
+  const personMode = MODE_FOR_STANCE[stance];
 
   // Click handler for focus popup
   const handlePointerTap = useCallback(() => {
@@ -172,8 +219,8 @@ function AgentSpriteComponent({
 
   return (
     <pixiContainer
-      x={position.x}
-      y={position.y}
+      x={position.x + (offset?.x ?? 0)}
+      y={position.y + (offset?.y ?? 0)}
       onPointerTap={handlePointerTap}
       interactive={clickToFocusEnabled}
     >
@@ -181,10 +228,21 @@ function AgentSpriteComponent({
       <PersonSprite
         sheet={sheet}
         mode={personMode}
-        direction={personMode === "sit" ? "down" : motion.direction}
+        direction={look}
         feetY={personMode === "sit" ? 30 : 22}
         typing={isTyping}
+        walkDistance={motion.distance}
+        gesture={
+          stance === "walk" || stance === "sit" || stance === "stand"
+            ? undefined
+            : stance
+        }
+        seed={seed}
+        glance={stance === "stand" || (stance === "sit" && !isTyping)}
       />
+
+      {/* Seated and not typing: the agent is thinking */}
+      {stance === "sit" && !bubble && <ThinkingDots active={!isTyping} />}
 
       {/* Agent name if present - hide when in elevator or when renderLabel is false */}
       {renderLabel && name && !isInElevatorZone(position) && (
@@ -197,6 +255,53 @@ function AgentSpriteComponent({
       )}
     </pixiContainer>
   );
+}
+
+// ============================================================================
+// STANCE HELPERS
+// ============================================================================
+
+const MODE_FOR_STANCE: Record<AgentStance, PersonMode> = {
+  walk: "walk",
+  sit: "sit",
+  stand: "idle",
+  greet: "gesture",
+  talk: "gesture",
+  handoff: "gesture",
+  sip: "gesture",
+};
+
+function isNear(a: Position, b: Position): boolean {
+  return Math.abs(a.x - b.x) <= 6 && Math.abs(a.y - b.y) <= 6;
+}
+
+/** Where an agent looks when not walking. */
+function facingFor(
+  stance: AgentStance,
+  phase: AgentPhase,
+  position: Position,
+  walked: Facing,
+): Facing {
+  if (stance === "walk") return walked;
+  if (stance === "sit") return "down";
+  if (stance === "sip") return COFFEE_FACING;
+  if (phase === "arriving" || phase === "in_elevator") return "down";
+  if (facesBoss(phase)) return faceToward(position, BOSS_POSITION);
+  return walked;
+}
+
+/**
+ * True during the first `ms` of `active` (once per mounted agent; the
+ * arrival queue phase only happens once in an agent's life).
+ */
+function useFirstMoments(active: boolean, ms: number): boolean {
+  const [expired, setExpired] = useState(false);
+  useEffect(() => {
+    if (!active) return;
+    const timer = setTimeout(() => setExpired(true), ms);
+    return () => clearTimeout(timer);
+  }, [active, ms]);
+  return active && !expired;
 }
 
 // ============================================================================

@@ -14,22 +14,16 @@ from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import HTTPConnection
+from starlette.types import Receive, Scope, Send
 
+from app.api.client_trust import is_allowed_peer, is_trusted_network
 from app.config import get_settings
-from app.core.tailnet import is_tailscale_ip
 
 # Resolved once at import time, mirroring the previous ``main.py`` pattern.
 # ``Settings`` is a pydantic-settings singleton; subsequent ``get_settings()``
 # calls return the same instance, so call-time attribute access is identical.
 settings = get_settings()
-
-_LOCALHOST_HOSTS = frozenset({"127.0.0.1", "::1", "localhost", "testclient"})
-
-
-def _is_trusted_client(host: str | None) -> bool:
-    if host in _LOCALHOST_HOSTS:
-        return True
-    return settings.tailnet_enabled and is_tailscale_ip(host)
 
 
 class TailnetCORSMiddleware(CORSMiddleware):
@@ -53,11 +47,22 @@ class LocalhostOnlyMiddleware(BaseHTTPMiddleware):
     ``"testclient"`` is the sentinel host used by Starlette's test transport
     and cannot appear on a real TCP connection, so it is safe to allow.
     With ``ALLOW_TAILNET`` Tailscale addresses pass too (never other LANs).
+    WebSocket handshakes get the same check (closed with 1008), since
+    ``BaseHTTPMiddleware`` alone never sees websocket scopes.
     """
 
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if (
+            scope["type"] == "websocket"
+            and settings.LOCALHOST_ONLY
+            and not is_allowed_peer(HTTPConnection(scope))
+        ):
+            await send({"type": "websocket.close", "code": 1008, "reason": "localhost only"})
+            return
+        await super().__call__(scope, receive, send)
+
     async def dispatch(self, request: Request, call_next):  # type: ignore[override]
-        client_host = request.client.host if request.client else None
-        if settings.LOCALHOST_ONLY and not _is_trusted_client(client_host):
+        if settings.LOCALHOST_ONLY and not is_allowed_peer(request):
             return JSONResponse(
                 status_code=403,
                 content={"detail": "Access denied: localhost only"},
@@ -138,10 +143,7 @@ class ApiKeyMiddleware(BaseHTTPMiddleware):
         if not requires_auth:
             return await call_next(request)
 
-        client_host = request.client.host if request.client else None
-        if settings.is_trusted_network_client(client_host) and not _always_keyed(
-            request.url.path, request.method
-        ):
+        if is_trusted_network(request) and not _always_keyed(request.url.path, request.method):
             return await call_next(request)
 
         provided = request.headers.get("X-API-Key", "")

@@ -13,6 +13,12 @@ os.environ["CLAUDE_OFFICE_API_KEY"] = ""
 os.environ["ENABLE_WEB_PROMPT"] = "false"
 os.environ["WEB_PROMPT_TAILNET_HOST"] = ""
 os.environ["LOCALHOST_ONLY"] = "true"
+# Network trust is off too, so a developer .env with phone access on
+# (ALLOW_TAILNET / TRUST_*) does not change test results.
+os.environ["ALLOW_TAILNET"] = "false"
+os.environ["TRUST_TAILNET"] = "false"
+os.environ["TRUST_LOOPBACK"] = "false"
+os.environ["TAILNET_HOSTS"] = ""
 
 import asyncio
 import tempfile

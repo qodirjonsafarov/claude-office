@@ -5,7 +5,15 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.core.tailnet import is_loopback_ip, is_tailnet_origin, is_tailscale_ip, parse_hosts
+from app.core.tailnet import (
+    host_name,
+    ip_of,
+    is_loopback_ip,
+    is_tailnet_origin,
+    is_tailscale_ip,
+    parse_hosts,
+    parse_ips,
+)
 
 _BACKEND_DIR = Path(__file__).parent.parent.resolve()
 _DEFAULT_DB_PATH = _BACKEND_DIR / "visualizer.db"
@@ -133,6 +141,11 @@ class Settings(BaseSettings):
     # Comma-separated MagicDNS names of this machine, e.g.
     # "my-machine,my-machine.tailXXXX.ts.net".
     TAILNET_HOSTS: str = ""
+    # Comma-separated Tailscale addresses of your own devices (e.g. the
+    # phone's 100.x). When set, only these count as tailnet clients; empty
+    # means the whole Tailscale range (100.64.0.0/10 is shared CGNAT space,
+    # so listing your devices is safer).
+    TAILNET_CLIENT_IPS: str = ""
 
     # Trusted networks (opt-in). The office UI's own requests (reads, renames,
     # preferences, WebSocket) from these clients need no X-API-Key, so the
@@ -182,10 +195,33 @@ class Settings(BaseSettings):
         """True when tailnet access is on and *origin* is the UI on the tailnet."""
         return self.tailnet_enabled and is_tailnet_origin(origin, self.tailnet_hosts)
 
+    def is_tailnet_client(self, host: str | None) -> bool:
+        """True for a Tailscale address, limited to TAILNET_CLIENT_IPS when set."""
+        if not is_tailscale_ip(host):
+            return False
+        allowed = parse_ips(self.TAILNET_CLIENT_IPS)
+        return not allowed or ip_of(host or "") in allowed
+
     def is_trusted_network_client(self, host: str | None) -> bool:
         """True for a client on a trusted network (TRUST_TAILNET / TRUST_LOOPBACK)."""
-        return (self.TRUST_TAILNET and is_tailscale_ip(host)) or (
+        return (self.TRUST_TAILNET and self.is_tailnet_client(host)) or (
             self.TRUST_LOOPBACK and is_loopback_ip(host)
+        )
+
+    def is_own_host(self, host_header: str | None) -> bool:
+        """True when a Host header names this machine (DNS-rebinding guard).
+
+        Loopback names and addresses, TAILNET_HOSTS names and Tailscale IPs;
+        an attacker's rebinding domain is none of these.
+        """
+        host = host_name(host_header)
+        if host is None:
+            return False
+        return (
+            host == "localhost"
+            or is_loopback_ip(host)
+            or is_tailscale_ip(host)
+            or host in self.tailnet_hosts
         )
 
     model_config = SettingsConfigDict(env_file=".env")

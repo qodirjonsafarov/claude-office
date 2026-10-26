@@ -320,7 +320,10 @@ def _proven_active(sm: "StateMachine", agent: Agent, event: ToolEvent) -> bool:
     if not native or native != agent.native_id:
         return False
     if event.event_type == EventType.POST_TOOL_USE:
-        return event.data.tool_use_id not in sm.agent_open_tools.get(agent.id, set())
+        old_calls = sm.agent_open_tools.get(agent.id, set()) | sm.agent_tools_open_at_rest.get(
+            agent.id, set()
+        )
+        return event.data.tool_use_id not in old_calls
     return True
 
 
@@ -670,6 +673,7 @@ def _handle_subagent_stop(sm: "StateMachine", event: AnyEvent) -> None:
         stopping_agent.state = AgentState.RESTING
         stopping_agent.resting_since = event.timestamp
         stopping_agent.bubble = None
+        sm.close_open_tools(agent_id)
         native = event.data.native_agent_id or native_id_from_transcript(
             event.data.agent_transcript_path
         )
@@ -941,6 +945,11 @@ class StateMachine:
     agent_open_tools: dict[str, set[str]] = field(
         default_factory=lambda: cast(dict[str, set[str]], {})
     )
+    # Calls still open when the agent went to rest (interrupted: no PostToolUse
+    # will come). Kept only so their late PostToolUse never counts as new work.
+    agent_tools_open_at_rest: dict[str, set[str]] = field(
+        default_factory=lambda: cast(dict[str, set[str]], {})
+    )
     # (event type, tool_use_id) -> agent id of the copy kept (accept_tool_event)
     seen_tool_calls: dict[tuple[str, str], str] = field(
         default_factory=lambda: cast(dict[tuple[str, str], str], {})
@@ -1105,6 +1114,13 @@ class StateMachine:
             agent.state = AgentState.RESTING
             agent.resting_since = now
             agent.bubble = None
+            self.close_open_tools(agent_id)
+
+    def close_open_tools(self, agent_id: str) -> None:
+        """A resting agent is in no tool call; calls left open were interrupted."""
+        open_tools = self.agent_open_tools.pop(agent_id, None)
+        if open_tools:
+            self.agent_tools_open_at_rest.setdefault(agent_id, set()).update(open_tools)
 
     def send_longest_resting_home(self) -> str | None:
         """Free a desk: the agent resting the longest leaves. None if nobody rests."""
@@ -1130,6 +1146,7 @@ class StateMachine:
             del self.agents[agent_id]
         self.agent_last_event.pop(agent_id, None)
         self.agent_open_tools.pop(agent_id, None)
+        self.agent_tools_open_at_rest.pop(agent_id, None)
         self.agent_progress.forget_agent(agent_id)
         if agent_id in self.arrival_queue:
             self.arrival_queue.remove(agent_id)

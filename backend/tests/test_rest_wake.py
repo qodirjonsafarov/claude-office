@@ -136,6 +136,16 @@ class TestProvenActivityWakes:
 
         assert sm.agents[CODER].state == AgentState.RESTING
 
+    def test_the_late_post_of_a_call_open_when_the_sweep_rested_it_does_not(self) -> None:
+        sm = StateMachine()
+        _start(sm, CODER, T0)
+        sm.agents[CODER].native_id = N_FRONT
+        _hook_tool(sm, EventType.PRE_TOOL_USE, T0 + timedelta(minutes=1), "toolu_last")
+        sm.rest_agent(CODER, T0 + timedelta(minutes=70))
+        _hook_tool(sm, EventType.POST_TOOL_USE, T0 + timedelta(minutes=71), "toolu_last")
+
+        assert sm.agents[CODER].state == AgentState.RESTING
+
     def test_a_poller_copy_without_native_id_does_not(self) -> None:
         sm = StateMachine()
         _rested_coder(sm)

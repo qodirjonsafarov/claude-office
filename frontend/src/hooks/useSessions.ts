@@ -220,6 +220,8 @@ export function useSessions(
       agentMachineService.reset();
       useGameStore.getState().resetForSessionSwitch();
 
+      // An automatic pick: the user did not choose this session.
+      manualPick.current = false;
       setSessionId(newSessionInProject.id);
       showStatus(
         t("status.autoFollowed", {

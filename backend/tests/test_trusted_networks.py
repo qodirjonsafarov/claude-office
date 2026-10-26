@@ -23,7 +23,8 @@ LAN_IP = "192.168.1.20"
 
 
 def _client(host: str) -> TestClient:
-    return TestClient(app, client=(host, 50000))
+    # The UI addresses the backend by this machine's own name (Host check).
+    return TestClient(app, client=(host, 50000), base_url="http://localhost:8000")
 
 
 @pytest.fixture(autouse=True)

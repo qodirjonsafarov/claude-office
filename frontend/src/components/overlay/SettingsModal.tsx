@@ -26,10 +26,12 @@ interface SettingsModalProps {
 
 function SettingsToggle({
   label,
+  description,
   checked,
   onChange,
 }: {
   label: string;
+  description?: string;
   checked: boolean;
   onChange: () => void;
 }): ReactNode {
@@ -46,21 +48,34 @@ function SettingsToggle({
           onChange();
         }
       }}
-      className="flex items-center justify-between p-2.5 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:border-slate-600 transition-colors"
+      className="qo-group-row"
     >
-      <span className="text-slate-300 text-sm">{label}</span>
-      <div
-        className={`w-9 h-5 rounded-full relative transition-colors ${
-          checked ? "bg-purple-500" : "bg-slate-600"
-        }`}
-      >
-        <div
-          className={`absolute top-0.5 w-4 h-4 rounded-full bg-knob shadow-md transition-transform ${
-            checked ? "translate-x-[18px]" : "translate-x-0.5"
-          }`}
-        />
+      <div className="min-w-0">
+        <p className="m-0 text-[14px] font-bold text-ink">{label}</p>
+        {description && (
+          <p className="m-0 mt-0.5 text-[12.5px] font-semibold leading-snug text-ink-faint">
+            {description}
+          </p>
+        )}
       </div>
+      <span aria-hidden="true" className="qo-switch" data-on={checked} />
     </div>
+  );
+}
+
+/** A group of settings: a small label, then its controls. */
+function Section({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}): ReactNode {
+  return (
+    <section>
+      <h3 className="qo-label m-0 mb-2.5 px-1">{label}</h3>
+      {children}
+    </section>
   );
 }
 
@@ -137,18 +152,16 @@ export default function SettingsModal({
       onClose={onClose}
       dismissible={false}
       title={t("settings.title")}
+      wide
       footer={
         <button onClick={onClose} className="qo-btn qo-btn-lg qo-btn-primary">
           {t("modal.close")}
         </button>
       }
     >
-      <div className="space-y-6">
+      <div className="flex flex-col gap-6">
         {/* Theme: dark, light or the OS choice */}
-        <div>
-          <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
-            {t("settings.theme")}
-          </label>
+        <Section label={t("settings.theme")}>
           <div
             className="qo-segmented"
             role="radiogroup"
@@ -166,15 +179,12 @@ export default function SettingsModal({
               </button>
             ))}
           </div>
-        </div>
+        </Section>
 
         {/* Clock Type */}
-        <div>
-          <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
-            {t("settings.clockType")}
-          </label>
+        <Section label={t("settings.clockType")}>
           <div
-            className="flex gap-3"
+            className="qo-segmented"
             role="radiogroup"
             aria-label={t("settings.clockType")}
           >
@@ -205,11 +215,6 @@ export default function SettingsModal({
                     buttons[nextIdx].focus();
                   }
                 }}
-                className={`flex-1 px-4 py-3 rounded-lg border text-sm font-bold transition-colors focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 outline-none ${
-                  clockType === type
-                    ? "bg-purple-500/20 border-purple-500 text-purple-300"
-                    : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600"
-                }`}
               >
                 {type === "analog"
                   ? t("settings.analog")
@@ -217,16 +222,13 @@ export default function SettingsModal({
               </button>
             ))}
           </div>
-        </div>
+        </Section>
 
         {/* Time Format - only visible when digital */}
         {clockType === "digital" && (
-          <div>
-            <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
-              {t("settings.timeFormat")}
-            </label>
+          <Section label={t("settings.timeFormat")}>
             <div
-              className="flex gap-3"
+              className="qo-segmented"
               role="radiogroup"
               aria-label={t("settings.timeFormat")}
             >
@@ -259,66 +261,29 @@ export default function SettingsModal({
                       buttons[nextIdx].focus();
                     }
                   }}
-                  className={`flex-1 px-4 py-3 rounded-lg border text-sm font-bold transition-colors focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 outline-none ${
-                    clockFormat === fmt
-                      ? "bg-purple-500/20 border-purple-500 text-purple-300"
-                      : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600"
-                  }`}
                 >
                   {fmt === "12h" ? t("settings.12hour") : t("settings.24hour")}
                 </button>
               ))}
             </div>
-          </div>
+          </Section>
         )}
 
         {/* Session Settings */}
-        <div className="pt-4 border-t border-slate-800">
-          <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
-            {t("settings.sessionBehavior")}
-          </label>
-          <div
-            role="switch"
-            aria-checked={autoFollowNewSessions}
-            aria-label={t("settings.autoFollow")}
-            tabIndex={0}
-            onClick={handleAutoFollowToggle}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                handleAutoFollowToggle();
-              }
-            }}
-            className="flex items-center justify-between p-3 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:border-slate-600 transition-colors"
-          >
-            <div>
-              <p className="text-slate-300 text-sm font-medium">
-                {t("settings.autoFollow")}
-              </p>
-              <p className="text-slate-500 text-xs mt-0.5">
-                {t("settings.autoFollowDesc")}
-              </p>
-            </div>
-            <div
-              className={`w-11 h-6 rounded-full relative transition-colors ${
-                autoFollowNewSessions ? "bg-purple-500" : "bg-slate-600"
-              }`}
-            >
-              <div
-                className={`absolute top-1 w-4 h-4 rounded-full bg-knob shadow-md transition-transform ${
-                  autoFollowNewSessions ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </div>
+        <Section label={t("settings.sessionBehavior")}>
+          <div className="qo-group">
+            <SettingsToggle
+              label={t("settings.autoFollow")}
+              description={t("settings.autoFollowDesc")}
+              checked={autoFollowNewSessions}
+              onChange={handleAutoFollowToggle}
+            />
           </div>
-        </div>
+        </Section>
 
         {/* Controls: command bar and click-to-focus (not toasts) */}
-        <div className="pt-4 border-t border-slate-800">
-          <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
-            {t("settings.controls")}
-          </label>
-          <div className="space-y-2">
+        <Section label={t("settings.controls")}>
+          <div className="qo-group">
             <SettingsToggle
               label={t("settings.commandBar")}
               checked={commandBarEnabled}
@@ -330,14 +295,11 @@ export default function SettingsModal({
               onChange={() => setClickToFocusEnabled(!clickToFocusEnabled)}
             />
           </div>
-        </div>
+        </Section>
 
         {/* Attention Settings */}
-        <div className="pt-4 border-t border-slate-800">
-          <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
-            {t("settings.toastFilters")}
-          </label>
-          <div className="space-y-2">
+        <Section label={t("settings.toastFilters")}>
+          <div className="qo-group">
             <SettingsToggle
               label={t("settings.filterPermission")}
               checked={toastFilterPermission}
@@ -361,12 +323,12 @@ export default function SettingsModal({
               onChange={() => setToastFilterArrival(!toastFilterArrival)}
             />
           </div>
-        </div>
+        </Section>
 
         {/* Tip */}
-        <div className="pt-4 border-t border-slate-800">
-          <p className="text-slate-500 text-xs">{t("settings.clockTip")}</p>
-        </div>
+        <p className="m-0 px-1 text-[12.5px] leading-snug text-ink-faint">
+          {t("settings.clockTip")}
+        </p>
       </div>
     </Modal>
   );

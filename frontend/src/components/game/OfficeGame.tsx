@@ -66,6 +66,7 @@ import { useAgentLooks } from "@/stores/agentLookStore";
 import { SceneSignalsCache, type PersonSignals } from "@/systems/sceneSignals";
 import { useOfficeTextures } from "@/hooks/useOfficeTextures";
 import { sceneLayout, type SceneLayout } from "@/utils/sceneLayout";
+import { isPanLocked, panCorrection } from "@/utils/panLock";
 import { sceneToClient, useSceneView } from "@/stores/sceneViewStore";
 import { isReducedMotion } from "@/systems/reducedMotion";
 import { scenePalette } from "@/systems/scenePalette";
@@ -567,6 +568,8 @@ export function OfficeGame(): ReactNode {
   // origin. On load, resize, rotation and side panels moving; a manual zoom
   // is eased back (no easing with reduced motion).
   const fitScaleRef = useRef(1);
+  // Drag pans only when zoomed in past the fit
+  const [panLocked, setPanLocked] = useState(true);
   const applyAutoFit = useCallback(() => {
     const el = containerRef.current;
     const ref = transformRef.current;
@@ -614,7 +617,12 @@ export function OfficeGame(): ReactNode {
         minScale={1}
         maxScale={3}
         centerZoomedOut={false}
-        limitToBounds={false}
+        // The scene never leaves the stage (utils/panLock.ts): locked at the
+        // fit, panned zoomed in only until its edges meet the stage's; no
+        // rubber-band past the edges.
+        limitToBounds={true}
+        disablePadding={true}
+        panning={{ disabled: panLocked }}
         wheel={{ step: 0.1 }}
         pinch={{ step: 5 }}
         doubleClick={{ mode: "reset" }}
@@ -624,10 +632,21 @@ export function OfficeGame(): ReactNode {
             if (zoomTimerRef.current) clearTimeout(zoomTimerRef.current);
             zoomTimerRef.current = setTimeout(syncResolution, 150);
           }
+          setPanLocked(isPanLocked(state.scale, fitScaleRef.current));
           // Zooming out below the fit (or "1:1") snaps back to the fit
           if (state.scale < fitScaleRef.current - 0.01) {
             applyAutoFit();
+            return;
           }
+          // Safety net: pull the scene back if it ever got off its bounds
+          const el = containerRef.current;
+          if (!el) return;
+          const fix = panCorrection(
+            { x: state.positionX, y: state.positionY, scale: state.scale },
+            { width: el.clientWidth, height: el.clientHeight },
+            fitScaleRef.current,
+          );
+          if (fix) ref.setTransform(fix.x, fix.y, fix.scale, 0);
         }}
       >
         <ZoomControls />

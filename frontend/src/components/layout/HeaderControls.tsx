@@ -49,68 +49,78 @@ export function HeaderControls({
   const unreadCount = useAttentionStore(selectUnreadCount);
   const openCommandBar = useAttentionStore((s) => s.openCommandBar);
 
+  const status = `${t("header.status")}: ${
+    isConnected ? t("header.connected") : t("header.disconnected")
+  }`;
+
   return (
     <div className="flex gap-2 items-center">
       {unreadCount > 0 && (
-        <button
-          onClick={openCommandBar}
-          className="qo-btn qo-btn-secondary relative !text-orange-400"
-          title="Attention Queue"
-        >
-          <Bell size={15} />
-          <span className="absolute -top-1.5 -right-1.5 bg-orange-400 text-on-accent text-[9px] font-extrabold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
-        </button>
+        <div className="qo-capsule">
+          <button
+            onClick={openCommandBar}
+            className="qo-icon-btn-sm !text-max"
+            title="Attention Queue"
+            aria-label="Attention Queue"
+          >
+            <Bell size={17} />
+            <span className="absolute top-0 right-0 bg-max text-on-accent text-[10.5px] font-extrabold rounded-full min-w-[17px] h-[17px] px-1 flex items-center justify-center">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          </button>
+        </div>
       )}
 
-      <button
-        onClick={onToggleFocus}
-        className="qo-btn qo-btn-secondary"
-        title={t("header.focusHint")}
-        aria-keyshortcuts="F"
-      >
-        <Maximize2 size={15} />
-        {t("header.focus")}
-      </button>
+      {/* The connection, then the screen's few controls, in one capsule */}
+      <div className="qo-capsule">
+        <div className="qo-capsule-item !pl-3 !pr-3.5" title={status}>
+          <span
+            aria-hidden="true"
+            className={`qo-live-dot ${isConnected ? "" : "qo-live-dot-off"}`}
+          />
+          <span className={isConnected ? "text-ink-soft" : "text-danger"}>
+            {isConnected ? t("header.connected") : t("header.disconnected")}
+          </span>
+        </div>
+        <span className="qo-capsule-sep" aria-hidden="true" />
 
-      <button
-        onClick={onOpenSettings}
-        data-tour-id="settings-btn"
-        className="qo-btn qo-btn-secondary"
-      >
-        <Settings size={15} />
-        {t("header.settings")}
-      </button>
+        <button
+          onClick={onToggleFocus}
+          className="qo-icon-btn-sm"
+          title={t("header.focusHint")}
+          aria-label={t("header.focus")}
+          aria-keyshortcuts="F"
+        >
+          <Maximize2 size={17} />
+        </button>
 
-      <button onClick={onOpenHelp} className="qo-btn qo-btn-secondary">
-        <HelpCircle size={15} />
-        {t("header.help")}
-      </button>
+        <button
+          onClick={onOpenSettings}
+          data-tour-id="settings-btn"
+          className="qo-icon-btn-sm"
+          title={t("header.settings")}
+          aria-label={t("header.settings")}
+        >
+          <Settings size={17} />
+        </button>
 
-      {/* Rarely-used developer/maintenance actions */}
-      <HeaderMoreMenu
-        debugMode={debugMode}
-        onSimulate={onSimulate}
-        onReset={onReset}
-        onClearDB={onClearDB}
-        onToggleDebug={onToggleDebug}
-      />
+        <button
+          onClick={onOpenHelp}
+          className="qo-icon-btn-sm"
+          title={t("header.help")}
+          aria-label={t("header.help")}
+        >
+          <HelpCircle size={17} />
+        </button>
 
-      {/* Connection status */}
-      <div
-        className="qo-pill ml-1"
-        title={`${t("header.status")}: ${
-          isConnected ? t("header.connected") : t("header.disconnected")
-        }`}
-      >
-        <span
-          aria-hidden="true"
-          className={`qo-live-dot ${isConnected ? "" : "qo-live-dot-off"}`}
+        {/* Rarely-used developer/maintenance actions */}
+        <HeaderMoreMenu
+          debugMode={debugMode}
+          onSimulate={onSimulate}
+          onReset={onReset}
+          onClearDB={onClearDB}
+          onToggleDebug={onToggleDebug}
         />
-        <span className={isConnected ? "text-ink" : "text-danger"}>
-          {isConnected ? t("header.connected") : t("header.disconnected")}
-        </span>
       </div>
     </div>
   );

@@ -299,37 +299,21 @@ export default function V2TestPage(): React.ReactNode {
           </>
         }
       >
-        <div className="space-y-3 font-mono text-sm">
-          <div className="flex justify-between items-center py-2 border-b border-slate-700">
-            <kbd className="min-w-8 px-2 py-1 bg-panel-3 border border-line-strong rounded-lg text-ink font-extrabold text-center">
-              F
-            </kbd>
-            <span className="text-slate-300">{t("modal.focusMode")}</span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-slate-700">
-            <kbd className="min-w-8 px-2 py-1 bg-panel-3 border border-line-strong rounded-lg text-ink font-extrabold text-center">
-              D
-            </kbd>
-            <span className="text-slate-300">{t("modal.toggleDebug")}</span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-slate-700">
-            <kbd className="min-w-8 px-2 py-1 bg-panel-3 border border-line-strong rounded-lg text-ink font-extrabold text-center">
-              P
-            </kbd>
-            <span className="text-slate-300">{t("modal.showAgentPaths")}</span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-slate-700">
-            <kbd className="min-w-8 px-2 py-1 bg-panel-3 border border-line-strong rounded-lg text-ink font-extrabold text-center">
-              Q
-            </kbd>
-            <span className="text-slate-300">{t("modal.showQueueSlots")}</span>
-          </div>
-          <div className="flex justify-between items-center py-2">
-            <kbd className="min-w-8 px-2 py-1 bg-panel-3 border border-line-strong rounded-lg text-ink font-extrabold text-center">
-              L
-            </kbd>
-            <span className="text-slate-300">{t("modal.showPhaseLabels")}</span>
-          </div>
+        <div className="qo-group">
+          {(
+            [
+              ["F", t("modal.focusMode")],
+              ["D", t("modal.toggleDebug")],
+              ["P", t("modal.showAgentPaths")],
+              ["Q", t("modal.showQueueSlots")],
+              ["L", t("modal.showPhaseLabels")],
+            ] as const
+          ).map(([key, label]) => (
+            <div key={key} className="qo-group-row">
+              <kbd className="qo-kbd">{key}</kbd>
+              <span className="text-[14px] font-bold text-ink">{label}</span>
+            </div>
+          ))}
         </div>
       </Modal>
 
@@ -361,13 +345,13 @@ export default function V2TestPage(): React.ReactNode {
       >
         <p>
           {t("modal.deleteSessionConfirm")}{" "}
-          <span className="font-mono text-accent">
+          <span className="font-extrabold text-ink">
             {sessionPendingDelete?.projectName ||
               sessionPendingDelete?.id.slice(0, 8)}
           </span>
           ?
         </p>
-        <p className="text-slate-400 text-sm mt-2">
+        <p className="m-0 mt-2 text-[13.5px] text-ink-faint">
           {t("modal.deleteSessionWarning")}{" "}
           {sessionPendingDelete?.eventCount ?? 0} {t("modal.events")}.{" "}
           {t("modal.cannotBeUndone")}
@@ -398,30 +382,32 @@ export default function V2TestPage(): React.ReactNode {
         /* ----------------------------------------------------------------
             Desktop header: the mark, the counters, the controls
         ---------------------------------------------------------------- */
-        <header className="flex shrink-0 justify-between items-center gap-4 mb-3 px-1 relative h-14">
-          <div className="flex items-center gap-4 min-w-0">
+        <header className="flex shrink-0 justify-between items-center gap-4 mb-3 pl-1 relative h-12">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
             <BrandMark
-              size={42}
+              size={38}
               title={`Qodirjon ${t("app.title")}`}
               subtitle={t("app.subtitle")}
             />
           </div>
 
-          <div className="hidden xl:flex flex-1 justify-center min-w-0">
+          <div className="hidden xl:flex justify-center min-w-0">
             <HudStats />
           </div>
 
-          <HeaderControls
-            isConnected={isConnected}
-            debugMode={debugMode}
-            onSimulate={handleSimulate}
-            onReset={handleReset}
-            onClearDB={() => setIsClearModalOpen(true)}
-            onToggleDebug={handleToggleDebug}
-            onOpenSettings={() => setIsSettingsModalOpen(true)}
-            onOpenHelp={() => setIsHelpModalOpen(true)}
-            onToggleFocus={focus.toggle}
-          />
+          <div className="flex flex-1 justify-end min-w-0">
+            <HeaderControls
+              isConnected={isConnected}
+              debugMode={debugMode}
+              onSimulate={handleSimulate}
+              onReset={handleReset}
+              onClearDB={() => setIsClearModalOpen(true)}
+              onToggleDebug={handleToggleDebug}
+              onOpenSettings={() => setIsSettingsModalOpen(true)}
+              onOpenHelp={() => setIsHelpModalOpen(true)}
+              onToggleFocus={focus.toggle}
+            />
+          </div>
         </header>
       )}
 

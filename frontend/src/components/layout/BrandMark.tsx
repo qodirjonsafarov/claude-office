@@ -109,11 +109,11 @@ export function BrandMark({
       <OfficeMark size={size} />
       {title && (
         <div className="flex flex-col leading-tight min-w-0">
-          <span className="text-ink font-extrabold tracking-tight truncate text-[17px] lg:text-[20px]">
+          <span className="text-ink font-extrabold tracking-tight truncate text-[16.5px] lg:text-[17.5px]">
             {title}
           </span>
           {subtitle && (
-            <span className="text-ink-faint text-[12px] font-bold truncate">
+            <span className="mt-0.5 text-ink-faint text-[12.5px] font-bold truncate">
               {subtitle}
             </span>
           )}

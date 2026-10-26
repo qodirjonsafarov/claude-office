@@ -6,6 +6,7 @@ import { EventLog } from "@/components/layout/EventLog";
 import { ConversationHistory } from "@/components/layout/ConversationHistory";
 import { useDragResize } from "@/hooks/useDragResize";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useAttentionStore } from "@/stores/attentionStore";
 
 // ============================================================================
 // CONSTANTS
@@ -34,6 +35,9 @@ export function RightSidebar(): React.ReactNode {
   const [activeTab, setActiveTab] = useState<"events" | "conversation">(
     "events",
   );
+  // "Jump to log" on the agent card: show the events tab.
+  const logJump = useAttentionStore((s) => s.logJump);
+  if (logJump && activeTab !== "events") setActiveTab("events");
 
   const {
     size: sidebarWidth,

@@ -8,6 +8,7 @@ import { type ReactNode, useCallback } from "react";
 import { shade } from "@/systems/colorShade";
 import { Graphics, Texture } from "pixi.js";
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from "@/constants/canvas";
+import { currentSceneTint, scenePalette } from "@/systems/sceneTint";
 
 // ============================================================================
 // CONSTANTS
@@ -17,16 +18,18 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT } from "@/constants/canvas";
 const WALL_HEIGHT = 250;
 const WALL_TRIM_HEIGHT = 10;
 
-// Colors (Qodirjon theme: deep navy walls, warm wood floor, neon accents)
+// Colors (Olymp theme: dark green walls, warm wood floor, lime neon).
+// The greens come from the tint on trial (systems/sceneTint, ?tint=b).
+const TINT = scenePalette(currentSceneTint());
 const FLOOR_COLOR = 0x3a2a1e;
-const WALL_TOP_COLOR = 0x1b2440;
-const WALL_BOTTOM_COLOR = 0x2a3558;
-const WAINSCOT_COLOR = 0x222b48;
+const WALL_TOP_COLOR = TINT.wallTop;
+const WALL_BOTTOM_COLOR = TINT.wallBottom;
+const WAINSCOT_COLOR = TINT.wainscot;
 const WAINSCOT_HEIGHT = 70;
 const WALL_TRIM_COLOR = 0x6b4a2f;
 const WALL_TRIM_HIGHLIGHT = 0x8a6340;
-const NEON_ORANGE = 0xff8a3d;
-const NEON_VIOLET = 0x8b5cf6;
+const NEON_START = TINT.neonStart;
+const NEON_END = TINT.neonEnd;
 const WALL_BANDS = 10;
 
 // ============================================================================
@@ -72,11 +75,11 @@ function drawWalls(g: Graphics): void {
     g.fill(lerpColor(WALL_TOP_COLOR, WALL_BOTTOM_COLOR, i / (WALL_BANDS - 1)));
   }
 
-  // Ceiling neon strip: orange fading into violet
+  // Ceiling neon strip: one green fading into another
   const segments = 32;
   const segWidth = CANVAS_WIDTH / segments;
   for (let i = 0; i < segments; i++) {
-    const color = lerpColor(NEON_ORANGE, NEON_VIOLET, i / (segments - 1));
+    const color = lerpColor(NEON_START, NEON_END, i / (segments - 1));
     g.rect(i * segWidth, 0, segWidth + 1, 4);
     g.fill(color);
     g.rect(i * segWidth, 4, segWidth + 1, 14);
@@ -91,7 +94,7 @@ function drawWalls(g: Graphics): void {
   g.fill(WALL_TRIM_COLOR);
   for (let x = 20; x < CANVAS_WIDTH - 60; x += 80) {
     g.roundRect(x, wainscotTop + 14, 60, WAINSCOT_HEIGHT - 26, 4);
-    g.stroke({ width: 2, color: 0x2f3a60 });
+    g.stroke({ width: 2, color: TINT.wainscotLine });
   }
 
   // Wooden baseboard
@@ -112,8 +115,8 @@ const PLANK_SEAM = shade(0x6f6252, FLOOR_TONE);
 
 // Team zone carpet under the desk grid
 const TEAM_ZONE = { x: 150, y: 360, w: 980, h: 400 };
-const TEAM_ZONE_COLOR = 0x23324f;
-const TEAM_ZONE_BORDER = 0x3b4f7a;
+const TEAM_ZONE_COLOR = TINT.carpet;
+const TEAM_ZONE_BORDER = TINT.carpetBorder;
 
 function drawFloor(g: Graphics): void {
   g.clear();
@@ -149,7 +152,7 @@ function drawFloor(g: Graphics): void {
   g.fill(TEAM_ZONE_COLOR);
   g.stroke({ width: 4, color: TEAM_ZONE_BORDER });
   g.roundRect(z.x + 14, z.y + 14, z.w - 28, z.h - 28, 20);
-  g.stroke({ width: 2, color: 0x8b5cf6, alpha: 0.35 });
+  g.stroke({ width: 2, color: TINT.carpetLine, alpha: 0.3 });
   // carpet texture: fine diagonal pattern
   for (let d = 0; d < z.w + z.h; d += 22) {
     const x0 = z.x + Math.max(0, d - z.h);
@@ -192,21 +195,21 @@ function drawLighting(g: Graphics): void {
   for (let i = 0; i < 8; i++) {
     const h = 40;
     g.rect(0, CANVAS_HEIGHT - (i + 1) * h, CANVAS_WIDTH, h);
-    g.fill({ color: 0x05070f, alpha: (0.05 * (8 - i)) / 8 });
+    g.fill({ color: 0x050a07, alpha: (0.05 * (8 - i)) / 8 });
   }
   // Soft side vignette: the floor fades into the dark stage
   for (let i = 0; i < 6; i++) {
     const w = 22;
     const a = (0.05 * (6 - i)) / 6;
     g.rect(i * w, WALL_HEIGHT, w, CANVAS_HEIGHT - WALL_HEIGHT);
-    g.fill({ color: 0x05070f, alpha: a });
+    g.fill({ color: 0x050a07, alpha: a });
     g.rect(
       CANVAS_WIDTH - (i + 1) * w,
       WALL_HEIGHT,
       w,
       CANVAS_HEIGHT - WALL_HEIGHT,
     );
-    g.fill({ color: 0x05070f, alpha: a });
+    g.fill({ color: 0x050a07, alpha: a });
   }
 }
 

@@ -40,6 +40,8 @@ interface AttentionState {
   commandFilter: string;
   // Focus popup
   focusPopup: FocusPopupState | null;
+  /** "Jump to log" from the agent card: the log shows this person (nonce: each jump is new). */
+  logJump: { person: string; nonce: number } | null;
 
   // Actions
   processEvent: (event: {
@@ -61,6 +63,9 @@ interface AttentionState {
   setCommandFilter: (filter: string) => void;
   openFocusPopup: (agentId: string, screenX: number, screenY: number) => void;
   closeFocusPopup: () => void;
+  jumpToLog: (person: string) => void;
+  /** The log applied the jump: forget it, so a later log mount starts on "all". */
+  clearLogJump: () => void;
   focusAgentTerminal: (
     sessionId: string,
     agentId: string | null,
@@ -159,6 +164,7 @@ export const useAttentionStore = create<AttentionState>()((set, get) => ({
   isCommandBarOpen: false,
   commandFilter: "",
   focusPopup: null,
+  logJump: null,
 
   processEvent: (event) => {
     const { urgency, level, autoDismissMs } = scoreEvent(event.type);
@@ -253,6 +259,14 @@ export const useAttentionStore = create<AttentionState>()((set, get) => ({
     }),
 
   closeFocusPopup: () => set({ focusPopup: null }),
+
+  jumpToLog: (person) =>
+    set((state) => ({
+      focusPopup: null,
+      logJump: { person, nonce: (state.logJump?.nonce ?? 0) + 1 },
+    })),
+
+  clearLogJump: () => set({ logJump: null }),
 
   focusAgentTerminal: async (sessionId, _agentId) => {
     try {

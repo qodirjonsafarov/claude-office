@@ -19,6 +19,7 @@ import { MobileSheet } from "@/components/layout/MobileSheet";
 import { MobileTabBar, type MobileTab } from "@/components/layout/MobileTabBar";
 import { SwitchMark } from "@/components/ui/SwitchMark";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useAttentionStore } from "@/stores/attentionStore";
 import type { Session } from "@/hooks/useSessions";
 import {
   useGameStore,
@@ -81,6 +82,12 @@ export function MobileOffice({
   const { t } = useTranslation();
   const [tab, setTab] = useState<MobileTab>("office");
   const [logTab, setLogTab] = useState<"events" | "conversation">("events");
+  // "Jump to log" on the agent card: open the events sheet.
+  const logJump = useAttentionStore((s) => s.logJump);
+  if (logJump && (tab !== "events" || logTab !== "events")) {
+    setTab("events");
+    setLogTab("events");
+  }
   const [logQuery, setLogQuery] = useState("");
   // The newest event the user has seen (by identity, not clock).
   const [seenEvent, setSeenEvent] = useState<EventLogEntry | null>(

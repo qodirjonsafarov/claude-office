@@ -151,3 +151,20 @@ describe("resumed agents", () => {
     expect(lastToast()?.title).toBe("Builder is back");
   });
 });
+
+describe("jump to log from the agent card", () => {
+  it("asks the log to show one person and closes the card", () => {
+    useAttentionStore.getState().openFocusPopup("a1", 10, 10);
+    useAttentionStore.getState().jumpToLog("a1");
+    const s = useAttentionStore.getState();
+    expect(s.logJump?.person).toBe("a1");
+    expect(s.focusPopup).toBeNull();
+  });
+
+  it("gives each jump a new nonce so the same person can be jumped to again", () => {
+    useAttentionStore.getState().jumpToLog("a1");
+    const first = useAttentionStore.getState().logJump?.nonce;
+    useAttentionStore.getState().jumpToLog("a1");
+    expect(useAttentionStore.getState().logJump?.nonce).not.toBe(first);
+  });
+});

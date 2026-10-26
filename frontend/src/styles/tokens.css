@@ -48,10 +48,12 @@
   --qo-line: rgba(176, 207, 193, 0.13);
   --qo-line-strong: rgba(176, 207, 193, 0.24);
 
-  /* The studio the office stands in: dark teal, lighter towards the floor. */
-  --qo-stage-top: #102524;
-  --qo-stage-bottom: #1e3533;
-  --qo-stage-shade: rgba(3, 10, 9, 0.38);
+  /* The studio the office stands in: dark Olymp green, lighter towards the floor.
+     Tint "a" (subtle dark green); "b" below is the more lime variant on trial
+     (?tint=b, see systems/sceneTint.ts). */
+  --qo-stage-top: #0d1a13;
+  --qo-stage-bottom: #1a2c20;
+  --qo-stage-shade: rgba(3, 9, 5, 0.4);
 
   /* Text. Faint text still passes 4.5:1 on the lighter panels. */
   --qo-ink: #f2f6f2;
@@ -93,6 +95,62 @@
   /* Heights of the phone bars, so the content can keep clear of them. */
   --qo-bar-h: 60px;
   --qo-rail-w: 68px;
+}
+
+:root[data-tint="b"] {
+  --qo-stage-top: #121f0c;
+  --qo-stage-bottom: #263b17;
+  --qo-stage-shade: rgba(5, 10, 2, 0.38);
+}
+
+/*
+ * Light theme (wave 3 DRAFT). A Radix-style 12-step olive scale:
+ *  1 #fcfdfc app bg   2 #f8faf8 subtle bg   3 #eff1ef element   4 #e7e9e7 hover
+ *  5 #dfe2df pressed  6 #d7dad7 line        7 #cccfcc border    8 #b9bcb8 strong
+ *  9 #898e87 solid   10 #7f847d hover      11 #60655f low text 12 #1d211c text
+ * and one darker lime accent (#4f8a1f) that reads on white.
+ */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --qo-bg: #f8faf8;
+  --qo-panel: #fcfdfc;
+  --qo-panel-2: #eff1ef;
+  --qo-panel-3: #e7e9e7;
+  --qo-line: rgba(29, 33, 28, 0.12);
+  --qo-line-strong: rgba(29, 33, 28, 0.22);
+
+  --qo-stage-top: #e4ecdc;
+  --qo-stage-bottom: #d2dec6;
+  --qo-stage-shade: rgba(60, 80, 40, 0.18);
+
+  --qo-ink: #1d211c;
+  --qo-ink-soft: #4c5249;
+  --qo-ink-faint: #60655f;
+
+  --qo-accent: #4f8a1f;
+  --qo-accent-dark: #42751a;
+  --qo-accent-dim: rgba(79, 138, 31, 0.12);
+  --qo-on-accent: #ffffff;
+
+  --qo-danger: #c8372d;
+  --qo-danger-dim: rgba(200, 55, 45, 0.1);
+  --qo-warn: #9a6700;
+  --qo-warn-dim: rgba(154, 103, 0, 0.12);
+  --qo-info: #1f6fae;
+  --qo-info-dim: rgba(31, 111, 174, 0.1);
+  --qo-max: #a65f00;
+  --qo-max-dim: rgba(166, 95, 0, 0.12);
+
+  --qo-logo-bg: #1d211c;
+  --qo-logo-hill: #34542c;
+  --qo-logo-figure: #a7f36a;
+  --qo-logo-ring: rgba(79, 138, 31, 0.55);
+
+  --qo-scrim: rgba(29, 33, 28, 0.38);
+  --qo-pulse: rgba(79, 138, 31, 0.4);
+  --qo-pulse-end: rgba(79, 138, 31, 0);
+  --qo-float-shade: rgba(29, 33, 28, 0.16);
 }
 
 @theme {
@@ -488,7 +546,8 @@
   .qo-segmented > button:hover {
     color: var(--qo-ink);
   }
-  .qo-segmented > button[aria-selected="true"] {
+  .qo-segmented > button[aria-selected="true"],
+  .qo-segmented > button[aria-checked="true"] {
     background: var(--qo-accent);
     color: var(--qo-on-accent);
   }

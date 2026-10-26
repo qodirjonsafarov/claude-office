@@ -185,6 +185,8 @@ interface DeskSurfacesTopProps {
   thermosTexture: Texture | null;
   /** Desks (1-based) whose worker runs a shell command: green screen glow. */
   terminalDesks?: ReadonlySet<number>;
+  /** A tap on an occupied desk (1-based number, desk centre on the canvas). */
+  onDeskTap?: (desk: number, x: number, y: number) => void;
 }
 
 /**
@@ -217,13 +219,25 @@ export function DeskSurfacesTop({
   rubberDuckTexture,
   thermosTexture,
   terminalDesks,
+  onDeskTap,
 }: DeskSurfacesTopProps): ReactNode {
   const desks = useDeskPositions(deskCount, occupiedDesks);
 
   return (
     <>
       {desks.map((desk, i) => (
-        <pixiContainer key={i} x={desk.x} y={desk.y}>
+        <pixiContainer
+          key={i}
+          x={desk.x}
+          y={desk.y}
+          interactive={!!onDeskTap && !desk.isEmpty}
+          cursor={onDeskTap && !desk.isEmpty ? "pointer" : undefined}
+          onPointerTap={
+            onDeskTap && !desk.isEmpty
+              ? () => onDeskTap(i + 1, desk.x, desk.y)
+              : undefined
+          }
+        >
           {/* Terminal running: the screen lights up the desk */}
           {terminalDesks?.has(i + 1) && (
             <pixiGraphics

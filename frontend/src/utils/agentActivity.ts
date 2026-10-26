@@ -338,3 +338,59 @@ export function formatDuration(ms: number): string {
   const rest = minutes % 60;
   return rest ? `${hours}h ${rest}m` : `${hours}h`;
 }
+
+/** One line of a person's recent work: "Editing api.ts" at a time (ms). */
+export interface RecentAction {
+  text: string;
+  at: number;
+}
+
+/** A person's latest tool calls in plain words (the log is newest first). */
+export function recentActions(
+  log: Iterable<LogEvent & { timestamp: Date }>,
+  key: string,
+  limit: number,
+): RecentAction[] {
+  const rows: RecentAction[] = [];
+  for (const event of log) {
+    if (rows.length >= limit) break;
+    if (event.type !== "pre_tool_use") continue;
+    if (personKey(event.agentId) !== key) continue;
+    const name = event.detail?.toolName;
+    if (!name) continue;
+    rows.push({
+      text: describeTool(name, event.detail?.toolInput ?? {}),
+      at: event.timestamp.getTime(),
+    });
+  }
+  return rows;
+}
+
+/** What a tool call works on: the file (last two parts) or the command. */
+export function toolTarget(tool: ToolCall | null): string | null {
+  if (!tool) return null;
+  const path =
+    tool.input.file_path ?? tool.input.notebook_path ?? tool.input.path;
+  if (typeof path === "string" && path) {
+    return path.split(/[\\/]/).filter(Boolean).slice(-2).join("/");
+  }
+  const command = tool.input.command;
+  if (typeof command === "string" && command.trim()) return command.trim();
+  const pattern = tool.input.pattern;
+  if (typeof pattern === "string" && pattern) return pattern;
+  return null;
+}
+
+/** The time (ms) of a person's oldest event in the log, or null. */
+export function firstSeenAt(
+  log: Iterable<{ agentId?: string | null; timestamp: Date }>,
+  key: string,
+): number | null {
+  let first: number | null = null;
+  for (const event of log) {
+    if (personKey(event.agentId) !== key) continue;
+    const at = event.timestamp.getTime();
+    if (first === null || at < first) first = at;
+  }
+  return first;
+}

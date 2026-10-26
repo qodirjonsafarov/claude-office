@@ -8,6 +8,8 @@ import {
   type ClockFormat,
 } from "@/stores/preferencesStore";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useThemePref } from "@/hooks/useThemePref";
+import type { ThemePref } from "@/systems/theme";
 
 // ============================================================================
 // TYPES
@@ -110,6 +112,12 @@ export default function SettingsModal({
   );
 
   const { t } = useTranslation();
+  const [themePref, setThemePref] = useThemePref();
+  const themeLabels: Record<ThemePref, string> = {
+    dark: t("settings.themeDark"),
+    light: t("settings.themeLight"),
+    system: t("settings.themeSystem"),
+  };
 
   const handleClockTypeChange = (type: ClockType) => {
     setClockType(type);
@@ -136,6 +144,30 @@ export default function SettingsModal({
       }
     >
       <div className="space-y-6">
+        {/* Theme (light is a draft) */}
+        <div>
+          <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
+            {t("settings.theme")}
+          </label>
+          <div
+            className="qo-segmented"
+            role="radiogroup"
+            aria-label={t("settings.theme")}
+          >
+            {(["dark", "light", "system"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={themePref === value}
+                onClick={() => setThemePref(value)}
+              >
+                {themeLabels[value]}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Clock Type */}
         <div>
           <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">

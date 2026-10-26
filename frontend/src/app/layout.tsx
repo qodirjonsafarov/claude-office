@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { THEME_BOOT_SCRIPT } from "@/systems/theme";
 
 // The UI text is Manrope (self-hosted, see styles/tokens.css); mono is kept
 // for ids, timestamps and code.
@@ -38,7 +39,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // The boot script sets data-theme / data-tint before React hydrates.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body
         className={`${geistMono.variable} antialiased`}
         suppressHydrationWarning

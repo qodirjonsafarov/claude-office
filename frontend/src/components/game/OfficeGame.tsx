@@ -93,6 +93,8 @@ import {
 } from "./AgentSprite";
 import { BossSprite, BossBubble, MobileBoss } from "./BossSprite";
 import { useNavigationStore } from "@/stores/navigationStore";
+import { usePreferencesStore } from "@/stores/preferencesStore";
+import { useAttentionStore } from "@/stores/attentionStore";
 import { LOBBY_FLOOR_ID } from "@/types/navigation";
 import { ELEVATOR_POSITION, isInElevatorZone } from "@/systems/queuePositions";
 import { TrashCanSprite } from "./TrashCanSprite";
@@ -347,6 +349,23 @@ export function OfficeGame(): ReactNode {
 
   // Desk positions for Y-sorted rendering
   const deskPositions = useDeskPositions(deskCount, occupiedDesks);
+
+  // A tap on an occupied desk opens the card of the agent sitting there.
+  const clickToFocusEnabled = usePreferencesStore((s) => s.clickToFocusEnabled);
+  const openFocusPopup = useAttentionStore((s) => s.openFocusPopup);
+  const handleDeskTap = useCallback(
+    (desk: number, x: number, y: number) => {
+      const agent = [...agents.values()].find(
+        (a) => a.desk === desk && a.phase === "idle",
+      );
+      const canvas = document.querySelector(".pixi-canvas-container canvas");
+      if (!agent || !canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const scale = rect.width / CANVAS_WIDTH;
+      openFocusPopup(agent.id, rect.left + x * scale, rect.top + y * scale);
+    },
+    [agents, openFocusPopup],
+  );
 
   // Render-only nudges so people never stand inside each other, and name
   // tag lifts so tags never overlap (systems/crowdLayout.ts)
@@ -801,6 +820,7 @@ export function OfficeGame(): ReactNode {
                     rubiksCubeTexture={textures.rubiksCube}
                     rubberDuckTexture={textures.rubberDuck}
                     thermosTexture={textures.thermos}
+                    onDeskTap={clickToFocusEnabled ? handleDeskTap : undefined}
                   />
 
                   {/* Boss */}

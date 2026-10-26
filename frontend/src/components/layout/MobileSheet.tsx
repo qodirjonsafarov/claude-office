@@ -50,21 +50,21 @@ export function MobileSheet({
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        className="qo-sheet-up w-full max-w-[560px] h-[min(78svh,680px)] [@media(max-height:520px)]:h-[92svh] flex flex-col rounded-t-xl3 bg-panel border border-line border-b-0 shadow-[0_-8px_32px_var(--qo-float-shade)] qo-safe-x"
+        className="qo-sheet-up w-full max-w-[560px] h-[min(80svh,700px)] [@media(max-height:520px)]:h-[92svh] flex flex-col rounded-t-[24px] bg-panel border border-line border-b-0 shadow-[0_-12px_40px_var(--qo-float-shade)] qo-safe-x"
       >
         <div
-          className="flex-shrink-0 touch-none px-5 pt-2.5 pb-2 border-b border-line"
+          className="flex-shrink-0 touch-none pl-5 pr-3 pt-2 pb-1"
           {...pullHandlers}
         >
           <span
             aria-hidden="true"
-            className={`block w-10 h-1 mx-auto rounded-full bg-line-strong ${
-              headerContent ? "mb-1.5" : "mb-2"
+            className={`block w-9 h-[5px] mx-auto rounded-full bg-line-strong ${
+              headerContent ? "mb-1" : "mb-1.5"
             }`}
           />
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-baseline gap-2 min-w-0 flex-shrink-0">
-              <h2 className="m-0 text-[18px] leading-tight font-extrabold text-ink truncate">
+              <h2 className="m-0 text-[19px] leading-tight font-extrabold text-ink tracking-tight truncate">
                 {title}
               </h2>
               {note && (
@@ -86,7 +86,7 @@ export function MobileSheet({
               type="button"
               onClick={close}
               aria-label={t("modal.close")}
-              className="qo-icon-btn -mr-2"
+              className="qo-icon-btn"
               data-autofocus
             >
               <X size={20} />
@@ -95,7 +95,7 @@ export function MobileSheet({
         </div>
         <div
           className={`flex-1 min-h-0 overscroll-contain pb-[max(16px,env(safe-area-inset-bottom))] ${
-            fill ? "flex flex-col p-3" : "overflow-y-auto p-4"
+            fill ? "flex flex-col px-2 pt-2" : "overflow-y-auto px-4 pt-2"
           }`}
         >
           {children}

@@ -116,7 +116,7 @@ const en = {
   "agentStatus.inQueue": "In {queueType} queue (position {position})",
 
   // Git Status
-  "git.title": "Git Status",
+  "git.title": "Git",
   "git.waitingForStatus": "Waiting for git status...",
   "git.noSession": "No session selected",
   "git.noRepo": "No git repository detected",

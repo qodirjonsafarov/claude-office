@@ -89,14 +89,18 @@
   /* The knob of a switch, on the lime or the grey track. */
   --qo-knob: #f2f6f2;
 
-  /* Lucide's inbox (2 px round strokes), for the empty states drawn from CSS. */
-  --qo-icon-inbox: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='22 12 16 12 14 15 10 15 8 12 2 12'/%3E%3Cpath d='M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'/%3E%3C/svg%3E");
-
   --qo-font: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
 
   /* Heights of the phone bars, so the content can keep clear of them. */
   --qo-bar-h: 60px;
   --qo-rail-w: 68px;
+
+  /* Depth: what floats (menus, toasts, the corner capsules) and what pops over
+     the page (dialogs, the agent card). Both follow the theme's shade. */
+  --qo-shadow-float: 0 8px 24px var(--qo-float-shade);
+  --qo-shadow-pop: 0 18px 48px var(--qo-float-shade);
+  /* Motion: one easing for things that arrive, one for hover and press. */
+  --qo-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /*
@@ -615,8 +619,398 @@
     color: var(--qo-on-accent);
   }
 
+  /* ---------- Panels: one card per side, sections inside it ---------- */
+
+  /* A side panel: a card whose sections stack and scroll on their own. */
+  .qo-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--qo-panel);
+    border: 1px solid var(--qo-line);
+    border-radius: 18px;
+  }
+  /* A section's head: its title, a count, its tools at the end. */
+  .qo-panel-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 52px;
+    padding: 8px 8px 8px 16px;
+    flex-shrink: 0;
+  }
+  /* The title of a card or a section: one size everywhere (Olymp's CARD_TITLE). */
+  .qo-title {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.25;
+    font-weight: 800;
+    color: var(--qo-ink);
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* A small count beside a title. */
+  .qo-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--qo-panel-2);
+    font-size: 11.5px;
+    font-weight: 800;
+    color: var(--qo-ink-faint);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  /* The line between two sections of a panel; it is also the handle that
+     moves the split (a grip shows on hover). */
+  .qo-split {
+    position: relative;
+    flex-shrink: 0;
+    height: 13px;
+    margin: -6px 0;
+    z-index: 1;
+    cursor: ns-resize;
+  }
+  .qo-split::before {
+    content: "";
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    top: 6px;
+    height: 1px;
+    background: var(--qo-line);
+  }
+  .qo-split::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 4px;
+    width: 36px;
+    height: 5px;
+    margin-left: -18px;
+    border-radius: 999px;
+    background: var(--qo-line-strong);
+    opacity: 0;
+    transition:
+      opacity 0.15s ease,
+      background-color 0.15s ease;
+  }
+  .qo-split:hover::after {
+    opacity: 1;
+  }
+  .qo-split:active::after {
+    opacity: 1;
+    background: var(--qo-accent);
+  }
+  /* The edge of a side panel that sets its width: a lime line on hover. */
+  .qo-resize-x {
+    position: absolute;
+    top: 18px;
+    bottom: 18px;
+    width: 8px;
+    z-index: 10;
+    cursor: ew-resize;
+  }
+  .qo-resize-x::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 3px;
+    width: 2px;
+    border-radius: 999px;
+    background: var(--qo-accent);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .qo-resize-x:hover::after,
+  .qo-resize-x:active::after {
+    opacity: 0.6;
+  }
+
+  /* A row of a list: no box of its own, a soft fill on hover, the chosen one
+     in the accent's dim light. */
+  .qo-row {
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 14px;
+    text-align: left;
+    transition: background-color 0.15s ease;
+  }
+  .qo-row:hover {
+    background: var(--qo-panel-2);
+  }
+  .qo-row[aria-current="true"],
+  .qo-row[data-selected="true"] {
+    background: var(--qo-accent-dim);
+  }
+
+  /* A small uppercase label inside a section ("Changes", "Recent commits"). */
+  .qo-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--qo-ink-faint);
+  }
+
+  /* A badge: a short state in a colour ("2 working", "Needs you"). */
+  .qo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: var(--qo-panel-2);
+    color: var(--qo-ink-soft);
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .qo-badge-accent {
+    background: var(--qo-accent-dim);
+    color: var(--qo-accent);
+  }
+  .qo-badge-max {
+    background: var(--qo-max-dim);
+    color: var(--qo-max);
+  }
+  .qo-badge-warn {
+    background: var(--qo-warn-dim);
+    color: var(--qo-warn);
+  }
+  .qo-badge-danger {
+    background: var(--qo-danger-dim);
+    color: var(--qo-danger);
+  }
+  .qo-badge-info {
+    background: var(--qo-info-dim);
+    color: var(--qo-info);
+  }
+
+  /* The capsule of the top bar: a few controls in one rounded shape. */
+  .qo-capsule {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    height: 44px;
+    padding: 4px;
+    border-radius: 999px;
+    background: var(--qo-panel);
+    border: 1px solid var(--qo-line);
+    flex-shrink: 0;
+  }
+  .qo-capsule-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--qo-ink);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+  button.qo-capsule-item:hover {
+    background: var(--qo-panel-2);
+  }
+  .qo-capsule-sep {
+    width: 1px;
+    height: 18px;
+    margin: 0 2px;
+    background: var(--qo-line);
+    flex-shrink: 0;
+  }
+  /* A round icon button inside a capsule or a panel head (36px; 44px on phones). */
+  .qo-icon-btn-sm {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    color: var(--qo-ink-soft);
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+  .qo-icon-btn-sm:hover {
+    color: var(--qo-ink);
+    background: var(--qo-panel-2);
+  }
+  .qo-icon-btn-sm[aria-haspopup][aria-expanded="true"],
+  .qo-icon-btn-sm[aria-pressed="true"] {
+    color: var(--qo-accent);
+    background: var(--qo-accent-dim);
+  }
+
+  /* A menu that drops from a button. */
+  .qo-menu {
+    padding: 6px;
+    background: var(--qo-panel);
+    border: 1px solid var(--qo-line-strong);
+    border-radius: 18px;
+    box-shadow: var(--qo-shadow-float);
+  }
+  .qo-menu-item {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 10px;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 12px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--qo-ink);
+    text-align: left;
+    transition: background-color 0.15s ease;
+  }
+  .qo-menu-item:hover {
+    background: var(--qo-panel-2);
+  }
+  .qo-menu-sep {
+    height: 1px;
+    margin: 6px 6px;
+    background: var(--qo-line);
+  }
+
+  /* A group of settings or facts: rows on one soft plate, hairlines between. */
+  .qo-group {
+    border-radius: 14px;
+    background: var(--qo-panel-2);
+    overflow: hidden;
+  }
+  .qo-group > * + * {
+    border-top: 1px solid var(--qo-line);
+  }
+  .qo-group-row {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 12px;
+    min-height: 48px;
+    padding: 10px 14px;
+    text-align: left;
+    transition: background-color 0.15s ease;
+  }
+  button.qo-group-row:hover,
+  [role="switch"].qo-group-row:hover {
+    background: var(--qo-panel-3);
+  }
+  [role="switch"].qo-group-row {
+    cursor: pointer;
+  }
+
+  /* An on/off switch: a lime track when on. */
+  .qo-switch {
+    position: relative;
+    width: 38px;
+    height: 22px;
+    flex-shrink: 0;
+    margin-left: auto;
+    border-radius: 999px;
+    background: var(--qo-panel-3);
+    box-shadow: inset 0 0 0 1px var(--qo-line-strong);
+    transition:
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .qo-switch::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: var(--qo-ink-faint);
+    transition:
+      transform 0.2s var(--qo-ease-out),
+      background-color 0.2s ease;
+  }
+  .qo-switch[data-on="true"] {
+    background: var(--qo-accent);
+    box-shadow: none;
+  }
+  .qo-switch[data-on="true"]::after {
+    transform: translateX(16px);
+    background: var(--qo-on-accent);
+  }
+
+  /* A key of the keyboard. */
+  .qo-kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 9px;
+    background: var(--qo-panel);
+    box-shadow:
+      inset 0 0 0 1px var(--qo-line-strong),
+      inset 0 -2px 0 var(--qo-line);
+    font-size: 12.5px;
+    font-weight: 800;
+    color: var(--qo-ink);
+    font-family: var(--qo-font);
+  }
+
+  /* A place with nothing in it yet: a quiet sign and a few words. */
+  .qo-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 24px 16px;
+    text-align: center;
+  }
+  .qo-empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 4px;
+    border-radius: 999px;
+    background: var(--qo-panel-2);
+    color: var(--qo-ink-faint);
+  }
+
   /* Phones (portrait and landscape, see useLayoutMode / data-layout on
      <html>): every control is a 44px touch target, mouse or not. */
+  :root[data-layout="portrait"] .qo-icon-btn-sm,
+  :root[data-layout="landscape"] .qo-icon-btn-sm {
+    width: 44px;
+    height: 44px;
+  }
+  :root[data-layout="portrait"] .qo-menu-item,
+  :root[data-layout="landscape"] .qo-menu-item {
+    height: 48px;
+  }
   :root[data-layout="portrait"] .qo-chip,
   :root[data-layout="landscape"] .qo-chip {
     height: 44px;

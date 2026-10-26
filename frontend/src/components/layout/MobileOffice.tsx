@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import {
   Bug,
+  ChevronRight,
   HelpCircle,
   Play,
   RefreshCw,
@@ -171,7 +172,7 @@ export function MobileOffice({
   );
 
   const actionClass =
-    "w-full min-h-[48px] px-4 rounded-xl2 flex items-center gap-3 text-[14.5px] font-bold text-left transition-colors";
+    "qo-group-row !min-h-[52px] !px-4 gap-3 text-[15px] font-bold text-ink";
 
   return (
     <div
@@ -249,7 +250,7 @@ export function MobileOffice({
             ) : undefined
           }
         >
-          {!landscape && logTabs("mb-3 flex-shrink-0")}
+          {!landscape && logTabs("mx-1 mb-1 flex-shrink-0")}
           <div className="flex-1 min-h-0">
             {logTab === "events" ? (
               <EventLog
@@ -285,83 +286,89 @@ export function MobileOffice({
 
       {tab === "more" && (
         <MobileSheet title={t("mobile.actions")} onClose={close}>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-6 pt-1">
             <div className="flex flex-wrap gap-2">{status}</div>
 
-            <div className="flex flex-col gap-1">
+            <div className="qo-group">
               <button
                 type="button"
                 onClick={run(onOpenSettings)}
-                className={`${actionClass} text-ink hover:bg-panel-2`}
+                className={actionClass}
               >
                 <Settings size={20} className="text-ink-faint" />
                 {t("header.settings")}
+                <ChevronRight size={18} className="ml-auto text-ink-faint" />
               </button>
               <button
                 type="button"
                 onClick={run(onOpenHelp)}
-                className={`${actionClass} text-ink hover:bg-panel-2`}
+                className={actionClass}
               >
                 <HelpCircle size={20} className="text-ink-faint" />
                 {t("header.help")}
+                <ChevronRight size={18} className="ml-auto text-ink-faint" />
               </button>
             </div>
 
-            <div className="qo-eyebrow px-1">{t("header.developer")}</div>
-            <div className="flex flex-col gap-1">
-              <button
-                type="button"
-                role="switch"
-                onClick={onToggleDebug}
-                aria-checked={debugMode}
-                className={`${actionClass} text-ink hover:bg-panel-2`}
-              >
-                <Bug size={20} className="text-ink-faint" />
-                {t("header.debugMode")}
-                <SwitchMark
-                  on={debugMode}
-                  onLabel={t("header.on")}
-                  offLabel={t("header.off")}
-                />
-              </button>
-              {/* Developer actions: only in debug mode */}
-              {debugMode && (
-                <>
-                  <button
-                    type="button"
-                    onClick={run(() => void onSimulate())}
-                    className={`${actionClass} text-ink hover:bg-panel-2`}
-                  >
-                    <Play size={20} className="text-accent" />
-                    {t("header.simulate")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={run(onReset)}
-                    className={`${actionClass} text-ink hover:bg-panel-2`}
-                  >
-                    <RefreshCw size={20} className="text-warn" />
-                    {t("header.reset")}
-                  </button>
-                </>
-              )}
-            </div>
+            <section>
+              <h3 className="qo-label m-0 mb-2.5 px-1">
+                {t("header.developer")}
+              </h3>
+              <div className="qo-group">
+                <button
+                  type="button"
+                  role="switch"
+                  onClick={onToggleDebug}
+                  aria-checked={debugMode}
+                  className={actionClass}
+                >
+                  <Bug size={20} className="text-ink-faint" />
+                  {t("header.debugMode")}
+                  <SwitchMark
+                    on={debugMode}
+                    onLabel={t("header.on")}
+                    offLabel={t("header.off")}
+                  />
+                </button>
+                {/* Developer actions: only in debug mode */}
+                {debugMode && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={run(() => void onSimulate())}
+                      className={actionClass}
+                    >
+                      <Play size={20} className="text-accent" />
+                      {t("header.simulate")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={run(onReset)}
+                      className={actionClass}
+                    >
+                      <RefreshCw size={20} className="text-warn" />
+                      {t("header.reset")}
+                    </button>
+                  </>
+                )}
+              </div>
+            </section>
 
             {/* The destructive action: its own group, well apart from Reset. */}
             {debugMode && (
-              <div className="mt-4 pt-4 border-t border-line flex flex-col gap-2">
-                <div className="qo-eyebrow px-1 !text-danger">
+              <section className="pt-2">
+                <h3 className="qo-label m-0 mb-2.5 px-1 !text-danger">
                   {t("header.dangerZone")}
-                </div>
+                </h3>
                 <button
                   type="button"
                   onClick={run(onClearDB)}
-                  className={`${actionClass} text-danger bg-danger-dim border border-danger/40`}
+                  className={`${actionClass} rounded-xl2 !text-danger bg-danger-dim`}
                 >
                   <Trash2 size={20} />
                   {t("header.clearDb")}
                 </button>
-              </div>
+              </section>
             )}
           </div>
         </MobileSheet>

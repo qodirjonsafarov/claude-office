@@ -48,27 +48,27 @@ export function AccessTokenPrompt({
       onSubmit={submit}
       role="alertdialog"
       aria-labelledby="qo-token-title"
-      className="qo-card qo-pop fixed left-1/2 -translate-x-1/2 top-[max(16px,env(safe-area-inset-top))] z-[60] w-[min(420px,calc(100vw-24px))] p-4 flex flex-col gap-3 shadow-[0_8px_24px_var(--qo-float-shade)]"
+      className="qo-card qo-pop fixed left-1/2 -translate-x-1/2 top-[max(16px,env(safe-area-inset-top))] z-[60] w-[min(440px,calc(100vw-24px))] p-5 flex flex-col gap-4 !border-line-strong shadow-[var(--qo-shadow-pop)]"
     >
       <div className="flex items-start gap-3">
-        <span className="w-9 h-9 rounded-xl2 bg-warn-dim text-warn flex items-center justify-center flex-shrink-0">
+        <span className="w-10 h-10 rounded-full bg-warn-dim text-warn flex items-center justify-center flex-shrink-0">
           <KeyRound size={18} strokeWidth={2.2} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
           <p
             id="qo-token-title"
-            className="m-0 text-[14.5px] font-extrabold text-ink"
+            className="m-0 text-[15px] font-extrabold text-ink"
           >
             {t("auth.title")}
           </p>
-          <p className="m-0 mt-0.5 text-[12.5px] font-semibold text-ink-soft">
+          <p className="m-0 mt-1 text-[13px] font-semibold leading-snug text-ink-faint">
             {t("auth.hint")}
           </p>
         </div>
         <button
           type="button"
           onClick={() => setHidden(true)}
-          className="qo-icon-btn !w-9 !h-9 -mt-1 -mr-1"
+          className="qo-icon-btn-sm -mt-1 -mr-1"
           aria-label={t("modal.close")}
         >
           <X size={16} strokeWidth={2.2} />
@@ -88,7 +88,7 @@ export function AccessTokenPrompt({
         <button
           type="submit"
           disabled={!token}
-          className="qo-btn qo-btn-lg qo-btn-primary disabled:opacity-50"
+          className="qo-btn qo-btn-lg qo-btn-primary disabled:opacity-40"
         >
           {t("auth.connect")}
         </button>

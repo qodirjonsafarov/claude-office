@@ -3,7 +3,6 @@
 import { useState, useCallback, useRef } from "react";
 import {
   History,
-  PlayCircle,
   Trash2,
   PanelLeftClose,
   PanelLeftOpen,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { GitStatusPanel } from "@/components/layout/GitStatusPanel";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { Session } from "@/hooks/useSessions";
 import { getProjectKey, groupSessionsByProject } from "@/utils/sessionGroups";
 import { usageLabel } from "@/utils/tokenUsage";
@@ -32,6 +32,8 @@ const defaultWidth = () =>
     typeof window === "undefined" ? 0 : window.innerWidth,
     LEFT_PANEL,
   );
+/** The folded panel: just the button that opens it again. */
+const COLLAPSED_WIDTH = 52;
 const SESSIONS_MIN_HEIGHT = 80;
 const SESSIONS_DEFAULT_HEIGHT = 280;
 
@@ -85,7 +87,7 @@ function EditableName({
         value={draft}
         autoFocus
         maxLength={64}
-        className="text-xs font-bold flex-1 bg-panel-3 text-ink px-1.5 py-0.5 rounded-lg outline-none border border-accent"
+        className="flex-1 min-w-0 h-7 -my-1 px-2 rounded-[9px] bg-panel text-[13.5px] font-extrabold text-ink outline-none border border-accent"
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
@@ -187,66 +189,68 @@ export function SessionSidebar({
 
   const groups = groupSessionsByProject(sessions);
 
+  const toggleLabel = isCollapsed
+    ? t("sessions.expandSidebar")
+    : t("sessions.collapseSidebar");
+  const ago = (iso: string) =>
+    formatDistanceToNow(new Date(iso), { addSuffix: true });
+
   return (
     <aside
-      className={`relative flex flex-col gap-1.5 flex-shrink-0 overflow-hidden ${
+      className={`qo-panel relative flex-shrink-0 ${
         isDragging
           ? "select-none"
-          : "transition-all duration-300 motion-reduce:transition-none"
+          : "transition-[width] duration-300 motion-reduce:transition-none"
       }`}
-      style={{ width: isCollapsed ? 40 : sidebarWidth }}
+      style={{ width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth }}
     >
-      {/* Collapse Toggle */}
-      <button
-        onClick={onToggleCollapsed}
-        className="flex items-center justify-center h-10 bg-panel hover:bg-panel-2 border border-line rounded-xl2 text-ink-soft hover:text-ink transition-colors"
-        title={
-          isCollapsed
-            ? t("sessions.expandSidebar")
-            : t("sessions.collapseSidebar")
-        }
-        aria-label={
-          isCollapsed
-            ? t("sessions.expandSidebar")
-            : t("sessions.collapseSidebar")
-        }
-        aria-expanded={!isCollapsed}
-      >
-        {isCollapsed ? (
-          <PanelLeftOpen size={16} />
-        ) : (
-          <PanelLeftClose size={16} />
-        )}
-      </button>
-
-      {!isCollapsed && (
+      {isCollapsed ? (
+        /* Folded: only the way back, at the top of a slim card */
+        <div className="flex flex-col items-center gap-2 py-2">
+          <button
+            onClick={onToggleCollapsed}
+            className="qo-icon-btn-sm"
+            title={toggleLabel}
+            aria-label={toggleLabel}
+            aria-expanded={false}
+          >
+            <PanelLeftOpen size={18} />
+          </button>
+          <span className="qo-count" title={t("sessions.title")}>
+            {sessions.length}
+          </span>
+        </div>
+      ) : (
         <>
           {/* Session Browser */}
-          <div
-            className={`bg-slate-950 border border-slate-800 rounded-lg overflow-hidden flex flex-col ${
-              hasGit ? "flex-shrink-0" : "flex-1 min-h-0"
+          <section
+            className={`flex flex-col min-h-0 ${
+              hasGit ? "flex-shrink-0" : "flex-1"
             }`}
             style={hasGit ? { height: sessionsHeight } : undefined}
           >
-            <div className="bg-slate-900 px-3 py-2 border-b border-slate-800 flex items-center gap-2 flex-shrink-0">
-              <History size={14} className="text-ink-faint" />
-              <span className="text-slate-300 font-bold uppercase tracking-wider text-xs">
-                {t("sessions.title")}
-              </span>
-              <span className="text-slate-600 text-xs">
-                ({sessions.length})
-              </span>
+            <div className="qo-panel-head">
+              <h2 className="qo-title">{t("sessions.title")}</h2>
+              <span className="qo-count">{sessions.length}</span>
+              <button
+                onClick={onToggleCollapsed}
+                className="qo-icon-btn-sm ml-auto"
+                title={toggleLabel}
+                aria-label={toggleLabel}
+                aria-expanded={true}
+              >
+                <PanelLeftClose size={18} />
+              </button>
             </div>
 
-            <div className="overflow-y-auto flex-grow p-2">
+            <div className="overflow-y-auto overscroll-contain flex-grow min-h-0 px-2 pb-2">
               {sessionsLoading && sessions.length === 0 ? (
-                <div className="p-4 text-center text-slate-600 text-xs italic">
+                <div className="flex items-center justify-center gap-3 py-8 text-[13px] font-bold text-ink-faint">
+                  <span className="qo-spinner" aria-hidden="true" />
                   {t("sessions.loading")}
                 </div>
               ) : sessions.length === 0 ? (
-                <div className="p-4 text-center text-slate-600 text-xs italic">
-                  {t("sessions.noSessions")}
-                </div>
+                <EmptyState icon={History} title={t("sessions.noSessions")} />
               ) : (
                 <div className="flex flex-col gap-1">
                   {[...groups.entries()].map(([projectKey, groupSessions]) => {
@@ -260,6 +264,7 @@ export function SessionSidebar({
                       expandedGroups.has(projectKey) || isActiveSelected;
                     const primary = groupSessions[0];
                     const rest = groupSessions.slice(1);
+                    const selected = primary.id === sessionId;
 
                     return (
                       <div key={projectKey} className="flex flex-col">
@@ -267,11 +272,8 @@ export function SessionSidebar({
                         <div
                           role="button"
                           tabIndex={0}
-                          className={`group relative w-full px-3 py-2 text-left transition-colors cursor-pointer rounded-md ${
-                            primary.id === sessionId
-                              ? "bg-purple-500/20 border-l-2 border-purple-500"
-                              : "hover:bg-slate-800/50"
-                          }`}
+                          aria-current={selected ? "true" : undefined}
+                          className="qo-row group relative cursor-pointer"
                           onClick={() => onSessionSelect(primary.id)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === " ") {
@@ -280,18 +282,13 @@ export function SessionSidebar({
                             }
                           }}
                         >
-                          <div className="flex items-center gap-2 mb-1">
-                            {hasActive ? (
-                              <span
-                                aria-hidden="true"
-                                className="qo-live-dot flex-shrink-0"
-                              />
-                            ) : (
-                              <span
-                                aria-hidden="true"
-                                className="qo-live-dot qo-live-dot-idle flex-shrink-0"
-                              />
-                            )}
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span
+                              aria-hidden="true"
+                              className={`qo-live-dot flex-shrink-0 ${
+                                hasActive ? "" : "qo-live-dot-idle"
+                              }`}
+                            />
                             <EditableName
                               session={primary}
                               isEditing={editingSessionId === primary.id}
@@ -303,41 +300,30 @@ export function SessionSidebar({
                                 onRenameSession(primary.id, name);
                               }}
                               onCancel={() => setEditingSessionId(null)}
-                              className={`text-xs font-bold truncate flex-1 ${
-                                primary.id === sessionId
-                                  ? "text-purple-300"
-                                  : "text-slate-300"
+                              className={`text-[13.5px] font-extrabold truncate flex-1 min-w-0 ${
+                                selected ? "text-accent" : "text-ink"
                               }`}
                             />
                           </div>
-                          <div className="text-[10px] text-slate-500 font-mono truncate mb-1">
-                            {primary.id}
-                          </div>
-                          <div className="flex justify-between gap-2 text-[10px] text-slate-500">
-                            <span className="truncate">
-                              {[
-                                t("sessions.events", {
-                                  count: primary.eventCount,
-                                }),
-                                usageLabel(primary.tokenUsage),
-                              ]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </span>
-                            <span>
-                              {formatDistanceToNow(
-                                new Date(primary.updatedAt),
-                                {
-                                  addSuffix: true,
-                                },
-                              )}
-                            </span>
-                          </div>
-                          {/* The danger action: its own row, set apart by a
-                              line, only on the open session (hover elsewhere) */}
                           <div
-                            className={`mt-2 pt-2 border-t border-line ${
-                              primary.id === sessionId
+                            className="mt-1 pl-[18px] text-[12px] font-semibold text-ink-faint truncate"
+                            title={primary.id}
+                          >
+                            {[
+                              ago(primary.updatedAt),
+                              t("sessions.events", {
+                                count: primary.eventCount,
+                              }),
+                              usageLabel(primary.tokenUsage),
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </div>
+                          {/* The danger action: only on the open session
+                              (hover or focus elsewhere), quiet until hovered */}
+                          <div
+                            className={`mt-2 pl-[12px] ${
+                              selected
                                 ? "flex"
                                 : "hidden group-hover:flex group-focus-within:flex"
                             }`}
@@ -348,10 +334,10 @@ export function SessionSidebar({
                                 e.stopPropagation();
                                 onDeleteSession(primary);
                               }}
-                              className="qo-btn qo-btn-danger !h-9 w-full"
+                              className="qo-btn !h-8 !px-2.5 !gap-1.5 !text-[12.5px] text-danger hover:bg-danger-dim"
                               aria-label={`${t("sessions.deleteSession")} ${primary.id}`}
                             >
-                              <Trash2 size={15} />
+                              <Trash2 size={14} />
                               {t("sessions.deleteSession")}
                             </button>
                           </div>
@@ -363,12 +349,13 @@ export function SessionSidebar({
                             <button
                               type="button"
                               onClick={() => toggleGroup(projectKey)}
-                              className="flex items-center gap-1.5 px-3 py-1 text-[10px] text-slate-600 hover:text-slate-400 font-mono transition-colors"
+                              aria-expanded={isExpanded}
+                              className="self-start flex items-center gap-1.5 h-8 ml-[22px] px-2 rounded-[10px] text-[12px] font-bold text-ink-faint hover:text-ink hover:bg-panel-2 transition-colors"
                             >
                               {isExpanded ? (
-                                <ChevronDown size={10} />
+                                <ChevronDown size={13} />
                               ) : (
-                                <ChevronRight size={10} />
+                                <ChevronRight size={13} />
                               )}
                               {t("sessions.older", { count: rest.length })}
                             </button>
@@ -379,11 +366,12 @@ export function SessionSidebar({
                                   role="button"
                                   tabIndex={0}
                                   key={session.id}
-                                  className={`group relative w-full px-3 py-1.5 pl-7 text-left transition-colors cursor-pointer rounded-md ${
+                                  aria-current={
                                     session.id === sessionId
-                                      ? "bg-purple-500/20 border-l-2 border-purple-500"
-                                      : "hover:bg-slate-800/50"
-                                  }`}
+                                      ? "true"
+                                      : undefined
+                                  }
+                                  className="qo-row group relative !py-2 !pl-[30px] cursor-pointer"
                                   onClick={() => onSessionSelect(session.id)}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter" || e.key === " ") {
@@ -392,22 +380,19 @@ export function SessionSidebar({
                                     }
                                   }}
                                 >
-                                  <div className="flex items-center gap-2">
-                                    <PlayCircle
-                                      size={8}
-                                      className="text-slate-600 flex-shrink-0"
-                                    />
-                                    <span className="text-[10px] text-slate-500 font-mono truncate flex-1">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span
+                                      className={`text-[12.5px] font-bold truncate flex-1 min-w-0 ${
+                                        session.id === sessionId
+                                          ? "text-accent"
+                                          : "text-ink-soft"
+                                      }`}
+                                    >
                                       {session.displayName ??
                                         session.id.slice(0, 12)}
                                     </span>
-                                    <span className="text-[10px] text-slate-600">
-                                      {formatDistanceToNow(
-                                        new Date(session.updatedAt),
-                                        {
-                                          addSuffix: true,
-                                        },
-                                      )}
+                                    <span className="flex-shrink-0 text-[11.5px] font-bold text-ink-faint group-hover:hidden group-focus-within:hidden">
+                                      {ago(session.updatedAt)}
                                     </span>
                                     <button
                                       type="button"
@@ -415,10 +400,10 @@ export function SessionSidebar({
                                         e.stopPropagation();
                                         onDeleteSession(session);
                                       }}
-                                      className="p-0.5 text-slate-600 hover:text-rose-400 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                      className="hidden group-hover:inline-flex group-focus-within:inline-flex items-center justify-center w-7 h-7 -my-1 rounded-[9px] text-ink-faint hover:text-danger hover:bg-danger-dim transition-colors"
                                       aria-label={`${t("sessions.deleteSession")} ${session.id}`}
                                     >
-                                      <Trash2 size={13} />
+                                      <Trash2 size={14} />
                                     </button>
                                   </div>
                                 </div>
@@ -431,18 +416,16 @@ export function SessionSidebar({
                 </div>
               )}
             </div>
-          </div>
+          </section>
 
           {hasGit && (
             <>
-              {/* Vertical Resize Handle (sessions ↕ git status) */}
+              {/* The line between sessions and git: drag to move it */}
               <div
-                className="flex-shrink-0 h-3 cursor-ns-resize flex items-center justify-center group -my-1"
+                className="qo-split"
                 onMouseDown={handleHeightDragStart}
                 title={t("sessions.dragToResize")}
-              >
-                <div className="w-10 h-1 rounded-full bg-line-strong group-hover:bg-accent group-active:bg-accent-dark transition-colors" />
-              </div>
+              />
 
               {/* Git Status Panel */}
               <div className="flex-grow min-h-0">
@@ -450,16 +433,14 @@ export function SessionSidebar({
               </div>
             </>
           )}
-        </>
-      )}
 
-      {/* Horizontal Resize Handle (right edge) */}
-      {!isCollapsed && (
-        <div
-          className="absolute right-0 top-0 w-1.5 h-full cursor-ew-resize z-10 hover:bg-accent/40 active:bg-accent/60 transition-colors"
-          onMouseDown={handleWidthDragStart}
-          title={t("sessions.dragToResize")}
-        />
+          {/* Horizontal Resize Handle (right edge) */}
+          <div
+            className="qo-resize-x right-0"
+            onMouseDown={handleWidthDragStart}
+            title={t("sessions.dragToResize")}
+          />
+        </>
       )}
     </aside>
   );

@@ -12,6 +12,8 @@ interface ModalProps {
   children: ReactNode;
   footer?: ReactNode;
   dismissible?: boolean;
+  /** A wider window, for settings with several groups. */
+  wide?: boolean;
 }
 
 export default function Modal({
@@ -21,6 +23,7 @@ export default function Modal({
   children,
   footer,
   dismissible = true,
+  wide = false,
 }: ModalProps) {
   const { t } = useTranslation();
   const titleId = useId();
@@ -36,7 +39,7 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-scrim qo-fade-in"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 bg-scrim qo-fade-in"
       onClick={dismissible ? onClose : undefined}
     >
       <div
@@ -44,14 +47,16 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="qo-pop bg-panel border border-line rounded-t-xl3 sm:rounded-xl3 shadow-[0_16px_48px_var(--qo-float-shade)] w-full sm:max-w-md max-h-[85svh] sm:max-h-[80vh] flex flex-col overflow-hidden"
+        className={`qo-pop bg-panel border border-line rounded-t-xl3 sm:rounded-xl3 shadow-[var(--qo-shadow-pop)] w-full ${
+          wide ? "sm:max-w-[520px]" : "sm:max-w-[440px]"
+        } max-h-[88svh] sm:max-h-[min(760px,86vh)] flex flex-col overflow-hidden`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between pl-5 pr-3 py-3 border-b border-line flex-shrink-0">
+        {/* Header: the title and the cross, no line under them */}
+        <div className="flex items-center justify-between gap-3 pl-6 pr-3 pt-3 pb-1 flex-shrink-0">
           <h2
             id={titleId}
-            className="text-[18px] font-extrabold text-ink tracking-tight"
+            className="m-0 text-[18px] leading-tight font-extrabold text-ink tracking-tight"
           >
             {title}
           </h2>
@@ -66,13 +71,13 @@ export default function Modal({
         </div>
 
         {/* Content */}
-        <div className="px-5 py-5 text-ink-soft text-sm leading-relaxed overflow-y-auto flex-1 min-h-0">
+        <div className="px-6 pt-3 pb-6 text-ink-soft text-[14.5px] leading-relaxed overflow-y-auto overscroll-contain flex-1 min-h-0">
           {children}
         </div>
 
-        {/* Footer */}
+        {/* Footer: the actions at the end, the main one last */}
         {footer && (
-          <div className="flex items-center justify-end gap-2 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] sm:pb-3 border-t border-line flex-shrink-0">
+          <div className="flex items-center justify-end gap-2 px-6 pt-1 pb-[max(20px,env(safe-area-inset-bottom))] sm:pb-5 flex-shrink-0">
             {footer}
           </div>
         )}

@@ -30,7 +30,7 @@ const defaultWidth = () =>
 const AGENT_PANEL_MIN_HEIGHT = 60;
 const AGENT_PANEL_DEFAULT_HEIGHT = 360;
 /** The collapsed panel: just the button that opens it again. */
-const COLLAPSED_WIDTH = 40;
+const COLLAPSED_WIDTH = 52;
 const COLLAPSED_KEY = "qo-right-collapsed";
 
 /** Max height is 70% of viewport to prevent overflow on smaller screens */
@@ -99,82 +99,81 @@ export function RightSidebar(): React.ReactNode {
     ? t("sidebar.expandPanel")
     : t("sidebar.collapsePanel");
 
+  const foldButton = (
+    <button
+      type="button"
+      onClick={toggleCollapsed}
+      className="qo-icon-btn-sm"
+      title={toggleLabel}
+      aria-label={toggleLabel}
+      aria-expanded={!collapsed}
+    >
+      {collapsed ? <PanelRightOpen size={18} /> : <PanelRightClose size={18} />}
+    </button>
+  );
+
   return (
     <aside
-      className={`relative flex flex-col gap-2 flex-shrink-0 overflow-hidden ${
+      className={`qo-panel relative flex-shrink-0 ${
         isDragging
           ? "select-none"
           : "transition-[width] duration-300 motion-reduce:transition-none"
       }`}
       style={{ width: collapsed ? COLLAPSED_WIDTH : sidebarWidth }}
     >
-      {/* Collapse toggle */}
-      <button
-        type="button"
-        onClick={toggleCollapsed}
-        className="flex-shrink-0 flex items-center justify-center h-10 bg-panel hover:bg-panel-2 border border-line rounded-xl2 text-ink-soft hover:text-ink transition-colors"
-        title={toggleLabel}
-        aria-label={toggleLabel}
-        aria-expanded={!collapsed}
-      >
-        {collapsed ? (
-          <PanelRightOpen size={16} />
-        ) : (
-          <PanelRightClose size={16} />
-        )}
-      </button>
-
-      {!collapsed && (
+      {collapsed ? (
+        /* Folded: only the way back, at the top of a slim card */
+        <div className="flex flex-col items-center py-2">{foldButton}</div>
+      ) : (
         <>
           {/* Horizontal Resize Handle (left edge) */}
           <div
-            className="absolute left-0 top-0 w-1.5 h-full cursor-ew-resize z-10 hover:bg-accent/40 active:bg-accent/60 transition-colors"
+            className="qo-resize-x left-0"
             onMouseDown={handleWidthDragStart}
             title={t("sessions.dragToResize")}
           />
 
           {/* Agent Status */}
-          <div
+          <section
             className="min-h-0 flex-shrink-0"
             style={{ height: agentPanelHeight }}
           >
-            <AgentStatus />
-          </div>
+            <AgentStatus headerAction={foldButton} />
+          </section>
 
-          {/* Vertical Resize Handle (agent status ↕ events) */}
+          {/* The line between the team and the log: drag to move it */}
           <div
-            className="flex-shrink-0 h-3 cursor-ns-resize flex items-center justify-center group -my-1"
+            className="qo-split"
             onMouseDown={handleHeightDragStart}
             title={t("sessions.dragToResize")}
-          >
-            <div className="w-10 h-1 rounded-full bg-line-strong group-hover:bg-accent group-active:bg-accent-dark transition-colors" />
-          </div>
+          />
 
-          {/* Events / Conversation tab panel */}
-          <div className="min-h-0 flex flex-col flex-grow">
-            {/* Tab header: an Olymp segmented switch */}
-            <div role="tablist" className="qo-segmented mb-2 flex-shrink-0">
-              <button
-                role="tab"
-                aria-selected={activeTab === "events"}
-                onClick={() => setActiveTab("events")}
-              >
-                {t("sidebar.events")}
-              </button>
-              <button
-                role="tab"
-                aria-selected={activeTab === "conversation"}
-                onClick={() => setActiveTab("conversation")}
-              >
-                {t("sidebar.conversation")}
-              </button>
+          {/* Events / Conversation, switched at the top of the section */}
+          <section className="min-h-0 flex flex-col flex-grow">
+            <div className="px-3 pt-3 pb-1 flex-shrink-0">
+              <div role="tablist" className="qo-segmented">
+                <button
+                  role="tab"
+                  aria-selected={activeTab === "events"}
+                  onClick={() => setActiveTab("events")}
+                >
+                  {t("sidebar.events")}
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={activeTab === "conversation"}
+                  onClick={() => setActiveTab("conversation")}
+                >
+                  {t("sidebar.conversation")}
+                </button>
+              </div>
             </div>
 
             {/* Tab content */}
             <div className="flex-grow min-h-0">
               {activeTab === "events" ? <EventLog /> : <ConversationHistory />}
             </div>
-          </div>
+          </section>
         </>
       )}
     </aside>

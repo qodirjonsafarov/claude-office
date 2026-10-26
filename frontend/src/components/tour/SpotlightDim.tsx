@@ -62,17 +62,17 @@ export function SpotlightDim({
     return (
       <div
         className="fixed inset-0 z-[50] pointer-events-none"
-        style={{ backgroundColor: "rgba(0, 0, 0, 0.25)" }}
+        style={{
+          backgroundColor:
+            "color-mix(in srgb, var(--qo-scrim) 40%, transparent)",
+        }}
       />
     );
   }
 
   if (!rect) {
     return (
-      <div
-        className="fixed inset-0 z-[50] pointer-events-none"
-        style={{ backgroundColor: "rgba(0, 0, 0, 0.6)" }}
-      />
+      <div className="fixed inset-0 z-[50] pointer-events-none bg-scrim" />
     );
   }
 

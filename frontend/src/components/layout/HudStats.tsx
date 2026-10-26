@@ -52,101 +52,110 @@ export function HudStats({
   const contextFill =
     contextPct >= 80 ? "bg-danger" : contextPct >= 55 ? "bg-warn" : "bg-accent";
 
+  // One capsule of quiet counters; the cost is the one that opens something.
+  const item = "qo-capsule-item";
+  const icon = "text-ink-faint flex-shrink-0";
+  const label = "hidden 2xl:inline text-ink-faint font-bold";
+
   return (
-    <div className="flex items-center gap-2">
-      <div className={compact ? "hidden" : "qo-pill"} title={t("hud.agents")}>
-        <Users size={15} className="text-ink-faint" aria-hidden="true" />
-        <span className="hidden 2xl:inline text-ink-faint font-bold">
-          {t("hud.agents")}
-        </span>
-        <span>{agentCount + 1}</span>
-      </div>
-      <div
-        className={compact && todos.length === 0 ? "hidden" : "qo-pill"}
-        title={t("hud.tasks")}
-      >
-        <ListChecks size={15} className="text-ink-faint" aria-hidden="true" />
-        <span className="hidden 2xl:inline text-ink-faint font-bold">
-          {t("hud.tasks")}
-        </span>
-        <span>
-          {doneTodos}/{todos.length}
-        </span>
-      </div>
-      <div className="qo-pill" title={t("hud.tools")}>
-        <Wrench size={15} className="text-ink-faint" aria-hidden="true" />
-        <span className="hidden 2xl:inline text-ink-faint font-bold">
-          {t("hud.tools")}
-        </span>
-        <span>{toolUses}</span>
-      </div>
-      <div className="qo-pill" title={t("hud.context")}>
-        <Brain size={15} className="text-ink-faint" aria-hidden="true" />
-        <span className="hidden 2xl:inline text-ink-faint font-bold">
-          {t("hud.context")}
-        </span>
-        <div
-          className={`${compact ? "w-10" : "w-16 2xl:w-24"} h-2 rounded-full bg-panel-3 overflow-hidden`}
-        >
-          <div
-            className={`h-full rounded-full transition-[width] duration-500 ${contextFill}`}
-            style={{ width: `${contextPct}%` }}
-          />
+    <div className="flex items-center">
+      <div className="qo-capsule">
+        {!compact && (
+          <>
+            <div className={item} title={t("hud.agents")}>
+              <Users size={15} className={icon} aria-hidden="true" />
+              <span className={label}>{t("hud.agents")}</span>
+              <span>{agentCount + 1}</span>
+            </div>
+            <span className="qo-capsule-sep" aria-hidden="true" />
+          </>
+        )}
+        {!(compact && todos.length === 0) && (
+          <>
+            <div className={item} title={t("hud.tasks")}>
+              <ListChecks size={15} className={icon} aria-hidden="true" />
+              <span className={label}>{t("hud.tasks")}</span>
+              <span>
+                {doneTodos}/{todos.length}
+              </span>
+            </div>
+            <span className="qo-capsule-sep" aria-hidden="true" />
+          </>
+        )}
+        <div className={item} title={t("hud.tools")}>
+          <Wrench size={15} className={icon} aria-hidden="true" />
+          <span className={label}>{t("hud.tools")}</span>
+          <span>{toolUses}</span>
         </div>
-        <span className="min-w-[3ch] text-right">{contextPct}%</span>
+        <span className="qo-capsule-sep" aria-hidden="true" />
+        <div className={item} title={t("hud.context")}>
+          <Brain size={15} className={icon} aria-hidden="true" />
+          <span className={label}>{t("hud.context")}</span>
+          <div
+            className={`${compact ? "w-10" : "w-14 2xl:w-20"} h-1.5 rounded-full bg-panel-3 overflow-hidden`}
+          >
+            <div
+              className={`h-full rounded-full transition-[width] duration-500 ${contextFill}`}
+              style={{ width: `${contextPct}%` }}
+            />
+          </div>
+          <span className="min-w-[3ch] text-right">{contextPct}%</span>
+        </div>
+        {usage && (
+          <>
+            <span className="qo-capsule-sep" aria-hidden="true" />
+            <button
+              type="button"
+              className={item}
+              title={`${t("hud.tokens")}\n${usageTooltip(usage)}`}
+              aria-haspopup="dialog"
+              onClick={() => setCostOpen(true)}
+            >
+              <Coins size={15} className={icon} aria-hidden="true" />
+              <span className={label}>{t("hud.tokens")}</span>
+              <span>{formatTokens(usage.total)}</span>
+              {cost && <span className="text-accent">{cost}</span>}
+            </button>
+          </>
+        )}
       </div>
-      {usage && (
-        <button
-          type="button"
-          // A tap target: at least 44 px tall on touch screens
-          className="qo-pill hover:border-line-strong transition-colors [@media(pointer:coarse)]:min-h-11"
-          title={`${t("hud.tokens")}\n${usageTooltip(usage)}`}
-          aria-haspopup="dialog"
-          onClick={() => setCostOpen(true)}
-        >
-          <Coins size={15} className="text-ink-faint" aria-hidden="true" />
-          <span className="hidden 2xl:inline text-ink-faint font-bold">
-            {t("hud.tokens")}
-          </span>
-          <span>{formatTokens(usage.total)}</span>
-          {cost && <span className="text-accent">{cost}</span>}
-        </button>
-      )}
       {usage && (
         <Modal
           isOpen={costOpen}
           onClose={() => setCostOpen(false)}
           title={t("hud.costTitle")}
         >
-          <p className="m-0 mb-4 text-[13px] text-ink-soft">{COST_NOTE}</p>
-          <table className="w-full text-[13.5px] tabular-nums">
-            <tbody>
-              {costRows(usage).map((row) => (
-                <tr key={row.label} className="border-b border-line">
-                  <th className="py-2 text-left font-bold text-ink-soft">
-                    {row.label}
-                  </th>
-                  <td className="py-2 text-right font-extrabold text-ink">
-                    {row.tokens}
-                  </td>
-                  <td className="py-2 pl-4 w-24 text-right font-extrabold text-accent">
-                    {row.usd ?? "—"}
-                  </td>
-                </tr>
-              ))}
-              <tr>
-                <th className="pt-3 text-left font-extrabold text-ink">
-                  {t("hud.costTotal")}
-                </th>
-                <td className="pt-3 text-right font-extrabold text-ink">
-                  {formatTokens(usage.total)}
-                </td>
-                <td className="pt-3 pl-4 text-right font-extrabold text-accent">
-                  {apiCost(usage.costUsd) ?? "—"}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          {/* The total first, large; the parts under it on one plate. */}
+          <div className="flex items-end justify-between gap-4 mb-4">
+            <div className="min-w-0">
+              <div className="qo-label">{t("hud.costTotal")}</div>
+              <div className="mt-1 text-[26px] leading-none font-extrabold text-ink tabular-nums">
+                {formatTokens(usage.total)}
+              </div>
+            </div>
+            <div className="text-[22px] leading-none font-extrabold text-accent tabular-nums">
+              {apiCost(usage.costUsd) ?? "—"}
+            </div>
+          </div>
+          <div className="qo-group">
+            {costRows(usage).map((row) => (
+              <div
+                key={row.label}
+                className="qo-group-row !min-h-11 text-[13.5px] tabular-nums"
+              >
+                <span className="flex-1 min-w-0 font-bold text-ink-soft truncate">
+                  {row.label}
+                </span>
+                <span className="font-extrabold text-ink">{row.tokens}</span>
+                <span className="w-20 text-right font-extrabold text-accent">
+                  {row.usd ?? "—"}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="m-0 mt-4 text-[12.5px] leading-snug text-ink-faint">
+            {COST_NOTE}
+          </p>
         </Modal>
       )}
     </div>

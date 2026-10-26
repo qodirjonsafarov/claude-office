@@ -55,9 +55,6 @@ export function HeaderMoreMenu({
     };
   }, [open]);
 
-  const itemClass =
-    "flex w-full items-center gap-2.5 h-10 px-3 text-[13px] font-bold rounded-xl transition-colors text-left";
-
   return (
     <div ref={ref} className="relative">
       <button
@@ -66,16 +63,15 @@ export function HeaderMoreMenu({
         aria-expanded={open}
         aria-label={t("header.moreMenu")}
         title={t("header.more")}
-        className="qo-btn qo-btn-secondary"
+        className="qo-icon-btn-sm"
       >
-        <MoreHorizontal size={15} />
-        {t("header.more")}
+        <MoreHorizontal size={18} />
       </button>
 
       {open && (
         <div
           role="menu"
-          className="qo-pop absolute right-0 top-full mt-2 z-50 min-w-[14rem] p-1.5 bg-panel border border-line-strong rounded-xl3 shadow-[0_8px_24px_var(--qo-float-shade)]"
+          className="qo-menu qo-pop absolute right-0 top-full mt-2.5 z-50 w-60"
         >
           <button
             role="menuitemcheckbox"
@@ -84,9 +80,9 @@ export function HeaderMoreMenu({
               onToggleDebug();
             }}
             aria-checked={debugMode}
-            className={`${itemClass} text-ink hover:bg-panel-2`}
+            className="qo-menu-item"
           >
-            <Bug size={14} className="text-ink-faint" />
+            <Bug size={16} className="text-ink-faint" />
             {t("header.debugMode")}
             <SwitchMark
               on={debugMode}
@@ -98,16 +94,16 @@ export function HeaderMoreMenu({
           {/* Developer actions: only in debug mode */}
           {debugMode && (
             <>
-              <div aria-hidden="true" className="h-px my-1 bg-line" />
+              <div aria-hidden="true" className="qo-menu-sep" />
               <button
                 role="menuitem"
                 onClick={() => {
                   setOpen(false);
                   void onSimulate();
                 }}
-                className={`${itemClass} text-accent hover:bg-accent-dim`}
+                className="qo-menu-item"
               >
-                <Play size={14} fill="currentColor" />
+                <Play size={16} className="text-accent" />
                 {t("header.simulate")}
               </button>
 
@@ -117,15 +113,15 @@ export function HeaderMoreMenu({
                   setOpen(false);
                   onReset();
                 }}
-                className={`${itemClass} text-warn hover:bg-warn-dim`}
+                className="qo-menu-item"
               >
-                <RefreshCw size={14} />
+                <RefreshCw size={16} className="text-warn" />
                 {t("header.reset")}
               </button>
 
               {/* The destructive action sits apart from Reset. */}
-              <div aria-hidden="true" className="h-px mt-2 mb-1 bg-line" />
-              <div className="px-3 pt-1 pb-1 qo-eyebrow !text-[10px] text-danger">
+              <div aria-hidden="true" className="qo-menu-sep" />
+              <div className="qo-label px-3 pt-1.5 pb-1 !text-danger">
                 {t("header.dangerZone")}
               </div>
               <button
@@ -134,9 +130,9 @@ export function HeaderMoreMenu({
                   setOpen(false);
                   onClearDB();
                 }}
-                className={`${itemClass} text-danger hover:bg-danger-dim`}
+                className="qo-menu-item !text-danger hover:!bg-danger-dim"
               >
-                <Trash2 size={14} />
+                <Trash2 size={16} />
                 {t("header.clearDb")}
               </button>
             </>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import type { FederatedPointerEvent } from "pixi.js";
-import { CANVAS_WIDTH } from "@/constants/canvas";
+import { sceneToClient } from "@/stores/sceneViewStore";
 import { usePreferencesStore } from "@/stores/preferencesStore";
 import { useAttentionStore } from "@/stores/attentionStore";
 import { createLongPress, type LongPress } from "@/utils/longPress";
@@ -20,15 +20,8 @@ export function useCharacterPress(
   const openFocusPopup = useAttentionStore((s) => s.openFocusPopup);
 
   const open = useCallback(() => {
-    const canvas = document.querySelector(".pixi-canvas-container canvas");
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const scale = rect.width / CANVAS_WIDTH;
-    openFocusPopup(
-      id,
-      rect.left + position.x * scale,
-      rect.top + position.y * scale,
-    );
+    const at = sceneToClient(position.x, position.y);
+    if (at) openFocusPopup(id, at.x, at.y);
   }, [id, position.x, position.y, openFocusPopup]);
 
   const openRef = useRef(open);

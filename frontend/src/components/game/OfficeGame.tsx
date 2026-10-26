@@ -56,14 +56,15 @@ import { useAnimationSystem } from "@/systems/animationSystem";
 import { wireGameRuntime, unwireGameRuntime } from "@/systems/gameRuntime";
 import { useCompactionAnimation } from "@/systems/compactionAnimation";
 import { CrowdLayoutCache } from "@/systems/crowdLayout";
-import { autoFit } from "@/systems/autoFit";
 import { bubbleSize, stackBubbles, type Box } from "@/systems/bubbleLayout";
 import { truncateBubbleText } from "@/utils/bubbleText";
 import { nameTagWidth } from "./NameTag";
 import { AgentLookCache } from "@/systems/agentLooks";
 import { SceneSignalsCache, type PersonSignals } from "@/systems/sceneSignals";
 import { useOfficeTextures } from "@/hooks/useOfficeTextures";
-import { CANVAS_WIDTH, CANVAS_HEIGHT } from "@/constants/canvas";
+import { sceneLayout, type SceneLayout } from "@/utils/sceneLayout";
+import { sceneToClient, useSceneView } from "@/stores/sceneViewStore";
+import { isReducedMotion } from "@/systems/reducedMotion";
 import { scenePalette } from "@/systems/scenePalette";
 import { useTheme } from "@/systems/themeStore";
 import {
@@ -113,7 +114,7 @@ import {
 } from "./DeskGrid";
 import { ZoomControls } from "./ZoomControls";
 import { LoadingScreen } from "./LoadingScreen";
-import { OfficeBackground } from "./OfficeBackground";
+import { OfficeBackground, type RoomExtent } from "./OfficeBackground";
 
 // Register PixiJS components
 extend({ Container, Text, Graphics, Sprite });
@@ -207,12 +208,13 @@ const USE_PEOPLE = true;
 function computeRenderResolution(
   container: HTMLElement | null,
   zoom: number,
+  layout: SceneLayout,
 ): number {
   const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
   if (!container) return dpr;
   const fit = Math.min(
-    container.clientWidth / CANVAS_WIDTH,
-    container.clientHeight / CANVAS_HEIGHT,
+    container.clientWidth / layout.width,
+    container.clientHeight / layout.height,
   );
   if (!Number.isFinite(fit) || fit <= 0) return dpr;
   const target = dpr * fit * Math.max(1, zoom);
@@ -222,6 +224,21 @@ function computeRenderResolution(
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
+
+/** The whole canvas in room coordinates (the room is 0..1280 x 0..1024). */
+function roomExtent(layout: SceneLayout): RoomExtent {
+  return {
+    left: -layout.offsetX,
+    top: -layout.offsetY,
+    right: layout.width - layout.offsetX,
+    bottom: layout.height - layout.offsetY,
+  };
+}
+
+/** Put the room at its place on the (wider or taller) canvas. */
+function placeRoom(app: PixiApplication | null, layout: SceneLayout): void {
+  app?.stage?.position.set(layout.offsetX, layout.offsetY);
+}
 
 /** Repaint the canvas behind the scene (a theme switch). */
 function paintStage(app: PixiApplication | null, color: number): void {
@@ -236,15 +253,28 @@ export function OfficeGame(): ReactNode {
   const zoomRef = useRef(1);
   const zoomTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Keep the renderer resolution matched to the on-screen size.
+  // The canvas takes the stage's shape; the room sits centred inside it.
+  const layout = useSceneView((s) => s.layout);
+  useEffect(() => {
+    placeRoom(appRef.current, layout);
+  }, [layout]);
+
+  // Keep the renderer size and resolution matched to the on-screen size.
   const syncResolution = useCallback(() => {
     const app = appRef.current;
     if (!app?.renderer) return;
-    const next = computeRenderResolution(containerRef.current, zoomRef.current);
+    const { layout: now } = useSceneView.getState();
+    const next = computeRenderResolution(
+      containerRef.current,
+      zoomRef.current,
+      now,
+    );
     const current = app.renderer.resolution;
-    if (Math.abs(next - current) / current < 0.05) return;
+    const sized =
+      app.renderer.width === now.width && app.renderer.height === now.height;
+    if (sized && Math.abs(next - current) / current < 0.05) return;
     app.renderer.resolution = next;
-    app.renderer.resize(CANVAS_WIDTH, CANVAS_HEIGHT);
+    app.renderer.resize(now.width, now.height);
   }, []);
 
   useEffect(() => {
@@ -367,11 +397,8 @@ export function OfficeGame(): ReactNode {
       const agent = [...agents.values()].find(
         (a) => a.desk === desk && a.phase === "idle",
       );
-      const canvas = document.querySelector(".pixi-canvas-container canvas");
-      if (!agent || !canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const scale = rect.width / CANVAS_WIDTH;
-      openFocusPopup(agent.id, rect.left + x * scale, rect.top + y * scale);
+      const at = agent ? sceneToClient(x, y) : null;
+      if (agent && at) openFocusPopup(agent.id, at.x, at.y);
     },
     [agents, openFocusPopup],
   );
@@ -503,22 +530,23 @@ export function OfficeGame(): ReactNode {
   // Reset pan/zoom only on actual window resize — NOT on container reflows.
   // ResizeObserver was causing progressive canvas drift because the event log
   // and sidebar content changes triggered micro-resizes on every update.
-  // Auto-fit: fill the panel (cropping a little at most) and centre the
-  // scene, on load and on window resize; manual zoom still works on top.
+  // Auto-fit: the canvas takes the panel's shape (the room whole and
+  // centred, the extended room around it), so the fit is zoom 1 at the
+  // origin. On load, resize, rotation and side panels moving; a manual zoom
+  // is eased back (no easing with reduced motion).
   const fitScaleRef = useRef(1);
   const applyAutoFit = useCallback(() => {
     const el = containerRef.current;
     const ref = transformRef.current;
     if (!el || !ref) return;
-    const fit = autoFit(
-      el.clientWidth,
-      el.clientHeight,
-      CANVAS_WIDTH,
-      CANVAS_HEIGHT,
-    );
-    fitScaleRef.current = fit.scale;
-    ref.setTransform(fit.x, fit.y, fit.scale, 0);
-  }, []);
+    useSceneView
+      .getState()
+      .setLayout(sceneLayout(el.clientWidth, el.clientHeight));
+    syncResolution();
+    const { positionX, positionY, scale } = ref.state;
+    if (positionX === 0 && positionY === 0 && scale === 1) return;
+    ref.setTransform(0, 0, 1, isReducedMotion() ? 0 : 220, "easeOut");
+  }, [syncResolution]);
   useEffect(() => {
     window.addEventListener("resize", applyAutoFit);
     // Also when the panel itself changes size (sidebars, a container that
@@ -578,8 +606,8 @@ export function OfficeGame(): ReactNode {
           <div className="pixi-canvas-container w-full h-full">
             <Application
               key={`pixi-app-${hmrVersion}`}
-              width={CANVAS_WIDTH}
-              height={CANVAS_HEIGHT}
+              width={layout.width}
+              height={layout.height}
               backgroundColor={stageColor}
               autoDensity={true}
               resolution={
@@ -587,6 +615,7 @@ export function OfficeGame(): ReactNode {
               }
               onInit={(app) => {
                 appRef.current = app;
+                placeRoom(app, useSceneView.getState().layout);
                 syncResolution();
               }}
             >
@@ -596,8 +625,11 @@ export function OfficeGame(): ReactNode {
               {/* Office content - hidden while loading */}
               {spritesLoaded && (
                 <>
-                  {/* Floor and walls */}
-                  <OfficeBackground floorTileTexture={textures.floorTile} />
+                  {/* Floor and walls, extended to the canvas edges */}
+                  <OfficeBackground
+                    floorTileTexture={textures.floorTile}
+                    extent={roomExtent(layout)}
+                  />
 
                   {/* Boss area rug - rendered right after floor */}
                   {textures.bossRug && (
@@ -878,7 +910,7 @@ export function OfficeGame(): ReactNode {
                   />
 
                   {/* Day / night grading (labels and bubbles stay untinted) */}
-                  <DayNightLayer />
+                  <DayNightLayer extent={roomExtent(layout)} />
 
                   {/* Debug overlays */}
                   {debugMode && (

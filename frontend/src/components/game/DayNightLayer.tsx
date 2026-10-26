@@ -40,16 +40,29 @@ function drawPools(g: Graphics): void {
   }
 }
 
-function DayNightLayerComponent(): ReactNode {
+interface DayNightLayerProps {
+  /** The canvas around the room, in room coordinates (default: the room). */
+  extent?: { left: number; top: number; right: number; bottom: number };
+}
+
+const ROOM = { left: 0, top: 0, right: CANVAS_WIDTH, bottom: CANVAS_HEIGHT };
+
+function DayNightLayerComponent({
+  extent = ROOM,
+}: DayNightLayerProps): ReactNode {
+  const { left, top, right, bottom } = extent;
   const hours = useSceneHours();
   const alpha = nightAlpha(hours, getSeasonalTimes(new Date()));
   const glow = alpha / NIGHT_ALPHA;
 
-  const drawTint = useCallback((g: Graphics) => {
-    g.clear();
-    g.rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    g.fill(NIGHT_TINT);
-  }, []);
+  const drawTint = useCallback(
+    (g: Graphics) => {
+      g.clear();
+      g.rect(left, top, right - left, bottom - top);
+      g.fill(NIGHT_TINT);
+    },
+    [left, top, right, bottom],
+  );
 
   if (alpha <= 0) return null;
   return (

@@ -84,6 +84,8 @@ const en = {
   "sessions.events_other": "{count} events",
   "sessions.expandSidebar": "Expand sidebar",
   "sessions.collapseSidebar": "Collapse sidebar",
+  "sidebar.expandPanel": "Show the team and events",
+  "sidebar.collapsePanel": "Hide the team and events",
   "sessions.dragToResize": "Drag to resize",
 
   // Right Sidebar

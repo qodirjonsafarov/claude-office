@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { ChevronDown, ChevronRight, Inbox } from "lucide-react";
+import { ChevronDown, ChevronRight, History } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { GitStatusPanel } from "@/components/layout/GitStatusPanel";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useGameStore, selectGitStatus } from "@/stores/gameStore";
 import type { Session } from "@/hooks/useSessions";
 import { groupSessionsByProject } from "@/utils/sessionGroups";
 import { usageLabel } from "@/utils/tokenUsage";
@@ -49,6 +51,7 @@ export function MobileSessionList({
     });
   }, []);
 
+  const hasGit = useGameStore(selectGitStatus) !== null;
   const groups = groupSessionsByProject(sessions);
   const ago = (iso: string) =>
     formatDistanceToNow(new Date(iso), {
@@ -63,12 +66,9 @@ export function MobileSessionList({
           {t("sessions.loading")}
         </div>
       ) : sessions.length === 0 ? (
-        <div className="py-8 px-4 flex flex-col items-center gap-2.5 text-center text-[13px] font-bold text-ink-faint border border-dashed border-line-strong rounded-xl2">
-          <Inbox size={24} aria-hidden="true" />
-          {t("sessions.noSessions")}
-        </div>
+        <EmptyState icon={History} title={t("sessions.noSessions")} />
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="m-0 p-0 list-none flex flex-col gap-1">
           {[...groups.entries()].map(([projectKey, groupSessions]) => {
             const hasActive = groupSessions.some((s) => s.status === "active");
             const isActiveSelected = groupSessions.some(
@@ -86,11 +86,7 @@ export function MobileSessionList({
                   type="button"
                   onClick={() => onSessionSelect(primary.id)}
                   aria-current={selected ? "true" : undefined}
-                  className={`w-full min-h-[56px] px-4 py-3 rounded-xl2 border text-left transition-colors ${
-                    selected
-                      ? "bg-accent-dim border-transparent"
-                      : "bg-panel-2 border-line hover:border-line-strong"
-                  }`}
+                  className="qo-row min-h-[60px] !px-3.5 !py-3"
                 >
                   <div className="flex items-center gap-2.5">
                     <span
@@ -109,7 +105,7 @@ export function MobileSessionList({
                     </span>
                   </div>
                   {/* Its own line, wrapping if needed: the tokens are never cut. */}
-                  <div className="mt-1 pl-[18px] text-[12px] font-bold text-ink-faint">
+                  <div className="mt-1 pl-[18px] text-[12.5px] font-semibold text-ink-faint">
                     {[
                       t("sessions.events", { count: primary.eventCount }),
                       usageLabel(primary.tokenUsage),
@@ -125,7 +121,7 @@ export function MobileSessionList({
                       type="button"
                       onClick={() => toggleGroup(projectKey)}
                       aria-expanded={isExpanded}
-                      className="self-start flex items-center gap-1.5 min-h-[44px] px-3 text-[12px] font-bold text-ink-faint hover:text-ink transition-colors"
+                      className="self-start flex items-center gap-1.5 min-h-[44px] ml-[22px] px-2 text-[13px] font-bold text-ink-faint hover:text-ink transition-colors"
                     >
                       {isExpanded ? (
                         <ChevronDown size={14} />
@@ -144,13 +140,13 @@ export function MobileSessionList({
                           aria-current={
                             session.id === sessionId ? "true" : undefined
                           }
-                          className={`ml-4 min-h-[44px] px-3 rounded-xl flex items-center gap-2 text-left transition-colors ${
+                          className={`qo-row min-h-[44px] !pl-[32px] flex items-center gap-2 ${
                             session.id === sessionId
-                              ? "bg-accent-dim text-accent"
-                              : "text-ink-soft hover:bg-panel-2"
+                              ? "text-accent"
+                              : "text-ink-soft"
                           }`}
                         >
-                          <span className="text-[12.5px] font-mono truncate flex-1">
+                          <span className="text-[13.5px] font-bold truncate flex-1">
                             {session.displayName ?? session.id.slice(0, 12)}
                           </span>
                           <span className="text-[12px] text-ink-faint flex-shrink-0">
@@ -166,7 +162,8 @@ export function MobileSessionList({
         </ul>
       )}
 
-      <div className="h-[280px]">
+      {/* A repository fills a fixed card; without one only its line shows */}
+      <div className={`qo-card overflow-hidden ${hasGit ? "h-[300px]" : ""}`}>
         <GitStatusPanel />
       </div>
     </div>

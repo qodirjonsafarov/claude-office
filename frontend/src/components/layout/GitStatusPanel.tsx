@@ -83,8 +83,8 @@ export function GitStatusPanel() {
         <div className="qo-panel-head">
           <h2 className="qo-title">{t("git.title")}</h2>
         </div>
-        <div className="flex-grow flex items-center justify-center px-3">
-          <EmptyState icon={GitBranch} title={message} />
+        <div className="flex-grow flex items-center justify-center px-3 pb-2">
+          <EmptyState icon={GitBranch} title={message} className="!py-4" />
         </div>
       </div>
     );

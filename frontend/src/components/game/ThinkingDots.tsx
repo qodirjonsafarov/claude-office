@@ -42,13 +42,13 @@ function ThinkingDotsComponent({
       // Puff with two small trailing circles towards the head
       g.circle(-11, 11, 2);
       g.circle(-6, 7, 3);
-      g.fill({ color: 0xffffff, alpha: 0.9 });
+      g.fill({ color: 0xf4f7f2, alpha: 0.9 });
       g.roundRect(-4, -8, 30, 14, 7);
-      g.fill({ color: 0xffffff, alpha: 0.92 });
-      g.stroke({ width: 1.5, color: 0x0b1020, alpha: 0.5 });
+      g.fill({ color: 0xf4f7f2, alpha: 0.94 });
+      g.stroke({ width: 1.5, color: 0x14201a, alpha: 0.5 });
       for (let i = 0; i < 3; i++) {
         g.circle(4 + i * 7, -1, 2.2);
-        g.fill({ color: 0x0b1020, alpha: i === state.lit ? 0.95 : 0.3 });
+        g.fill({ color: 0x14201a, alpha: i === state.lit ? 0.95 : 0.3 });
       }
     },
     [state.lit],

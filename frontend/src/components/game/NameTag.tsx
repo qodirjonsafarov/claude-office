@@ -3,17 +3,22 @@
 /**
  * NameTag Component
  *
- * A readable name label for characters: bold sans-serif text on a dark
- * rounded "pill" with a colored edge, drawn at 2x and scaled down so it
- * stays sharp.
+ * A readable name label for characters in the Olymp look: bold sans-serif
+ * text on a panel-coloured pill (dark in the dark theme, light paper by
+ * day) with a thin edge and a dot in the character's colour, drawn at 2x
+ * and scaled down so it stays sharp.
  */
 
 import { memo, useCallback, type ReactNode } from "react";
 import { Graphics } from "pixi.js";
+import { scenePalette } from "@/systems/scenePalette";
+import { useTheme } from "@/systems/themeStore";
 
 const FONT_SIZE = 30; // at 2x, so 15px on the canvas
 const CHAR_WIDTH = 9.2; // approximate canvas px per character at FONT_SIZE / 2
 const PAD_X = 9;
+/** The accent dot before the name. */
+const DOT = 5;
 const HEIGHT = 22;
 
 interface NameTagProps {
@@ -31,23 +36,29 @@ function NameTagComponent({
   y = 0,
 }: NameTagProps): ReactNode {
   const width = nameTagWidth(name);
+  const palette = scenePalette(useTheme());
 
   const drawPill = useCallback(
     (g: Graphics) => {
       g.clear();
-      g.roundRect(-width / 2 + 1, -HEIGHT / 2 + 2, width, HEIGHT, HEIGHT / 2);
-      g.fill({ color: 0x000000, alpha: 0.35 });
-      g.roundRect(-width / 2, -HEIGHT / 2, width, HEIGHT, HEIGHT / 2);
-      g.fill({ color: 0x0b1020, alpha: 0.88 });
-      g.stroke({ width: 2, color: accent, alpha: 0.95 });
+      const left = -width / 2;
+      const top = -HEIGHT / 2;
+      // Flat shadow down-right, the pill, its accent edge and dot
+      g.roundRect(left + 1, top + 2, width, HEIGHT, HEIGHT / 2);
+      g.fill(palette.shadow);
+      g.roundRect(left, top, width, HEIGHT, HEIGHT / 2);
+      g.fill({ color: palette.tag, alpha: 0.94 });
+      g.stroke({ width: 1.5, color: accent, alpha: 0.9, alignment: 1 });
+      g.circle(left + PAD_X - 1, 0, DOT / 2);
+      g.fill(accent);
     },
-    [width, accent],
+    [width, accent, palette],
   );
 
   return (
     <pixiContainer x={x} y={y}>
       <pixiGraphics draw={drawPill} />
-      <pixiContainer scale={0.5} y={0.5}>
+      <pixiContainer scale={0.5} x={DOT / 2 + 1} y={0.5}>
         <pixiText
           text={name}
           anchor={0.5}
@@ -55,7 +66,7 @@ function NameTagComponent({
             fontFamily: '"DejaVu Sans", Verdana, Arial, sans-serif',
             fontSize: FONT_SIZE,
             fontWeight: "bold",
-            fill: "#ffffff",
+            fill: palette.tagText,
           }}
         />
       </pixiContainer>
@@ -67,7 +78,7 @@ export const NameTag = memo(NameTagComponent);
 
 /** Width of the name pill on the canvas (px). */
 export function nameTagWidth(name: string): number {
-  return Math.max(36, name.length * CHAR_WIDTH + PAD_X * 2);
+  return Math.max(36, name.length * CHAR_WIDTH + PAD_X * 2 + DOT + 2);
 }
 
 /** Height of the name pill on the canvas (px). */

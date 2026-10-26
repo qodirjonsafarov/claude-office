@@ -215,12 +215,19 @@ class TranscriptUsage:
     messages: dict[str, _MessageUsage] = field(
         default_factory=lambda: cast(dict[str, _MessageUsage], {})
     )
+    # The same messages per file read, for per-character totals.
+    by_file: dict[Path, dict[str, _MessageUsage]] = field(
+        default_factory=lambda: cast(dict[Path, dict[str, _MessageUsage]], {})
+    )
+    main_path: Path | None = None
     # Latest message of the main transcript: drives the context bar and model.
     last_main: _MessageUsage | None = None
     long_context: bool = False
 
     def read(self, path: Path, *, main: bool) -> None:
         """Read the new complete lines of *path* and record their usage."""
+        if main:
+            self.main_path = path
         try:
             size = path.stat().st_size
         except OSError:
@@ -244,7 +251,7 @@ class TranscriptUsage:
                         pending = data
                         continue
                     for raw in data[: end + 1].split(b"\n"):
-                        self._record_line(raw, main=main)
+                        self._record_line(raw, path, main=main)
                     offset += end + 1
                     pending = data[end + 1 :]
         except OSError as exc:
@@ -252,7 +259,7 @@ class TranscriptUsage:
         # Up to the last complete line; the rest is read next time.
         self.offsets[path] = offset
 
-    def _record_line(self, raw: bytes, *, main: bool) -> None:
+    def _record_line(self, raw: bytes, path: Path, *, main: bool) -> None:
         """Record the usage of one transcript line, if it has any."""
         if b'"usage"' not in raw:
             return
@@ -268,6 +275,7 @@ class TranscriptUsage:
             return
         msg_id, usage = parsed
         self.messages[msg_id] = usage
+        self.by_file.setdefault(path, {})[msg_id] = usage
         if main:
             self.last_main = usage
             requested = rec.get("requestedModel")
@@ -284,38 +292,58 @@ class TranscriptUsage:
 
     def requests(self) -> list[tuple[str, ModelTokens]]:
         """One ``(model, tokens)`` entry per API message."""
-        return [
-            (
-                m.model or "unknown",
-                (
-                    m.input_tokens,
-                    m.output_tokens,
-                    m.cache_read_tokens,
-                    m.cache_write_5m_tokens,
-                    m.cache_write_1h_tokens,
-                ),
-            )
-            for m in self.messages.values()
-        ]
+        return _requests(self.messages.values())
 
     def summary(self) -> TokenUsage | None:
         """Session totals, or ``None`` when no usage was read yet."""
-        if not self.messages:
-            return None
-        requests = self.requests()
-        parts = estimate_cost_parts(requests)
-        return TokenUsage(
-            input_tokens=sum(t[0] for _, t in requests),
-            output_tokens=sum(t[1] for _, t in requests),
-            cache_read_tokens=sum(t[2] for _, t in requests),
-            cache_write_tokens=sum(t[3] + t[4] for _, t in requests),
-            model=self.model,
-            cost_usd=None if parts is None else parts.total,
-            cost_input_usd=None if parts is None else parts.input,
-            cost_output_usd=None if parts is None else parts.output,
-            cost_cache_read_usd=None if parts is None else parts.cache_read,
-            cost_cache_write_usd=None if parts is None else parts.cache_write,
+        return _summarize(list(self.messages.values()), self.model)
+
+    def summary_for(self, path: Path) -> TokenUsage | None:
+        """Totals of one transcript file (one character), ``None`` if unread."""
+        messages = list(self.by_file.get(path, {}).values())
+        model = next((m.model for m in reversed(messages) if m.model), None)
+        return _summarize(messages, model)
+
+    def file_named(self, name: str) -> Path | None:
+        """A transcript file already read, by file name."""
+        return next((p for p in self.offsets if p.name == name), None)
+
+
+def _requests(messages: Iterable[_MessageUsage]) -> list[tuple[str, ModelTokens]]:
+    """One ``(model, tokens)`` entry per API message."""
+    return [
+        (
+            m.model or "unknown",
+            (
+                m.input_tokens,
+                m.output_tokens,
+                m.cache_read_tokens,
+                m.cache_write_5m_tokens,
+                m.cache_write_1h_tokens,
+            ),
         )
+        for m in messages
+    ]
+
+
+def _summarize(messages: list[_MessageUsage], model: str | None) -> TokenUsage | None:
+    """Token totals and cost of *messages*, ``None`` when there are none."""
+    if not messages:
+        return None
+    requests = _requests(messages)
+    parts = estimate_cost_parts(requests)
+    return TokenUsage(
+        input_tokens=sum(t[0] for _, t in requests),
+        output_tokens=sum(t[1] for _, t in requests),
+        cache_read_tokens=sum(t[2] for _, t in requests),
+        cache_write_tokens=sum(t[3] + t[4] for _, t in requests),
+        model=model,
+        cost_usd=None if parts is None else parts.total,
+        cost_input_usd=None if parts is None else parts.input,
+        cost_output_usd=None if parts is None else parts.output,
+        cost_cache_read_usd=None if parts is None else parts.cache_read,
+        cost_cache_write_usd=None if parts is None else parts.cache_write,
+    )
 
 
 @dataclass
@@ -350,6 +378,18 @@ class TokenTracker:
     def session_usage(self) -> TokenUsage | None:
         """Return token totals for the session, or ``None`` if none were read."""
         return self.usage.summary()
+
+    def main_usage(self) -> TokenUsage | None:
+        """Token totals of the main agent alone (the boss), without subagents."""
+        path = self.usage.main_path
+        return None if path is None else self.usage.summary_for(path)
+
+    def agent_usage(self, native_id: str | None) -> TokenUsage | None:
+        """Token totals of one subagent, from its ``agent-<native>.jsonl``."""
+        if not native_id:
+            return None
+        path = self.usage.file_named(f"agent-{native_id}.jsonl")
+        return None if path is None else self.usage.summary_for(path)
 
     def update_from_event(self, event: AnyEvent) -> None:
         """Update token counts from an incoming event.

@@ -51,6 +51,16 @@ export type Current = string | null;
 export type Source = "todos" | "tasks";
 export type Agenttype = string | null;
 export type Restingsince = string | null;
+export type Inputtokens = number;
+export type Outputtokens = number;
+export type Cachereadtokens = number;
+export type Cachewritetokens = number;
+export type Model = string | null;
+export type Costusd = number | null;
+export type Costinputusd = number | null;
+export type Costoutputusd = number | null;
+export type Costcachereadusd = number | null;
+export type Costcachewriteusd = number | null;
 export type ProjectName = string | null;
 export type ProjectDir = string | null;
 export type WorkingDir = string | null;
@@ -285,16 +295,6 @@ export type PhoneState = "idle" | "ringing" | "in_use";
 export type Contextutilization = number;
 export type Contexttokens = number;
 export type Contextwindow = number;
-export type Inputtokens = number;
-export type Outputtokens = number;
-export type Cachereadtokens = number;
-export type Cachewritetokens = number;
-export type Model = string | null;
-export type Costusd = number | null;
-export type Costinputusd = number | null;
-export type Costoutputusd = number | null;
-export type Costcachereadusd = number | null;
-export type Costcachewriteusd = number | null;
 export type Toolusessincecompaction = number;
 export type Printreport = boolean;
 export type Lastupdated = string;
@@ -541,6 +541,7 @@ export interface Agent {
   progress?: AgentProgress | null;
   agentType?: Agenttype;
   restingSince?: Restingsince;
+  tokenUsage?: TokenUsage | null;
   [k: string]: unknown;
 }
 /**
@@ -574,6 +575,32 @@ export interface AgentProgress {
   total: Total;
   current?: Current;
   source: Source;
+  [k: string]: unknown;
+}
+/**
+ * Token totals: a whole session (main transcript plus its subagents) on
+ * ``OfficeState``, or one character's own transcript on ``Boss`` / ``Agent``.
+ *
+ * Each API message is counted once (by ``message.id``). ``model`` is the
+ * latest model of the main session (of the character's transcript). ``cost_usd`` is an estimated
+ * API-equivalent cost (list prices from ``token_tracker.py``, not what a
+ * subscription costs); it is ``None`` when any model used in the session
+ * has no known price.
+ *
+ * This interface was referenced by `ClaudeOfficeBackendTypes`'s JSON-Schema
+ * via the `definition` "TokenUsage".
+ */
+export interface TokenUsage {
+  inputTokens?: Inputtokens;
+  outputTokens?: Outputtokens;
+  cacheReadTokens?: Cachereadtokens;
+  cacheWriteTokens?: Cachewritetokens;
+  model?: Model;
+  costUsd?: Costusd;
+  costInputUsd?: Costinputusd;
+  costOutputUsd?: Costoutputusd;
+  costCacheReadUsd?: Costcachereadusd;
+  costCacheWriteUsd?: Costcachewriteusd;
   [k: string]: unknown;
 }
 /**
@@ -706,6 +733,7 @@ export interface Boss1 {
   bubble?: BubbleContent | null;
   position?: Position1;
   progress?: AgentProgress | null;
+  tokenUsage?: TokenUsage | null;
   [k: string]: unknown;
 }
 export interface Position1 {
@@ -925,31 +953,6 @@ export interface OfficeState {
   tokenUsage?: TokenUsage | null;
   toolUsesSinceCompaction?: Toolusessincecompaction;
   printReport?: Printreport;
-  [k: string]: unknown;
-}
-/**
- * Token totals for a whole session (main transcript plus its subagents).
- *
- * Each API message is counted once (by ``message.id``). ``model`` is the
- * latest model of the main session. ``cost_usd`` is an estimated
- * API-equivalent cost (list prices from ``token_tracker.py``, not what a
- * subscription costs); it is ``None`` when any model used in the session
- * has no known price.
- *
- * This interface was referenced by `ClaudeOfficeBackendTypes`'s JSON-Schema
- * via the `definition` "TokenUsage".
- */
-export interface TokenUsage {
-  inputTokens?: Inputtokens;
-  outputTokens?: Outputtokens;
-  cacheReadTokens?: Cachereadtokens;
-  cacheWriteTokens?: Cachewritetokens;
-  model?: Model;
-  costUsd?: Costusd;
-  costInputUsd?: Costinputusd;
-  costOutputUsd?: Costoutputusd;
-  costCacheReadUsd?: Costcachereadusd;
-  costCacheWriteUsd?: Costcachewriteusd;
   [k: string]: unknown;
 }
 /**

@@ -247,6 +247,45 @@ class TestProgressTools:
         assert "native_agent_id" not in result["data"]
 
 
+class TestSubagentToolCalls:
+    """Any tool call fired inside a subagent carries that subagent's native id.
+
+    The backend uses it to put the call on the subagent instead of the boss
+    and to drop the transcript poller's second copy of the same call.
+    """
+
+    def _raw(self, tool_name: str = "Bash", **extra: object) -> dict:
+        raw: dict = {
+            "tool_name": tool_name,
+            "tool_use_id": "tu_bash",
+            "tool_input": {"command": "ls"},
+            "session_id": SESSION_ID,
+            "transcript_path": TRANSCRIPT,
+        }
+        raw.update(extra)
+        return raw
+
+    def test_subagent_pre_tool_use_keeps_native_agent_id(self) -> None:
+        result = map_event("pre_tool_use", self._raw(agent_id="a5a60c7"), SESSION_ID)
+        assert result is not None
+        assert result["data"]["native_agent_id"] == "a5a60c7"
+
+    def test_subagent_post_tool_use_keeps_native_agent_id(self) -> None:
+        result = map_event("post_tool_use", self._raw(agent_id="a5a60c7"), SESSION_ID)
+        assert result is not None
+        assert result["data"]["native_agent_id"] == "a5a60c7"
+
+    def test_subagent_permission_request_keeps_native_agent_id(self) -> None:
+        result = map_event("permission_request", self._raw(agent_id="a5a60c7"), SESSION_ID)
+        assert result is not None
+        assert result["data"]["native_agent_id"] == "a5a60c7"
+
+    def test_boss_tool_call_has_no_native_agent_id(self) -> None:
+        result = map_event("pre_tool_use", self._raw(), SESSION_ID)
+        assert result is not None
+        assert "native_agent_id" not in result["data"]
+
+
 class TestTmuxPane:
     """The tmux pane Claude runs in lets the office send prompts back to it."""
 

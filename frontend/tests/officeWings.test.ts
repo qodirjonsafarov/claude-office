@@ -121,6 +121,12 @@ describe("officeWings", () => {
     expect(servers.side).toBe("left");
   });
 
+  it("fits a zone on each side of a 16:9 screen in focus mode", () => {
+    const items = officeWings(extentFor(1920, 1080));
+    expect(items.find((i) => i.side === "left")?.kind).toBe("servers");
+    expect(items.find((i) => i.side === "right")?.kind).toBe("kitchen");
+  });
+
   it("gives a slim side strip a plant instead of a cramped zone", () => {
     const items = officeWings({ ...ROOM, left: -110, right: 1390 });
     expect(items.length).toBe(2);

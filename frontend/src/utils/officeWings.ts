@@ -59,9 +59,9 @@ interface Extent {
 export const ZONE_WIDTH = 240;
 const ZONE_GUTTER = 30;
 /** Clear space next to the room's edge (its plants, printer, elevator). */
-const INNER_GAP = 24;
+const INNER_GAP = 16;
 /** Clear space at the canvas edge (the side vignette). */
-const OUTER_GAP = 16;
+const OUTER_GAP = 8;
 const ZONE_TOP = 20;
 const ZONE_BOTTOM = 1000;
 const PLANT_WIDTH = 70;

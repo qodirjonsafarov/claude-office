@@ -231,6 +231,32 @@ class TestTranscriptPoller:
             Path(temp_path).unlink(missing_ok=True)
 
     @pytest.mark.asyncio
+    async def test_an_agent_inside_a_long_tool_call_is_no_zombie(self) -> None:
+        """A long Bash writes nothing to the transcript until it ends."""
+        from datetime import UTC, datetime, timedelta
+
+        from app.core.transcript_poller import PolledAgent
+
+        callback = AsyncMock()
+        poller = TranscriptPoller(callback)
+        state = PolledAgent(
+            agent_id="busy",
+            session_id="session1",
+            transcript_path=Path("/nonexistent/agent-x.jsonl"),
+            last_activity=datetime.now(UTC) - timedelta(minutes=20),
+            active_tool_ids={"toolu_bash"},
+        )
+
+        await poller._check("busy", state)  # pyright: ignore[reportPrivateUsage]
+
+        assert callback.call_count == 0
+
+        state.last_activity = datetime.now(UTC) - timedelta(hours=2)
+        await poller._check("busy", state)  # pyright: ignore[reportPrivateUsage]
+
+        assert [c[0][0].event_type for c in callback.call_args_list] == [EventType.SUBAGENT_STOP]
+
+    @pytest.mark.asyncio
     async def test_stop_all(self) -> None:
         """Should stop all polling tasks."""
         callback = AsyncMock()

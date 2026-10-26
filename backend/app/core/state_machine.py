@@ -97,19 +97,35 @@ class ResolvedAgent:
     was_late_linked: bool = False
 
 
+def claim_native(agents: dict[str, Agent], agent: Agent, native: str) -> bool:
+    """Give ``native`` to ``agent``; False if it has another id or another agent has this one.
+
+    A native id names one Claude subagent: two characters with the same id
+    make its stop rest the wrong one.
+    """
+    if agent.native_id is not None:
+        return agent.native_id == native
+    if any(a.native_id == native for a in agents.values()):
+        return False
+    agent.native_id = native
+    return True
+
+
 def resolve_agent_for_stop(
     agents: dict[str, Agent],
     arrival_queue: list[str],
     agent_id: str | None,
     native_agent_id: str | None,
     allow_late_link: bool = True,
+    transcript_path: str | None = None,
 ) -> ResolvedAgent | None:
     """Resolve an agent for SUBAGENT_STOP by ID, native ID, or fallback linking.
 
     Resolution order:
     1. Direct agent_id match (synchronous agents)
     2. Native ID match (agents that received SubagentInfo)
-    3. Fallback: link oldest unlinked agent from arrival_queue (missed SubagentInfo)
+    3. The agent named by the transcript's ``meta.json`` (``toolUseId``)
+    4. Fallback: link oldest unlinked agent from arrival_queue (missed SubagentInfo)
 
     The fallback prefers the oldest unlinked agent (FIFO) to handle cases where
     multiple background agents started but SubagentInfo was missed for some.
@@ -119,11 +135,13 @@ def resolve_agent_for_stop(
         arrival_queue: List of agent_ids in arrival order
         agent_id: Optional agent_id from event
         native_agent_id: Optional native_agent_id from event
-        allow_late_link: Whether steps 3-4 may bind an unknown native ID to an
+        allow_late_link: Whether steps 3-5 may bind an unknown native ID to an
             unlinked agent. Pass False when the stop has no transcript on
             disk: Claude Code's hidden side-agents (e.g. the permission
             classifier) fire SubagentStop too, and linking them would evict
             a real background agent that is still waiting for SubagentInfo.
+        transcript_path: The stop's agent transcript; its meta file names
+            the agent when SubagentInfo was missed.
 
     Returns:
         ResolvedAgent if found, None otherwise
@@ -143,7 +161,16 @@ def resolve_agent_for_stop(
     if not allow_late_link:
         return None
 
-    # 3. Fallback: link oldest unlinked agent (FIFO from arrival_queue)
+    # 3. The agent started by the tool call in the transcript's meta file
+    tool_use_id = tool_use_id_from_meta(transcript_path)
+    if tool_use_id:
+        aid = f"subagent_{tool_use_id}"
+        agent = agents.get(aid)
+        if agent is not None and claim_native(agents, agent, native_agent_id):
+            return ResolvedAgent(agent_id=aid, agent=agent, was_late_linked=True)
+        return None
+
+    # 4. Fallback: link oldest unlinked agent (FIFO from arrival_queue)
     for aid in arrival_queue:
         agent = agents.get(aid)
         if agent and agent.native_id is None:
@@ -153,7 +180,7 @@ def resolve_agent_for_stop(
             )
             return ResolvedAgent(agent_id=aid, agent=agent, was_late_linked=True)
 
-    # 4. Last resort: any unlinked agent not in arrival_queue
+    # 5. Last resort: any unlinked agent not in arrival_queue
     for aid, agent in agents.items():
         if agent.native_id is None:
             agent.native_id = native_agent_id
@@ -337,8 +364,11 @@ def link_native(
     """The character of a native agent id, linking it if needed.
 
     Order: already linked; the character started by the same tool call (from
-    the transcript's meta file); the oldest unlinked character of the same
-    agent type. None when nothing matches (the async handler falls back).
+    the transcript's meta file); the only unlinked character of the same
+    agent type. None when nothing matches or the guess is ambiguous: Claude
+    Code writes the meta file only after SubagentStart, so parallel spawns of
+    one type are linked later by the boss's Agent PostToolUse
+    (``link_spawn_result``) or the meta file.
     """
     if not native:
         return None
@@ -348,18 +378,31 @@ def link_native(
     tool_use_id = tool_use_id_from_meta(transcript_path)
     if tool_use_id:
         agent = sm.agents.get(f"subagent_{tool_use_id}")
-        if agent is not None and agent.native_id is None:
-            agent.native_id = native
+        if agent is not None and claim_native(sm.agents, agent, native):
             return agent
+        return None
     if agent_type:
-        same_type = sorted(
-            (a for a in sm.agents.values() if a.native_id is None and a.agent_type == agent_type),
-            key=lambda a: a.number,
-        )
-        if same_type:
-            same_type[0].native_id = native
+        same_type = [
+            a for a in sm.agents.values() if a.native_id is None and a.agent_type == agent_type
+        ]
+        if len(same_type) == 1 and claim_native(sm.agents, same_type[0], native):
             return same_type[0]
     return None
+
+
+def link_spawn_result(sm: "StateMachine", event: ToolEvent) -> None:
+    """Link the agent of the boss's Agent/Task call to the native id it returned.
+
+    The PostToolUse of a background Agent call carries both the call's
+    ``tool_use_id`` (our ``subagent_<tool_use_id>``) and the new agent's
+    ``native_agent_id``: no guessing, whatever order the hooks arrive in.
+    """
+    data = event.data
+    if data.tool_name not in ("Task", "Agent") or not data.native_agent_id or not data.tool_use_id:
+        return
+    agent = sm.agents.get(f"subagent_{data.tool_use_id}")
+    if agent is not None:
+        claim_native(sm.agents, agent, data.native_agent_id)
 
 
 def subagent_transcript_for(transcript_path: str | None, native: str) -> str | None:
@@ -368,6 +411,9 @@ def subagent_transcript_for(transcript_path: str | None, native: str) -> str | N
         return None
     return f"{transcript_path[: -len('.jsonl')]}/subagents/agent-{native}.jsonl"
 
+
+# A subagent inside one tool call this long is treated as stuck after all.
+_OPEN_TOOL_LIMIT_MINUTES = 60
 
 # Tool events reported twice for a subagent: by the hooks and the poller.
 _TOOL_CALL_EVENTS = frozenset({EventType.PRE_TOOL_USE, EventType.POST_TOOL_USE})
@@ -542,6 +588,7 @@ def _handle_permission_request(sm: "StateMachine", event: AnyEvent) -> None:
 def _handle_post_tool_use(sm: "StateMachine", event: AnyEvent) -> None:
     """Handle POST_TOOL_USE: increment tool counter and reset agent state."""
     assert isinstance(event, ToolEvent)
+    link_spawn_result(sm, event)
     agent_id = event.data.agent_id or "main"
     if agent_id == "main":
         sm.boss_state = BossState.IDLE
@@ -605,6 +652,7 @@ def _handle_subagent_stop(sm: "StateMachine", event: AnyEvent) -> None:
         agent_id=event.data.agent_id,
         native_agent_id=event.data.native_agent_id,
         allow_late_link=stop_transcript_exists(event),
+        transcript_path=event.data.agent_transcript_path,
     )
 
     if resolved:
@@ -614,10 +662,11 @@ def _handle_subagent_stop(sm: "StateMachine", event: AnyEvent) -> None:
         stopping_agent.state = AgentState.RESTING
         stopping_agent.resting_since = event.timestamp
         stopping_agent.bubble = None
-        if stopping_agent.native_id is None:
-            stopping_agent.native_id = event.data.native_agent_id or native_id_from_transcript(
-                event.data.agent_transcript_path
-            )
+        native = event.data.native_agent_id or native_id_from_transcript(
+            event.data.agent_transcript_path
+        )
+        if native:
+            claim_native(sm.agents, stopping_agent, native)
 
         sm.boss_state = BossState.IDLE
 
@@ -880,6 +929,10 @@ class StateMachine:
     agent_last_event: dict[str, datetime] = field(
         default_factory=lambda: cast(dict[str, datetime], {})
     )
+    # Tool calls a subagent started and that have not returned yet
+    agent_open_tools: dict[str, set[str]] = field(
+        default_factory=lambda: cast(dict[str, set[str]], {})
+    )
     # (event type, tool_use_id) -> agent id of the copy kept (accept_tool_event)
     seen_tool_calls: dict[tuple[str, str], str] = field(
         default_factory=lambda: cast(dict[tuple[str, str], str], {})
@@ -1016,15 +1069,26 @@ class StateMachine:
         return gone
 
     def quiet_workers(self, now: datetime, minutes: float) -> list[str]:
-        """Working subagents without any event for ``minutes`` (maybe stuck)."""
+        """Working subagents without any event for ``minutes`` (maybe stuck).
+
+        An agent inside a tool call (a long Bash writes nothing until it
+        returns) is busy, not quiet, for up to ``_OPEN_TOOL_LIMIT_MINUTES``.
+        """
         limit = _as_utc(now)
-        return [
-            a.id
-            for a in self.agents.values()
-            if a.state in (AgentState.WORKING, AgentState.THINKING)
-            and a.id in self.agent_last_event
-            and (limit - _as_utc(self.agent_last_event[a.id])).total_seconds() >= minutes * 60
-        ]
+        quiet: list[str] = []
+        for a in self.agents.values():
+            if a.state not in (AgentState.WORKING, AgentState.THINKING):
+                continue
+            last = self.agent_last_event.get(a.id)
+            if last is None:
+                continue
+            idle = (limit - _as_utc(last)).total_seconds()
+            needed = minutes * 60
+            if self.agent_open_tools.get(a.id):
+                needed = max(needed, _OPEN_TOOL_LIMIT_MINUTES * 60)
+            if idle >= needed:
+                quiet.append(a.id)
+        return quiet
 
     def rest_agent(self, agent_id: str, now: datetime) -> None:
         """Put an agent to rest (finished or lost its transcript)."""
@@ -1057,6 +1121,7 @@ class StateMachine:
         if agent_id in self.agents:
             del self.agents[agent_id]
         self.agent_last_event.pop(agent_id, None)
+        self.agent_open_tools.pop(agent_id, None)
         self.agent_progress.forget_agent(agent_id)
         if agent_id in self.arrival_queue:
             self.arrival_queue.remove(agent_id)
@@ -1106,6 +1171,16 @@ class StateMachine:
                 raise
         if event_agent and event_agent in self.agents:
             self.agent_last_event[event_agent] = event.timestamp
+            self._track_open_tool(event_agent, event)
+
+    def _track_open_tool(self, agent_id: str, event: AnyEvent) -> None:
+        tool_use_id = getattr(event.data, "tool_use_id", None)
+        if not tool_use_id or event.event_type not in _TOOL_CALL_EVENTS:
+            return
+        if event.event_type == EventType.PRE_TOOL_USE:
+            self.agent_open_tools.setdefault(agent_id, set()).add(tool_use_id)
+        else:
+            self.agent_open_tools.get(agent_id, set()).discard(tool_use_id)
 
     def tool_to_thought(self, event: ToolEvent) -> BubbleContent:
         """Convert a tool use event to thought bubble content.

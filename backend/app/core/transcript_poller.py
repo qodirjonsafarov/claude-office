@@ -30,6 +30,10 @@ POLL_INTERVAL_SECONDS = 1.0
 # this long. Kept high so legitimate long-running subagents are not killed.
 INACTIVITY_TIMEOUT = timedelta(minutes=10)
 
+# A tool call still running (a long Bash writes nothing to the transcript
+# until it returns) is not inactivity, up to this long.
+LONG_TOOL_TIMEOUT = timedelta(hours=1)
+
 
 def _zombie_timeout() -> timedelta:
     """Return the configured zombie-subagent timeout as a timedelta."""
@@ -122,6 +126,8 @@ class TranscriptPoller(BasePoller[PolledAgent]):
         """
         inactivity = datetime.now(UTC) - state.last_activity
         zombie_timeout = _zombie_timeout()
+        if state.active_tool_ids:
+            zombie_timeout = max(zombie_timeout, LONG_TOOL_TIMEOUT)
 
         # Zombie detection: emit a synthetic SubagentStop so the
         # state machine can clean up the orphaned agent. This
@@ -151,7 +157,10 @@ class TranscriptPoller(BasePoller[PolledAgent]):
         # Hard fallback: if the zombie callback also failed for
         # any reason, eventually stop the loop so we do not poll
         # forever.
-        if inactivity > INACTIVITY_TIMEOUT:
+        hard_timeout = INACTIVITY_TIMEOUT
+        if state.active_tool_ids:
+            hard_timeout = max(hard_timeout, LONG_TOOL_TIMEOUT)
+        if inactivity > hard_timeout:
             logger.debug(f"Agent {key} timed out due to inactivity")
             async with self._lock:
                 self._sessions.pop(key, None)

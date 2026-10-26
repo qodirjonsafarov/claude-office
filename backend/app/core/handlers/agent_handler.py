@@ -16,7 +16,13 @@ from collections.abc import Awaitable, Callable
 
 from app.core.broadcast_service import broadcast_state
 from app.core.jsonl_parser import get_first_user_prompt, get_last_assistant_response
-from app.core.state_machine import StateMachine, resolve_agent_for_stop, stop_transcript_exists
+from app.core.state_machine import (
+    StateMachine,
+    claim_native,
+    link_native,
+    resolve_agent_for_stop,
+    stop_transcript_exists,
+)
 from app.core.summary_service import get_summary_service
 from app.core.transcript_poller import get_transcript_poller
 from app.models.agents import Agent, AgentState, BossState
@@ -38,6 +44,11 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+# How long SUBAGENT_INFO waits for proof of whose native id it is (the boss's
+# Agent PostToolUse or the meta file, both written just after SubagentStart).
+_LINK_WAIT_SECONDS = 3.0
+_LINK_WAIT_STEP = 0.1
 
 # Callback type aliases used for the poller initialisation and state-update hooks.
 EnsureTranscriptPollFn = Callable[[], None]
@@ -147,34 +158,31 @@ async def handle_subagent_info(
             f"(missed due to backend restart)"
         )
 
-    ensure_transcript_poller_fn()
-    poller = get_transcript_poller()
-    if poller:
-        # The character linked to this native id (state_machine.link_native)
-        # first; only without one fall back to the first unlinked character.
-        linked = [(aid, a) for aid, a in sm.agents.items() if a.native_id == native_agent_id]
-        candidates = linked or [(aid, a) for aid, a in sm.agents.items() if a.native_id is None]
-        for agent_id, agent in candidates:
-            # Link and enrich agents that have not yet been assigned a native_id.
-            if agent.native_id is None:
-                agent.native_id = native_agent_id
-                logger.info(f"Linked agent {agent_id} to native ID {native_agent_id}")
-                await enrich_agent_from_transcript(
-                    agent,
-                    transcript_path,
-                    event.data.agent_type,
-                    {a.name for aid, a in sm.agents.items() if aid != agent_id and a.name},
-                )
-            if not await poller.is_polling(agent_id):
-                logger.info(
-                    f"Starting transcript polling for {agent_id} "
-                    f"(native: {native_agent_id}) at {transcript_path}"
-                )
-                await poller.start_polling(agent_id, event.session_id, transcript_path)
-                break
+    agent_id = await _wait_for_link(sm, event, native_agent_id)
+    if agent_id is None:
+        logger.warning(
+            f"SUBAGENT_INFO: no character proven to own native ID {native_agent_id}; "
+            f"not polling {transcript_path}"
+        )
+    else:
+        agent = sm.agents[agent_id]
+        if not agent.current_task or agent.current_task == "Resumed mid-session":
+            await enrich_agent_from_transcript(
+                agent,
+                transcript_path,
+                event.data.agent_type,
+                {a.name for aid, a in sm.agents.items() if aid != agent_id and a.name},
+            )
+        ensure_transcript_poller_fn()
+        poller = get_transcript_poller()
+        if poller and not await poller.is_polling(agent_id):
+            logger.info(
+                f"Starting transcript polling for {agent_id} "
+                f"(native: {native_agent_id}) at {transcript_path}"
+            )
+            await poller.start_polling(agent_id, event.session_id, transcript_path)
 
-    # Also enrich the freshly synthesised agent (its native_id was already set
-    # by sm.transition above, so the loop above skips it via the None guard).
+    # Also enrich the freshly synthesised agent when the block above did not.
     synth_id = f"subagent_{native_agent_id}"
     synth_agent = sm.agents.get(synth_id)
     if synth_agent and not synth_agent.current_task:
@@ -184,6 +192,31 @@ async def handle_subagent_info(
             event.data.agent_type,
             {a.name for a in sm.agents.values() if a.name},
         )
+
+
+async def _wait_for_link(sm: StateMachine, event: AgentEvent, native: str) -> str | None:
+    """Id of the character that owns ``native``, waiting briefly for proof.
+
+    The sync transition links it when it can tell (already linked, meta
+    file, the only unlinked agent of that type). Parallel spawns of one type
+    are told apart a moment later by the Agent PostToolUse or the meta file.
+    Without proof, the only unlinked character is taken; never a guess
+    between several.
+    """
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + _LINK_WAIT_SECONDS
+    while True:
+        agent = link_native(sm, native, event.data.agent_transcript_path, event.data.agent_type)
+        if agent is not None:
+            return agent.id
+        if loop.time() >= deadline:
+            break
+        await asyncio.sleep(_LINK_WAIT_STEP)
+    unlinked = [a for a in sm.agents.values() if a.native_id is None]
+    if len(unlinked) == 1 and claim_native(sm.agents, unlinked[0], native):
+        logger.info(f"Linked agent {unlinked[0].id} to native ID {native} (only unlinked)")
+        return unlinked[0].id
+    return None
 
 
 async def handle_subagent_stop(
@@ -209,6 +242,7 @@ async def handle_subagent_stop(
         agent_id=event.data.agent_id,
         native_agent_id=event.data.native_agent_id,
         allow_late_link=stop_transcript_exists(event),
+        transcript_path=event.data.agent_transcript_path,
     )
 
     if not resolved:

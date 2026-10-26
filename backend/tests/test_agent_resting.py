@@ -11,7 +11,7 @@ session ends.
 """
 
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Literal
 
 import pytest
 
@@ -335,6 +335,23 @@ class TestRestSweep:
         assert broadcasts == [SESSION]
 
 
+def bash(
+    sm: StateMachine,
+    agent_id: str,
+    tool_use_id: str,
+    kind: Literal[EventType.PRE_TOOL_USE, EventType.POST_TOOL_USE],
+    at: datetime,
+) -> None:
+    sm.transition(
+        ToolEvent(
+            event_type=kind,
+            session_id=SESSION,
+            timestamp=at,
+            data=ToolEventData(agent_id=agent_id, tool_name="Bash", tool_use_id=tool_use_id),
+        )
+    )
+
+
 class TestStuckWorkerSafetyNet:
     def test_a_quiet_working_agent_is_found(self) -> None:
         sm = StateMachine()
@@ -343,6 +360,25 @@ class TestStuckWorkerSafetyNet:
 
         assert sm.quiet_workers(T0 + timedelta(minutes=5), minutes=10) == []
         assert sm.quiet_workers(T0 + timedelta(minutes=12), minutes=10) == ["w"]
+
+    def test_an_agent_in_a_long_tool_call_is_not_quiet(self) -> None:
+        """A 15-minute Bash writes nothing until it ends: the agent is busy."""
+        sm = StateMachine()
+        start(sm, "w", T0)
+        bash(sm, "w", "b1", EventType.PRE_TOOL_USE, T0 + timedelta(minutes=1))
+
+        assert sm.quiet_workers(T0 + timedelta(minutes=15), minutes=10) == []
+
+        bash(sm, "w", "b1", EventType.POST_TOOL_USE, T0 + timedelta(minutes=16))
+        assert sm.quiet_workers(T0 + timedelta(minutes=20), minutes=10) == []
+        assert sm.quiet_workers(T0 + timedelta(minutes=27), minutes=10) == ["w"]
+
+    def test_a_tool_call_open_for_hours_counts_as_stuck(self) -> None:
+        sm = StateMachine()
+        start(sm, "w", T0)
+        bash(sm, "w", "b1", EventType.PRE_TOOL_USE, T0)
+
+        assert sm.quiet_workers(T0 + timedelta(minutes=70), minutes=10) == ["w"]
 
     def test_resting_agents_are_not_quiet_workers(self) -> None:
         sm = StateMachine()

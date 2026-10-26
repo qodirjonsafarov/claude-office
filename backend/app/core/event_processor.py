@@ -995,21 +995,29 @@ class EventProcessor:
                                 sm.append_capped(assistant_entry)
                     elif evt.event_type == EventType.SUBAGENT_INFO:
                         assert isinstance(evt, AgentEvent)
-                        if evt.data.agent_transcript_path:
-                            native_agent_id = evt.data.native_agent_id
-                            transcript_path = evt.data.agent_transcript_path
-                            for agent in sm.agents.values():
-                                if agent.native_id == native_agent_id or agent.native_id is None:
-                                    if native_agent_id and agent.native_id is None:
-                                        agent.native_id = native_agent_id
-                                    if (
-                                        not agent.current_task
-                                        or agent.current_task == "Resumed mid-session"
-                                    ):
-                                        await enrich_agent_from_transcript(
-                                            agent, transcript_path, evt.data.agent_type
-                                        )
-                                    break
+                        # sm.transition linked the native id (link_native);
+                        # never hand it to another unlinked agent here.
+                        native_agent_id = evt.data.native_agent_id
+                        transcript_path = evt.data.agent_transcript_path
+                        linked = next(
+                            (
+                                a
+                                for a in sm.agents.values()
+                                if native_agent_id and a.native_id == native_agent_id
+                            ),
+                            None,
+                        )
+                        if (
+                            transcript_path
+                            and linked is not None
+                            and (
+                                not linked.current_task
+                                or linked.current_task == "Resumed mid-session"
+                            )
+                        ):
+                            await enrich_agent_from_transcript(
+                                linked, transcript_path, evt.data.agent_type
+                            )
                 except Exception as e:
                     skipped_count += 1
                     logger.warning(

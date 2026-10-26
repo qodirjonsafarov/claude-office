@@ -240,9 +240,56 @@ export function drawRug(
 
 export type PlantKind = "leafy" | "tall" | "round";
 
+/** A pointed leaf from (bx, by) toward `angle` (radians), `len` long. */
+function leafShape(
+  g: Graphics,
+  bx: number,
+  by: number,
+  angle: number,
+  len: number,
+  width: number,
+  fill: number,
+  outline: number,
+  vein: number,
+): void {
+  const ux = Math.cos(angle);
+  const uy = Math.sin(angle);
+  const nx = -uy;
+  const ny = ux;
+  const mid = len * 0.45;
+  const pts = (grow: number) => [
+    bx - ux * grow,
+    by - uy * grow,
+    bx + ux * mid + nx * (width / 2 + grow),
+    by + uy * mid + ny * (width / 2 + grow),
+    bx + ux * (len + grow),
+    by + uy * (len + grow),
+    bx + ux * mid - nx * (width / 2 + grow),
+    by + uy * mid - ny * (width / 2 + grow),
+  ];
+  g.poly(pts(1));
+  g.fill(outline);
+  g.poly(pts(0));
+  g.fill(fill);
+  // The lit half of the leaf (light from the top left) and its vein
+  g.poly([
+    bx,
+    by,
+    bx + ux * mid + nx * (width / 2) * (ny < 0 ? 1 : -1),
+    by + uy * mid + ny * (width / 2) * (ny < 0 ? 1 : -1),
+    bx + ux * len,
+    by + uy * len,
+  ]);
+  g.fill({ color: 0xffffff, alpha: 0.12 });
+  g.moveTo(bx, by);
+  g.lineTo(bx + ux * len * 0.8, by + uy * len * 0.8);
+  g.stroke({ width: 1, color: vein, alpha: 0.6 });
+}
+
 /**
  * A potted plant standing at (0, 0) = the bottom of its pot. `size` scales
- * the whole plant (1 is about 64 px tall).
+ * the whole plant (1 is about 64 px tall). Kinds: a leafy fan (monstera
+ * like), an upright snake plant, a round bush.
  */
 export function drawPlant(
   g: Graphics,
@@ -253,78 +300,87 @@ export function drawPlant(
 ): void {
   const m = p.materials;
   const s = size;
-  const potW = Math.round(26 * s);
-  const potH = Math.round(20 * s);
+  const potW = Math.round((kind === "tall" ? 22 : 26) * s);
+  const potH = Math.round(18 * s);
   ovalShadow(g, 2, 0, potW * 0.62, p.shadow);
-  // Leaves first, the pot over their stems
-  const leaf = (cx: number, cy: number, rx: number, ry: number, c: number) => {
-    g.ellipse(Math.round(cx), Math.round(cy), rx, ry);
-    g.fill(c);
-  };
   const top = -potH;
+  const turn = ((seed * 37) % 11) / 100;
   if (kind === "tall") {
-    // Snake plant: upright blades with light edges
-    const blades = [-9, -4, 1, 6, 10];
+    // Snake plant: upright pointed blades with light edges
+    const blades = [-8, -4, 0, 4, 8];
     blades.forEach((bx, i) => {
-      const h = (34 + ((i * 7 + seed * 3) % 14)) * s;
-      const bw = 5 * s;
-      const x = bx * s - bw / 2;
-      g.roundRect(
-        Math.round(x),
-        Math.round(top - h + 4),
-        Math.round(bw),
-        Math.round(h),
-        2,
+      const len = (36 + ((i * 7 + seed * 3) % 14)) * s;
+      const lean = (bx / 8) * 0.22 + turn - 0.05;
+      leafShape(
+        g,
+        bx * 0.6 * s,
+        top + 2,
+        -Math.PI / 2 + lean,
+        len,
+        6 * s,
+        i % 2 ? m.leaf : m.leafDark,
+        m.outline,
+        m.leafLight,
       );
-      g.fill(m.outline);
-      g.roundRect(
-        Math.round(x + 1),
-        Math.round(top - h + 5),
-        Math.round(bw - 2),
-        Math.round(h - 2),
-        2,
-      );
-      g.fill(i % 2 ? m.leaf : m.leafDark);
-      wash(g, x + 1, top - h + 7, 1, h - 8, { color: m.leafLight, alpha: 0.9 });
     });
+  } else if (kind === "leafy") {
+    // A fan of big pointed leaves, the back ones darker
+    const leaves = [
+      { a: -2.6, l: 28, c: m.leafDark },
+      { a: -0.55, l: 28, c: m.leafDark },
+      { a: -2.15, l: 34, c: m.leaf },
+      { a: -1.0, l: 34, c: m.leaf },
+      { a: -1.6, l: 38, c: m.leafDark },
+      { a: -1.88, l: 30, c: m.leafLight },
+      { a: -1.3, l: 31, c: m.leaf },
+    ];
+    for (const lf of leaves) {
+      leafShape(
+        g,
+        0,
+        top + 2,
+        lf.a + turn,
+        lf.l * s,
+        13 * s,
+        lf.c,
+        m.outline,
+        m.leafDark,
+      );
+    }
   } else {
-    const r = (kind === "round" ? 15 : 13) * s;
-    const cy = top - r * 0.9;
-    // Outline pass, then dark, mid and light leaf clusters
-    const blobs: Array<[number, number, number]> =
-      kind === "round"
-        ? [
-            [0, 0, 1],
-            [-0.6, 0.2, 0.7],
-            [0.6, 0.25, 0.7],
-            [0, -0.55, 0.65],
-          ]
-        : [
-            [0, 0, 0.8],
-            [-0.8, 0.1, 0.62],
-            [0.8, -0.05, 0.62],
-            [-0.35, -0.75, 0.6],
-            [0.45, -0.85, 0.55],
-            [0, -1.35, 0.45],
-          ];
+    // A round bush: many small clusters in three tones
+    const r = 15 * s;
+    const cy = top - r * 0.85;
+    const blobs: Array<[number, number, number]> = [
+      [0, 0.15, 0.62],
+      [-0.62, 0.25, 0.5],
+      [0.62, 0.22, 0.5],
+      [-0.4, -0.4, 0.5],
+      [0.38, -0.45, 0.5],
+      [0, -0.72, 0.45],
+      [-0.85, -0.12, 0.38],
+      [0.85, -0.15, 0.38],
+    ];
+    const dot = (bx: number, by: number, rr: number, c: number) => {
+      g.circle(Math.round(bx), Math.round(by), rr);
+      g.fill(c);
+    };
     for (const [bx, by, br] of blobs)
-      leaf(bx * r, cy + by * r, br * r + 1, br * r * 0.85 + 1, m.outline);
+      dot(bx * r, cy + by * r, br * r + 1, m.outline);
     for (const [bx, by, br] of blobs)
-      leaf(bx * r, cy + by * r, br * r, br * r * 0.85, m.leafDark);
+      dot(bx * r, cy + by * r, br * r, m.leafDark);
     for (const [bx, by, br] of blobs)
-      leaf(
-        bx * r - br * r * 0.15,
+      dot(
+        bx * r - br * r * 0.18,
         cy + by * r - br * r * 0.2,
-        br * r * 0.72,
-        br * r * 0.6,
+        br * r * 0.7,
         m.leaf,
       );
     for (const [bx, by, br] of blobs)
-      leaf(
-        bx * r - br * r * 0.35,
-        cy + by * r - br * r * 0.38,
-        br * r * 0.3,
-        br * r * 0.22,
+      dot(
+        bx * r - br * r * 0.38,
+        cy + by * r - br * r * 0.42,
+        br * r * 0.28,
         m.leafLight,
       );
   }
@@ -340,4 +396,30 @@ export function drawPlant(
   box(g, px - 2, top - 2, potW + 4, 5, m.pot, m.outline);
   box(g, px + 2, top - 1, potW - 4, 2, m.soil);
   wash(g, px - 1, top + 1, potW / 2, 1, { color: m.potLight, alpha: 0.8 });
+}
+
+/** A low oak cabinet (the printer stand), `w` wide, its top at y = 0. */
+export function drawCabinet(
+  g: Graphics,
+  p: ScenePalette,
+  w: number,
+  h: number,
+): void {
+  const m = p.materials;
+  const x = -w / 2;
+  dropShadow(g, x, h - 8, w, 10, p.shadow);
+  box(g, x + 2, 8, w - 4, h - 10, m.wood, m.outline);
+  // Two drawers with handles
+  const dh = Math.floor((h - 22) / 2);
+  for (let i = 0; i < 2; i++) {
+    const dy = 12 + i * (dh + 2);
+    box(g, x + 6, dy, w - 12, dh, m.woodLight, m.outline);
+    wash(g, x + 7, dy + 1, w - 14, 1, { color: 0xffffff, alpha: 0.2 });
+    box(g, -6, dy + dh / 2 - 1, 12, 3, m.metalDark);
+  }
+  box(g, x + 4, h - 4, w - 8, 4, m.outline);
+  // Top board, lit along its back edge
+  box(g, x, 0, w, 10, m.woodLight, m.outline);
+  wash(g, x + 1, 1, w - 2, 1, { color: 0xffffff, alpha: 0.25 });
+  wash(g, x + 1, 8, w - 2, 1, { color: 0x000000, alpha: 0.2 });
 }

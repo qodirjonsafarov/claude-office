@@ -660,7 +660,7 @@ export function OfficeGame(): ReactNode {
                   />
 
                   {/* Kitchen, lounge, library... on the extra canvas */}
-                  <OfficeWings items={wings} plantTexture={textures.plant} />
+                  <OfficeWings items={wings} />
 
                   {/* Boss area rug - rendered right after floor */}
                   <BossRug x={BOSS_RUG_POSITION.x} y={BOSS_RUG_POSITION.y} />
@@ -737,7 +737,6 @@ export function OfficeGame(): ReactNode {
                     isPrinting={
                       printReport && !isCompacting && !!boss.bubble.content
                     }
-                    deskTexture={textures.desk}
                     printerTexture={textures.printer}
                   />
 

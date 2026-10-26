@@ -156,6 +156,8 @@ export interface ScenePalette {
   boardAccent: number;
   /** The accent where it is ink on paper (clock hand, active board dot). */
   accentInk: number;
+  /** How much of the floor's tone the zones' tiles take (0..1). */
+  tileTone: number;
   /** The award gold (employee of the month) and its dark edge. */
   award: number;
   awardDark: number;
@@ -217,9 +219,9 @@ const DARK_MATERIALS: SceneMaterials = {
   leaf: 0x3f7f45,
   leafDark: 0x2a5a33,
   leafLight: 0x62a55a,
-  pot: 0xc9cfc6,
-  potDark: 0x8e978b,
-  potLight: 0xe2e7de,
+  pot: 0x3d4b43,
+  potDark: 0x28332d,
+  potLight: 0x5a6b61,
   soil: 0x3a2c20,
   books: BOOKS_DARK,
   screen: 0x0d1512,
@@ -274,9 +276,9 @@ const LIGHT_MATERIALS: SceneMaterials = {
   leaf: 0x4f9a4c,
   leafDark: 0x377538,
   leafLight: 0x77bf66,
-  pot: 0xf1f3ec,
-  potDark: 0xb7bfae,
-  potLight: 0xffffff,
+  pot: 0xd9cdb6,
+  potDark: 0xb3a487,
+  potLight: 0xf1e9d8,
   soil: 0x5a4430,
   books: BOOKS_LIGHT,
   screen: 0x1f2a24,
@@ -329,6 +331,7 @@ const PALETTES: Record<Theme, ScenePalette> = {
     boardHeader: 0x16211d,
     boardAccent: 0xa7f36a,
     accentInk: 0x4f8a1f,
+    tileTone: 0.55,
     award: 0xf0b866,
     awardDark: 0xb98a4c,
     materials: DARK_MATERIALS,
@@ -376,6 +379,7 @@ const PALETTES: Record<Theme, ScenePalette> = {
     boardHeader: 0x1d2b26,
     boardAccent: 0x8fe04e,
     accentInk: 0x4f8a1f,
+    tileTone: 0.15,
     award: 0xe8ac55,
     awardDark: 0x9a6a32,
     materials: LIGHT_MATERIALS,

@@ -8,7 +8,7 @@ import {
   type ClockFormat,
 } from "@/stores/preferencesStore";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useThemePref } from "@/hooks/useThemePref";
+import { useThemePref } from "@/systems/themeStore";
 import type { ThemePref } from "@/systems/theme";
 
 // ============================================================================
@@ -55,7 +55,7 @@ function SettingsToggle({
         }`}
       >
         <div
-          className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-md transition-transform ${
+          className={`absolute top-0.5 w-4 h-4 rounded-full bg-knob shadow-md transition-transform ${
             checked ? "translate-x-[18px]" : "translate-x-0.5"
           }`}
         />
@@ -144,7 +144,7 @@ export default function SettingsModal({
       }
     >
       <div className="space-y-6">
-        {/* Theme (light is a draft) */}
+        {/* Theme: dark, light or the OS choice */}
         <div>
           <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
             {t("settings.theme")}
@@ -305,7 +305,7 @@ export default function SettingsModal({
               }`}
             >
               <div
-                className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform ${
+                className={`absolute top-1 w-4 h-4 rounded-full bg-knob shadow-md transition-transform ${
                   autoFollowNewSessions ? "translate-x-6" : "translate-x-1"
                 }`}
               />

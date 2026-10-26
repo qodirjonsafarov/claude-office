@@ -29,7 +29,7 @@ export function NarratorBar({
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[60] pointer-events-auto">
-      <div className="mx-4 mb-4 bg-gradient-to-r from-[#1a0a00] to-[#1c1317] border border-orange-500/40 rounded-lg px-5 py-3 flex items-center gap-4 shadow-2xl shadow-orange-900/20 backdrop-blur-sm">
+      <div className="mx-4 mb-4 bg-panel border border-orange-500/40 rounded-lg px-5 py-3 flex items-center gap-4 shadow-[0_12px_40px_var(--qo-float-shade)]">
         <div className="w-8 h-8 bg-orange-500/20 border border-orange-500/40 rounded-full flex items-center justify-center text-orange-500 font-bold text-sm flex-shrink-0">
           {stepType === "interactive" ? "\u2726" : "\u25B6"}
         </div>

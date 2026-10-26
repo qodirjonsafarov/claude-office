@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { THEME_BOOT_SCRIPT } from "@/systems/theme";
+import { THEME_BOOT_SCRIPT, THEME_COLORS } from "@/systems/theme";
 
 // The UI text is Manrope (self-hosted, see styles/tokens.css); mono is kept
 // for ids, timestamps and code.
@@ -29,8 +29,12 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  // Mirrors --qo-bg in styles/tokens.css (metadata cannot read CSS vars).
-  themeColor: "#080d0c",
+  // The page colour of each theme (--qo-bg). The OS theme picks one before
+  // any script runs; an explicit choice rewrites both (systems/themeStore.ts).
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: THEME_COLORS.light },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLORS.dark },
+  ],
 };
 
 export default function RootLayout({
@@ -39,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // The boot script sets data-theme / data-tint before React hydrates.
+    // The boot script sets data-theme before React hydrates.
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />

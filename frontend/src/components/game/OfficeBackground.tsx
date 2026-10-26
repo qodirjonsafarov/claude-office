@@ -5,10 +5,10 @@
  */
 
 import { type ReactNode, useCallback } from "react";
-import { shade } from "@/systems/colorShade";
 import { Graphics, Texture } from "pixi.js";
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from "@/constants/canvas";
-import { currentSceneTint, scenePalette } from "@/systems/sceneTint";
+import { scenePalette, type ScenePalette } from "@/systems/scenePalette";
+import { useTheme } from "@/systems/themeStore";
 
 // ============================================================================
 // CONSTANTS
@@ -17,20 +17,9 @@ import { currentSceneTint, scenePalette } from "@/systems/sceneTint";
 // Floor/wall dimensions
 const WALL_HEIGHT = 250;
 const WALL_TRIM_HEIGHT = 10;
-
-// Colors (Olymp theme: dark green walls, warm wood floor, lime neon).
-// The greens come from the tint on trial (systems/sceneTint, ?tint=b).
-const TINT = scenePalette(currentSceneTint());
-const FLOOR_COLOR = 0x3a2a1e;
-const WALL_TOP_COLOR = TINT.wallTop;
-const WALL_BOTTOM_COLOR = TINT.wallBottom;
-const WAINSCOT_COLOR = TINT.wainscot;
 const WAINSCOT_HEIGHT = 70;
-const WALL_TRIM_COLOR = 0x6b4a2f;
-const WALL_TRIM_HIGHLIGHT = 0x8a6340;
-const NEON_START = TINT.neonStart;
-const NEON_END = TINT.neonEnd;
 const WALL_BANDS = 10;
+// Colours: systems/scenePalette.ts (dark green office, light daytime office).
 
 // ============================================================================
 // TYPES
@@ -61,25 +50,25 @@ function lerpColor(a: number, b: number, t: number): number {
   );
 }
 
-function drawWalls(g: Graphics): void {
+function drawWalls(g: Graphics, p: ScenePalette): void {
   g.clear();
 
   // Main floor background (fallback color behind tiles)
   g.rect(0, WALL_HEIGHT, CANVAS_WIDTH, CANVAS_HEIGHT - WALL_HEIGHT);
-  g.fill(FLOOR_COLOR);
+  g.fill(p.floor);
 
   // Wall: vertical gradient in bands, darker at the ceiling
   const bandHeight = WALL_HEIGHT / WALL_BANDS;
   for (let i = 0; i < WALL_BANDS; i++) {
     g.rect(0, i * bandHeight, CANVAS_WIDTH, bandHeight + 1);
-    g.fill(lerpColor(WALL_TOP_COLOR, WALL_BOTTOM_COLOR, i / (WALL_BANDS - 1)));
+    g.fill(lerpColor(p.wallTop, p.wallBottom, i / (WALL_BANDS - 1)));
   }
 
   // Ceiling neon strip: one green fading into another
   const segments = 32;
   const segWidth = CANVAS_WIDTH / segments;
   for (let i = 0; i < segments; i++) {
-    const color = lerpColor(NEON_START, NEON_END, i / (segments - 1));
+    const color = lerpColor(p.neonStart, p.neonEnd, i / (segments - 1));
     g.rect(i * segWidth, 0, segWidth + 1, 4);
     g.fill(color);
     g.rect(i * segWidth, 4, segWidth + 1, 14);
@@ -89,36 +78,28 @@ function drawWalls(g: Graphics): void {
   // Wainscot panels along the lower wall
   const wainscotTop = WALL_HEIGHT - WALL_TRIM_HEIGHT - WAINSCOT_HEIGHT;
   g.rect(0, wainscotTop, CANVAS_WIDTH, WAINSCOT_HEIGHT);
-  g.fill(WAINSCOT_COLOR);
+  g.fill(p.wainscot);
   g.rect(0, wainscotTop, CANVAS_WIDTH, 3);
-  g.fill(WALL_TRIM_COLOR);
+  g.fill(p.wallTrim);
   for (let x = 20; x < CANVAS_WIDTH - 60; x += 80) {
     g.roundRect(x, wainscotTop + 14, 60, WAINSCOT_HEIGHT - 26, 4);
-    g.stroke({ width: 2, color: TINT.wainscotLine });
+    g.stroke({ width: 2, color: p.wainscotLine });
   }
 
   // Wooden baseboard
   g.rect(0, WALL_HEIGHT - WALL_TRIM_HEIGHT, CANVAS_WIDTH, WALL_TRIM_HEIGHT);
-  g.fill(WALL_TRIM_COLOR);
+  g.fill(p.wallTrim);
   g.rect(0, WALL_HEIGHT - WALL_TRIM_HEIGHT, CANVAS_WIDTH, 2);
-  g.fill(WALL_TRIM_HIGHLIGHT);
+  g.fill(p.wallTrimHighlight);
 }
 
 // Modern floor: light ash planks with staggered seams
 const PLANK_HEIGHT = 32;
-// Toned down ~16% so the light floor doesn't glare next to the dark UI
-const FLOOR_TONE = 0.84;
-const PLANK_COLORS = [0xa3927f, 0x9a8a78, 0xad9c88, 0x958572, 0xa8978a].map(
-  (c) => shade(c, FLOOR_TONE),
-);
-const PLANK_SEAM = shade(0x6f6252, FLOOR_TONE);
 
 // Team zone carpet under the desk grid
 const TEAM_ZONE = { x: 150, y: 360, w: 980, h: 400 };
-const TEAM_ZONE_COLOR = TINT.carpet;
-const TEAM_ZONE_BORDER = TINT.carpetBorder;
 
-function drawFloor(g: Graphics): void {
+function drawFloor(g: Graphics, p: ScenePalette): void {
   g.clear();
   let row = 0;
   for (let y = WALL_HEIGHT; y < CANVAS_HEIGHT; y += PLANK_HEIGHT, row++) {
@@ -128,7 +109,7 @@ function drawFloor(g: Graphics): void {
     while (x < CANVAS_WIDTH) {
       n = (n * 1103515245 + 12345) & 0x7fffffff;
       const len = 140 + (n % 120);
-      const color = PLANK_COLORS[n % PLANK_COLORS.length];
+      const color = p.planks[n % p.planks.length];
       g.rect(x, y, len, PLANK_HEIGHT);
       g.fill(color);
       // subtle grain line
@@ -136,12 +117,12 @@ function drawFloor(g: Graphics): void {
       g.fill({ color: 0x000000, alpha: 0.05 });
       // seam at plank end
       g.rect(x + len - 1, y, 2, PLANK_HEIGHT);
-      g.fill({ color: PLANK_SEAM, alpha: 0.6 });
+      g.fill({ color: p.plankSeam, alpha: 0.6 });
       x += len;
     }
     // row seam
     g.rect(0, y + PLANK_HEIGHT - 1, CANVAS_WIDTH, 1);
-    g.fill({ color: PLANK_SEAM, alpha: 0.55 });
+    g.fill({ color: p.plankSeam, alpha: 0.55 });
   }
 
   // Team zone carpet with a soft shadow and a glowing edge
@@ -149,10 +130,10 @@ function drawFloor(g: Graphics): void {
   g.roundRect(z.x + 6, z.y + 8, z.w, z.h, 28);
   g.fill({ color: 0x000000, alpha: 0.18 });
   g.roundRect(z.x, z.y, z.w, z.h, 28);
-  g.fill(TEAM_ZONE_COLOR);
-  g.stroke({ width: 4, color: TEAM_ZONE_BORDER });
+  g.fill(p.carpet);
+  g.stroke({ width: 4, color: p.carpetBorder });
   g.roundRect(z.x + 14, z.y + 14, z.w - 28, z.h - 28, 20);
-  g.stroke({ width: 2, color: TINT.carpetLine, alpha: 0.3 });
+  g.stroke({ width: 2, color: p.carpetLine, alpha: 0.3 });
   // carpet texture: fine diagonal pattern
   for (let d = 0; d < z.w + z.h; d += 22) {
     const x0 = z.x + Math.max(0, d - z.h);
@@ -161,7 +142,7 @@ function drawFloor(g: Graphics): void {
     if (len <= 0) continue;
     g.moveTo(x0 + 18, y0 - 18);
     g.lineTo(x0 + len - 18, y0 - len + 18);
-    g.stroke({ width: 1, color: 0xffffff, alpha: 0.025 });
+    g.stroke({ width: 1, ...p.carpetWeave });
   }
 }
 
@@ -169,13 +150,13 @@ function drawFloor(g: Graphics): void {
  * Soft light pools from the ceiling lamps and a shadow under the wall,
  * drawn on top of the floor tiles.
  */
-function drawLighting(g: Graphics): void {
+function drawLighting(g: Graphics, p: ScenePalette): void {
   g.clear();
 
   // Shadow cast by the wall onto the floor
   for (let i = 0; i < 6; i++) {
     g.rect(0, WALL_HEIGHT + i * 6, CANVAS_WIDTH, 6);
-    g.fill({ color: 0x000000, alpha: 0.28 - i * 0.045 });
+    g.fill({ color: 0x000000, alpha: p.wallShadowAlpha * (1 - i / 6.2) });
   }
 
   // Warm light pools
@@ -195,21 +176,21 @@ function drawLighting(g: Graphics): void {
   for (let i = 0; i < 8; i++) {
     const h = 40;
     g.rect(0, CANVAS_HEIGHT - (i + 1) * h, CANVAS_WIDTH, h);
-    g.fill({ color: 0x050a07, alpha: (0.05 * (8 - i)) / 8 });
+    g.fill({ color: p.vignette, alpha: (p.vignetteAlpha * (8 - i)) / 8 });
   }
   // Soft side vignette: the floor fades into the dark stage
   for (let i = 0; i < 6; i++) {
     const w = 22;
-    const a = (0.05 * (6 - i)) / 6;
+    const a = (p.vignetteAlpha * (6 - i)) / 6;
     g.rect(i * w, WALL_HEIGHT, w, CANVAS_HEIGHT - WALL_HEIGHT);
-    g.fill({ color: 0x050a07, alpha: a });
+    g.fill({ color: p.vignette, alpha: a });
     g.rect(
       CANVAS_WIDTH - (i + 1) * w,
       WALL_HEIGHT,
       w,
       CANVAS_HEIGHT - WALL_HEIGHT,
     );
-    g.fill({ color: 0x050a07, alpha: a });
+    g.fill({ color: p.vignette, alpha: a });
   }
 }
 
@@ -222,11 +203,19 @@ export function OfficeBackground(
   _props: OfficeBackgroundProps,
 ): ReactNode {
   // Stable reference for wall drawing
-  const drawWallsCallback = useCallback((g: Graphics) => drawWalls(g), []);
-  const drawFloorCallback = useCallback((g: Graphics) => drawFloor(g), []);
+  // Redrawn when the theme switches (light: the daytime office)
+  const palette = scenePalette(useTheme());
+  const drawWallsCallback = useCallback(
+    (g: Graphics) => drawWalls(g, palette),
+    [palette],
+  );
+  const drawFloorCallback = useCallback(
+    (g: Graphics) => drawFloor(g, palette),
+    [palette],
+  );
   const drawLightingCallback = useCallback(
-    (g: Graphics) => drawLighting(g),
-    [],
+    (g: Graphics) => drawLighting(g, palette),
+    [palette],
   );
 
   return (

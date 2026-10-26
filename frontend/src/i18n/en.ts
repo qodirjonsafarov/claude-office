@@ -58,7 +58,7 @@ const en = {
   "settings.title": "Settings",
   "settings.theme": "Theme",
   "settings.themeDark": "Dark",
-  "settings.themeLight": "Light (draft)",
+  "settings.themeLight": "Light",
   "settings.themeSystem": "System",
   "settings.clockType": "Clock Type",
   "settings.analog": "Analog",

@@ -63,11 +63,9 @@ import { nameTagWidth } from "./NameTag";
 import { AgentLookCache } from "@/systems/agentLooks";
 import { SceneSignalsCache, type PersonSignals } from "@/systems/sceneSignals";
 import { useOfficeTextures } from "@/hooks/useOfficeTextures";
-import {
-  CANVAS_WIDTH,
-  CANVAS_HEIGHT,
-  BACKGROUND_COLOR,
-} from "@/constants/canvas";
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from "@/constants/canvas";
+import { scenePalette } from "@/systems/scenePalette";
+import { useTheme } from "@/systems/themeStore";
 import {
   EMPLOYEE_OF_MONTH_POSITION,
   CITY_WINDOW_POSITION,
@@ -225,6 +223,11 @@ function computeRenderResolution(
 // MAIN COMPONENT
 // ============================================================================
 
+/** Repaint the canvas behind the scene (a theme switch). */
+function paintStage(app: PixiApplication | null, color: number): void {
+  if (app?.renderer) app.renderer.background.color = color;
+}
+
 export function OfficeGame(): ReactNode {
   // Track PixiJS app for cleanup
   const appRef = useRef<PixiApplication | null>(null);
@@ -258,6 +261,12 @@ export function OfficeGame(): ReactNode {
       observer.disconnect();
     };
   }, [syncResolution]);
+
+  // The canvas behind the scene follows the theme without a reload.
+  const stageColor = scenePalette(useTheme()).stage;
+  useEffect(() => {
+    paintStage(appRef.current, stageColor);
+  }, [stageColor]);
 
   // HMR version for forcing remount
   const hmrVersion = getHmrVersion();
@@ -571,7 +580,7 @@ export function OfficeGame(): ReactNode {
               key={`pixi-app-${hmrVersion}`}
               width={CANVAS_WIDTH}
               height={CANVAS_HEIGHT}
-              backgroundColor={BACKGROUND_COLOR}
+              backgroundColor={stageColor}
               autoDensity={true}
               resolution={
                 typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1

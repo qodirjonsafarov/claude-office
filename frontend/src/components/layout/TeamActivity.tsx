@@ -316,13 +316,15 @@ function TeamRowItemComponent({
     now,
   });
 
+  const text = md ? "text-[13px]" : "text-[12.5px]";
+
   return (
     <li
-      className={`flex flex-col gap-1.5 px-2.5 py-2 rounded-xl2 ${
+      className={`flex flex-col gap-1 px-3 py-2.5 rounded-xl2 transition-colors ${
         row.waiting ? "bg-max-dim" : row.busy ? "bg-panel-2" : ""
       }`}
     >
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-2.5 min-w-0">
         <span
           aria-hidden="true"
           className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
@@ -333,16 +335,16 @@ function TeamRowItemComponent({
           }}
         />
         <span
-          className={`${md ? "text-[14px]" : "text-[13px]"} font-extrabold text-ink truncate`}
+          className={`${md ? "text-[14.5px]" : "text-[13.5px]"} font-extrabold text-ink truncate`}
         >
           {row.name}
         </span>
         <span className="ml-auto flex-shrink-0 flex items-center gap-1.5">
           {row.waiting ? (
-            <span className="qo-pill !h-6 !px-2 !gap-1 !text-[11px] !bg-max-dim !border-transparent text-max">
+            <span className="qo-badge qo-badge-max !h-[22px] !px-2 !text-[11.5px]">
               <span
                 aria-hidden="true"
-                className="w-4 h-4 rounded-full bg-max text-on-accent text-[11px] font-extrabold flex items-center justify-center"
+                className="w-3.5 h-3.5 rounded-full bg-max text-on-accent text-[10px] font-extrabold flex items-center justify-center"
               >
                 !
               </span>
@@ -351,7 +353,7 @@ function TeamRowItemComponent({
           ) : row.view.kind === "bar" ? (
             <span
               className={`text-[12px] font-extrabold tabular-nums ${
-                row.view.percent >= 100 ? "text-accent" : "text-ink"
+                row.view.percent >= 100 ? "text-accent" : "text-ink-soft"
               }`}
             >
               {row.view.percent}%
@@ -361,7 +363,7 @@ function TeamRowItemComponent({
       </div>
 
       <p
-        className={`m-0 pl-[18px] ${md ? "text-[12.5px]" : "text-[12px]"} font-bold truncate ${
+        className={`m-0 pl-5 ${text} font-bold truncate ${
           row.waiting ? "text-max" : row.busy ? "text-accent" : "text-ink-faint"
         }`}
         title={lines.status}
@@ -371,7 +373,7 @@ function TeamRowItemComponent({
 
       {lines.action && (
         <p
-          className={`m-0 pl-[18px] -mt-1 ${md ? "text-[12.5px]" : "text-[12px]"} font-bold text-ink truncate`}
+          className={`m-0 pl-5 -mt-0.5 ${text} font-semibold text-ink truncate`}
           title={lines.action}
         >
           {lines.action}
@@ -379,21 +381,21 @@ function TeamRowItemComponent({
       )}
 
       {row.view.kind !== "none" && (
-        <div className="pl-[18px]">
+        <div className="pl-5 pt-0.5">
           <ActivityBar view={row.view} color={row.color} />
         </div>
       )}
 
       {row.task && (
         <p
-          className={`m-0 pl-[18px] ${md ? "text-[12.5px]" : "text-[12px]"} text-ink-soft line-clamp-2`}
+          className={`m-0 pl-5 pt-0.5 ${text} leading-snug text-ink-soft line-clamp-2`}
         >
           {row.task}
         </p>
       )}
 
       {debugMode && (
-        <p className="m-0 pl-[18px] font-mono text-[10px] text-ink-faint truncate">
+        <p className="m-0 pl-5 font-mono text-[11px] text-ink-faint truncate">
           {row.debug.state} · {row.debug.phase}
           {row.debug.queue ? ` · ${row.debug.queue}` : ""}
           {row.isBoss ? "" : ` · #${row.id.slice(0, 7)}`}

@@ -17,8 +17,16 @@ import {
   type EventLogEntry,
 } from "@/stores/gameStore";
 import { format } from "date-fns";
-import { ChevronRight, Search, Terminal, X } from "lucide-react";
+import {
+  Activity,
+  ChevronRight,
+  Search,
+  SearchX,
+  Terminal,
+  X,
+} from "lucide-react";
 import { EventDetailModal } from "@/components/game/EventDetailModal";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAttentionStore } from "@/stores/attentionStore";
 import { getEventTypeTextColor } from "@/utils/event-type-styles";
@@ -170,26 +178,10 @@ export function EventLog({
 
   return (
     <>
-      <div className="qo-card flex flex-col h-full overflow-hidden text-xs">
-        <div
-          className={`px-4 pt-3 pb-2 items-center justify-between flex-shrink-0 ${
-            compact ? "hidden" : "flex"
-          }`}
-        >
-          <div className="qo-eyebrow flex items-center gap-2">
-            <Terminal size={14} strokeWidth={2.2} aria-hidden="true" />
-            {t("eventLog.title")}
-          </div>
-          <div className="text-[12px] font-bold text-ink-faint tabular-nums">
-            {filtering
-              ? `${rows.length}/${allRows}`
-              : t("eventLog.events", { count: allRows })}
-          </div>
-        </div>
-
+      <div className="flex flex-col h-full min-h-0 overflow-hidden">
         {/* Quick filter: search, person chips, kind chips */}
         <div
-          className={`px-2 pb-2 flex flex-col gap-2 flex-shrink-0 ${compact ? "pt-2" : ""}`}
+          className={`px-3 pb-2 flex flex-col gap-2 flex-shrink-0 ${compact ? "pt-1" : "pt-2"}`}
         >
           {!compact && <EventSearch value={query} onChange={setQuery} />}
           <div
@@ -242,7 +234,7 @@ export function EventLog({
             })}
             <span
               aria-hidden="true"
-              className="w-px my-1 bg-line-strong flex-shrink-0"
+              className="w-px my-1.5 bg-line-strong flex-shrink-0"
             />
             {FILTER_KINDS.map((kind) => (
               <button
@@ -258,25 +250,49 @@ export function EventLog({
           </div>
         </div>
 
-        <div className="flex-grow overflow-y-auto px-2 pb-2 flex flex-col gap-0.5 min-h-0">
+        {/* How many, and the way back from a filter */}
+        <div className="px-4 pb-1 flex items-center justify-between gap-2 flex-shrink-0 min-h-6">
+          <span className="qo-label">
+            <Terminal size={13} strokeWidth={2.4} aria-hidden="true" />
+            <span className="tabular-nums">
+              {filtering
+                ? `${rows.length}/${allRows}`
+                : t("eventLog.events", { count: allRows })}
+            </span>
+          </span>
+          {filtering && shown.length > 0 && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="text-[12px] font-extrabold text-ink-faint hover:text-ink transition-colors"
+            >
+              {t("eventLog.clearFilters")}
+            </button>
+          )}
+        </div>
+
+        <div className="flex-grow overflow-y-auto overscroll-contain px-2 pb-2 flex flex-col min-h-0">
           {eventLog.length === 0 ? (
-            <div className="text-ink-faint font-bold p-4 text-center text-[12.5px]">
-              {t("eventLog.waiting")}
-            </div>
+            <EmptyState
+              icon={Activity}
+              title={t("eventLog.waiting")}
+              className="my-auto"
+            />
           ) : shown.length === 0 ? (
-            <div className="p-4 flex flex-col items-center gap-2 text-center">
-              <span className="text-ink-faint font-bold text-[12.5px]">
-                {t("eventLog.noMatches")}
-              </span>
+            <EmptyState
+              icon={SearchX}
+              title={t("eventLog.noMatches")}
+              className="my-auto"
+            >
               <button
                 type="button"
                 onClick={clearFilters}
-                className="qo-btn qo-btn-ghost"
+                className="qo-btn qo-btn-secondary mt-2"
               >
                 <X size={14} strokeWidth={2.2} />
                 {t("eventLog.clearFilters")}
               </button>
-            </div>
+            </EmptyState>
           ) : (
             rows.map((row) => {
               const event =
@@ -312,12 +328,15 @@ export function EventLog({
                 row.kind === "tool"
                   ? [row.pre, row.post].some((e) => e && hasNonEmptyDetail(e))
                   : hasNonEmptyDetail(event);
+              const color = event.agentId
+                ? colors.get(event.agentId)
+                : undefined;
               return (
                 <div
                   key={row.key}
                   role="button"
                   tabIndex={0}
-                  className="hover:bg-panel-2 px-2.5 py-1.5 rounded-xl transition-colors group cursor-pointer"
+                  className="qo-row group cursor-pointer !py-2 flex-shrink-0"
                   onClick={() => setSelectedEvent(event)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -326,37 +345,46 @@ export function EventLog({
                     }
                   }}
                 >
-                  {/* Line 1: time, kind, person, detail indicator */}
-                  <div className="flex gap-2 items-center min-w-0">
-                    <span className="text-ink-faint flex-shrink-0 font-mono tabular-nums text-[11px]">
-                      {format(event.timestamp, "HH:mm:ss")}
-                    </span>
+                  {/* Line 1: what happened */}
+                  <div className="flex items-center gap-2 min-w-0">
                     <span
-                      className={`flex-shrink-0 font-extrabold text-[10px] uppercase tracking-wide ${labelColor}`}
+                      className="flex-1 min-w-0 text-ink truncate text-[13px] font-semibold"
+                      title={text}
                     >
-                      {label}
-                    </span>
-                    <span
-                      className="min-w-0 truncate text-[11px] font-extrabold text-ink-soft"
-                      title={event.agentId ?? undefined}
-                    >
-                      @{personLabel(event.agentId, names)}
+                      {text}
                     </span>
                     {withDetail && (
                       <ChevronRight
-                        size={13}
+                        size={14}
                         strokeWidth={2.2}
                         aria-hidden="true"
-                        className="ml-auto flex-shrink-0 text-ink-faint group-hover:text-ink-soft transition-colors"
+                        className="flex-shrink-0 text-ink-faint opacity-60 group-hover:opacity-100 transition-opacity"
                       />
                     )}
                   </div>
-                  {/* Line 2: what happened */}
-                  <div
-                    className="text-ink truncate text-[12px] font-semibold"
-                    title={text}
-                  >
-                    {text}
+                  {/* Line 2: who, the kind, when */}
+                  <div className="mt-0.5 flex gap-1.5 items-center min-w-0 text-[11.5px]">
+                    <span
+                      aria-hidden="true"
+                      className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-ink-faint"
+                      style={{
+                        background: event.agentId ? color : "var(--qo-max)",
+                      }}
+                    />
+                    <span
+                      className="min-w-0 truncate font-bold text-ink-soft"
+                      title={event.agentId ?? undefined}
+                    >
+                      {personLabel(event.agentId, names)}
+                    </span>
+                    <span
+                      className={`flex-shrink-0 font-extrabold text-[10.5px] uppercase tracking-[0.08em] ${labelColor}`}
+                    >
+                      {label}
+                    </span>
+                    <span className="ml-auto flex-shrink-0 text-ink-faint font-semibold tabular-nums">
+                      {format(event.timestamp, "HH:mm:ss")}
+                    </span>
                   </div>
                 </div>
               );

@@ -50,7 +50,7 @@ function Hint({ text, detail }: { text: string; detail?: string }) {
   return (
     <div
       title={detail}
-      className="flex-shrink-0 border-t border-slate-800 px-3 py-2.5 flex items-start gap-2 text-ink-faint text-[11.5px] leading-snug"
+      className="flex-shrink-0 mx-3 mb-3 px-3 py-2.5 rounded-xl2 bg-panel-2 flex items-start gap-2 text-ink-faint text-[12px] font-semibold leading-snug"
     >
       <TerminalSquare size={14} className="flex-shrink-0 mt-px" aria-hidden />
       <span>{text}</span>
@@ -153,12 +153,12 @@ function Composer({ sessionId }: { sessionId: string }) {
       : message;
 
   return (
-    <div className="flex-shrink-0 border-t border-slate-800 p-2 flex flex-col gap-2">
+    <div className="flex-shrink-0 border-t border-line p-3 flex flex-col gap-2">
       {confirming && (
         <div
           role="alertdialog"
           aria-labelledby="qo-chat-confirm-title"
-          className="qo-card p-3 flex flex-col gap-2"
+          className="qo-pop rounded-xl2 bg-panel-2 p-3.5 flex flex-col gap-2"
         >
           <p
             id="qo-chat-confirm-title"
@@ -169,7 +169,7 @@ function Composer({ sessionId }: { sessionId: string }) {
           <p className="m-0 text-[11.5px] text-ink-soft">
             {status.label ?? "Session"} · {sessionId.slice(0, 8)}
           </p>
-          <p className="m-0 max-h-24 overflow-y-auto rounded-xl bg-panel-2 px-2.5 py-2 text-[11.5px] text-ink whitespace-pre-wrap break-words">
+          <p className="m-0 max-h-24 overflow-y-auto rounded-[12px] bg-panel px-3 py-2 text-[12.5px] text-ink whitespace-pre-wrap break-words">
             {preview}
           </p>
           <p className="m-0 text-[11px] text-ink-faint">
@@ -210,7 +210,7 @@ function Composer({ sessionId }: { sessionId: string }) {
             waitingPermission ? "Waiting for permission…" : "Message Claude…"
           }
           aria-label="Message Claude"
-          className="qo-input flex-1 min-w-0 !h-auto min-h-[44px] max-h-40 py-2.5 resize-none leading-snug disabled:opacity-50"
+          className="qo-input flex-1 min-w-0 !h-auto min-h-[44px] max-h-40 py-2.5 resize-none leading-snug text-[13.5px] disabled:opacity-50"
         />
         <button
           type="submit"

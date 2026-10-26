@@ -20,6 +20,7 @@ import {
   FileQuestion,
 } from "lucide-react";
 import { FileStatus } from "@/types";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useCallback } from "react";
 
 // Check if sessionId represents a real session (not the placeholder)
@@ -28,15 +29,15 @@ const isRealSession = (sessionId: string) => sessionId !== "None";
 const getStatusIcon = (status: FileStatus) => {
   switch (status) {
     case "M":
-      return <FilePen size={10} />;
+      return <FilePen size={14} />;
     case "A":
-      return <FilePlus size={10} />;
+      return <FilePlus size={14} />;
     case "D":
-      return <FileX size={10} />;
+      return <FileX size={14} />;
     case "?":
-      return <FileQuestion size={10} />;
+      return <FileQuestion size={14} />;
     default:
-      return <FileEdit size={10} />;
+      return <FileEdit size={14} />;
   }
 };
 
@@ -78,15 +79,12 @@ export function GitStatusPanel() {
         ? t("git.noRepo")
         : t("git.waitingForStatus");
     return (
-      <div className="flex flex-col h-full bg-slate-950 border border-slate-800 rounded-lg overflow-hidden font-mono text-xs">
-        <div className="bg-slate-900 px-3 py-2 border-b border-slate-800 flex items-center gap-2">
-          <GitBranch size={14} className="text-slate-500" />
-          <span className="text-slate-300 font-bold uppercase tracking-wider">
-            {t("git.title")}
-          </span>
+      <div className="flex flex-col h-full min-h-0">
+        <div className="qo-panel-head">
+          <h2 className="qo-title">{t("git.title")}</h2>
         </div>
-        <div className="flex-grow flex items-center justify-center text-slate-600 italic p-4 text-center">
-          {message}
+        <div className="flex-grow flex items-center justify-center px-3">
+          <EmptyState icon={GitBranch} title={message} />
         </div>
       </div>
     );
@@ -97,116 +95,112 @@ export function GitStatusPanel() {
   const stagedCount = changedFiles.filter((f) => f.staged).length;
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 border border-slate-800 rounded-lg overflow-hidden font-mono text-xs">
-      {/* Header */}
-      <div className="bg-slate-900 px-3 py-2 border-b border-slate-800 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2 text-slate-300 font-bold uppercase tracking-wider">
-          <GitBranch size={14} className="text-emerald-500" />
-          {t("git.title")}
-        </div>
-        <div className="flex items-center gap-2 text-[10px]">
+    <div className="flex flex-col h-full min-h-0">
+      {/* Header: the title, the branch, how far it is from its remote */}
+      <div className="qo-panel-head !pr-4">
+        <h2 className="qo-title flex-shrink-0">{t("git.title")}</h2>
+        <span
+          className="qo-badge qo-badge-accent min-w-0 !gap-1.5"
+          title={gitStatus.branch}
+        >
+          <GitBranch size={13} strokeWidth={2.4} className="flex-shrink-0" />
+          <span className="truncate">{gitStatus.branch}</span>
+        </span>
+        <div className="ml-auto flex items-center gap-2 text-[12px] font-extrabold tabular-nums">
           {(gitStatus.ahead ?? 0) > 0 && (
-            <span className="flex items-center gap-0.5 text-emerald-400">
-              <ArrowUp size={10} />
+            <span className="flex items-center gap-0.5 text-accent">
+              <ArrowUp size={13} strokeWidth={2.4} />
               {gitStatus.ahead}
             </span>
           )}
           {(gitStatus.behind ?? 0) > 0 && (
-            <span className="flex items-center gap-0.5 text-amber-400">
-              <ArrowDown size={10} />
+            <span className="flex items-center gap-0.5 text-warn">
+              <ArrowDown size={13} strokeWidth={2.4} />
               {gitStatus.behind}
             </span>
           )}
         </div>
       </div>
 
-      {/* Branch Info */}
-      <div className="px-3 py-2 border-b border-slate-800 flex-shrink-0">
-        <span className="text-emerald-400 font-bold">{gitStatus.branch}</span>
-      </div>
-
-      {/* Changed Files Section */}
-      {changedFiles.length > 0 && (
-        <div className="flex-shrink-0 max-h-32 flex flex-col border-b border-slate-800">
-          <div className="px-3 py-1.5 bg-slate-900/50 flex items-center gap-2 text-slate-400 flex-shrink-0">
-            <FileEdit size={12} />
-            <span className="font-bold uppercase tracking-wider text-[10px]">
+      <div className="flex-grow min-h-0 overflow-y-auto overscroll-contain px-2 pb-2">
+        {/* Changed files: one line each, staged in lime, the rest in gold */}
+        {changedFiles.length > 0 && (
+          <div className="mb-3">
+            <div className="qo-label px-2 pt-1 pb-1.5">
               {t("git.changedFiles")}
-            </span>
-            <span className="text-slate-600 text-[10px]">
-              ({changedFiles.length})
-            </span>
-            {stagedCount > 0 && (
-              <span className="text-emerald-400 text-[10px]">
-                {stagedCount} {t("git.staged")}
+              <span className="text-ink-faint tracking-normal">
+                {changedFiles.length}
               </span>
-            )}
-          </div>
-          <div className="flex-grow overflow-y-auto px-3 py-2">
-            <div className="flex flex-wrap gap-1">
+              {stagedCount > 0 && (
+                <span className="ml-auto normal-case tracking-normal text-accent">
+                  {stagedCount} {t("git.staged")}
+                </span>
+              )}
+            </div>
+            <ul className="m-0 p-0 list-none max-h-40 overflow-y-auto">
               {changedFiles.map((file) => {
                 const normalizedPath = file.path.replace(/[\\/]+$/, "");
                 const parts = normalizedPath.split(/[\\/]/);
                 const filename = parts.pop() || normalizedPath || file.path;
+                const folder = parts.join("/");
                 return (
-                  <span
+                  <li
                     key={file.path}
-                    className={`px-1.5 py-0.5 rounded text-[9px] flex items-center gap-1 max-w-[140px] ${
-                      file.staged
-                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                        : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                    }`}
+                    className="flex items-center gap-2 h-8 px-2 rounded-[10px] hover:bg-panel-2 transition-colors min-w-0"
                     title={`${getStatusLabel(file.status)}: ${file.path}${file.staged ? ` (${t("git.staged")})` : ""}`}
                   >
-                    {getStatusIcon(file.status)}
-                    <span className="truncate">{filename}</span>
-                  </span>
+                    <span
+                      className={`flex-shrink-0 ${file.staged ? "text-accent" : "text-warn"}`}
+                    >
+                      {getStatusIcon(file.status)}
+                    </span>
+                    <span className="text-[12.5px] font-bold text-ink truncate flex-shrink min-w-0">
+                      {filename}
+                    </span>
+                    {folder && (
+                      <span className="text-[11.5px] font-semibold text-ink-faint truncate min-w-0 flex-1">
+                        {folder}
+                      </span>
+                    )}
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Commits Header */}
-      <div className="px-3 py-1.5 bg-slate-900/50 border-b border-slate-800 flex items-center gap-2 text-slate-400 flex-shrink-0">
-        <GitCommit size={12} />
-        <span className="font-bold uppercase tracking-wider text-[10px]">
+        {/* Recent commits */}
+        <div className="qo-label px-2 pt-1 pb-1.5">
           {t("git.recentCommits")}
-        </span>
-        <span className="text-slate-600 text-[10px]">({commits.length})</span>
-      </div>
-
-      {/* Commits List (Scrollable) */}
-      <div className="flex-grow overflow-y-auto">
+          <span className="text-ink-faint tracking-normal">
+            {commits.length}
+          </span>
+        </div>
         {commits.length === 0 ? (
-          <div className="text-slate-600 italic p-4 text-center">
-            {t("git.noCommits")}
-          </div>
+          <EmptyState icon={GitCommit} title={t("git.noCommits")} />
         ) : (
-          <div className="divide-y divide-slate-800/50">
+          <ul className="m-0 p-0 list-none flex flex-col">
             {commits.map((commit) => (
-              <div
+              <li
                 key={commit.hash}
-                className="px-3 py-2 hover:bg-slate-900/50 transition-colors group"
+                className="px-2 py-2 rounded-[12px] hover:bg-panel-2 transition-colors"
               >
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <span className="text-cyan-400 font-bold flex-shrink-0 group-hover:text-cyan-300">
+                <div className="text-[13px] font-bold text-ink leading-snug line-clamp-2">
+                  {commit.message}
+                </div>
+                <div className="mt-1 flex items-center gap-1.5 min-w-0 text-[11.5px] font-semibold text-ink-faint">
+                  <span className="font-mono text-ink-soft flex-shrink-0">
                     {commit.hash}
                   </span>
-                  <span className="text-slate-500 text-[10px] flex-shrink-0">
+                  <span aria-hidden="true">·</span>
+                  <span className="truncate min-w-0">{commit.author}</span>
+                  <span className="ml-auto flex-shrink-0">
                     {commit.relative_time}
                   </span>
                 </div>
-                <div className="text-slate-300 leading-tight line-clamp-2 group-hover:text-white">
-                  {commit.message}
-                </div>
-                <div className="text-slate-500 text-[10px] mt-1">
-                  {commit.author}
-                </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
     </div>

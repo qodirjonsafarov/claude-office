@@ -862,7 +862,7 @@
     color: var(--qo-ink);
     background: var(--qo-panel-2);
   }
-  .qo-icon-btn-sm[aria-expanded="true"],
+  .qo-icon-btn-sm[aria-haspopup][aria-expanded="true"],
   .qo-icon-btn-sm[aria-pressed="true"] {
     color: var(--qo-accent);
     background: var(--qo-accent-dim);

@@ -233,6 +233,24 @@ body {
   border-radius: 17px;
   overflow: hidden;
 }
+/* Focus mode: the stage is the whole window, no frame. */
+.qo-stage.qo-stage-focus {
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+.qo-stage-focus .qo-stage-screen { border-radius: 0; }
+/* The way out of focus mode, top right (the zoom buttons are bottom right). */
+.qo-focus-exit {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 20;
+  min-height: 2.75rem;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+.qo-focus-exit:hover,
+.qo-focus-exit:focus-visible { opacity: 1; }
 /* On a phone the scene spans the full width; the frame is the card itself. */
 .qo-stage-phone {
   position: relative;

@@ -1,6 +1,6 @@
 "use client";
 
-import { HelpCircle, Settings, Bell } from "lucide-react";
+import { HelpCircle, Settings, Bell, Maximize2 } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAttentionStore, selectUnreadCount } from "@/stores/attentionStore";
 import { HeaderMoreMenu } from "@/components/layout/HeaderMoreMenu";
@@ -18,6 +18,8 @@ interface HeaderControlsProps {
   onToggleDebug: () => void;
   onOpenSettings: () => void;
   onOpenHelp: () => void;
+  /** Focus mode: the office fills the screen (also the F key). */
+  onToggleFocus: () => void;
 }
 
 // ============================================================================
@@ -41,6 +43,7 @@ export function HeaderControls({
   onToggleDebug,
   onOpenSettings,
   onOpenHelp,
+  onToggleFocus,
 }: HeaderControlsProps): React.ReactNode {
   const { t } = useTranslation();
   const unreadCount = useAttentionStore(selectUnreadCount);
@@ -60,6 +63,16 @@ export function HeaderControls({
           </span>
         </button>
       )}
+
+      <button
+        onClick={onToggleFocus}
+        className="qo-btn qo-btn-secondary"
+        title={t("header.focusHint")}
+        aria-keyshortcuts="F"
+      >
+        <Maximize2 size={15} />
+        {t("header.focus")}
+      </button>
 
       <button
         onClick={onOpenSettings}

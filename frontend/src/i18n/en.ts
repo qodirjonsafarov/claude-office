@@ -26,6 +26,9 @@ const en = {
   "header.disconnected": "Disconnected",
   "header.tour": "Tour",
   "header.more": "More",
+  "header.focus": "Focus",
+  "header.focusHint": "Focus mode: the office fills the screen (F)",
+  "header.exitFocus": "Exit focus mode (Esc)",
   "header.moreMenu": "More actions",
   "help.tour": "Take the Tour",
 
@@ -47,6 +50,7 @@ const en = {
   "modal.showAgentPaths": "Show agent paths",
   "modal.showQueueSlots": "Show queue slots",
   "modal.showPhaseLabels": "Show phase labels",
+  "modal.focusMode": "Focus mode (office full screen)",
   "modal.deleteSession": "Delete Session",
   "modal.delete": "Delete",
   "modal.deleteSessionConfirm": "Are you sure you want to delete session",

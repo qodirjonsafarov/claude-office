@@ -6,6 +6,7 @@ The asking character shows "needs you" (``waiting_permission``) in between.
 """
 
 from datetime import UTC, datetime
+from typing import Literal
 
 from app.core.state_machine import StateMachine
 from app.models.agents import AgentState, BossState
@@ -16,7 +17,10 @@ SESSION = "sess-ask"
 QUESTION = {"questions": [{"question": "Which color?", "options": [{"label": "Red"}]}]}
 
 
-def tool(sm: StateMachine, kind: EventType, name: str, agent_id: str = "main") -> None:
+ToolKind = Literal[EventType.PRE_TOOL_USE, EventType.POST_TOOL_USE]
+
+
+def tool(sm: StateMachine, kind: ToolKind, name: str, agent_id: str = "main") -> None:
     sm.transition(
         ToolEvent(
             event_type=kind,

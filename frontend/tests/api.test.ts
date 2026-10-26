@@ -278,3 +278,84 @@ describe("sendPrompt", () => {
     expect(url.endsWith("/api/v1/sessions/a%2Fb/prompt")).toBe(true);
   });
 });
+
+describe("trusted network", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /** The backend: /auth/status answers *status*, everything else 401. */
+  function stubBackend(status: { trusted: boolean; keyRequired: boolean }) {
+    const fetchMock = vi.fn(async (url: string) =>
+      url.endsWith("/api/v1/auth/status")
+        ? new Response(JSON.stringify(status), { status: 200 })
+        : new Response("{}", { status: 401 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it("never raises the token prompt on a trusted network", async () => {
+    localStorage.setItem("claude-office-api-key", "stale");
+    const api = await freshApi();
+    stubBackend({ trusted: true, keyRequired: false });
+
+    await api.apiFetch("/api/v1/sessions/s1/focus", { method: "POST" });
+    await api.apiFetch("/api/v1/sessions");
+
+    expect(api.isAuthRequired()).toBe(false);
+  });
+
+  it("still raises the prompt when the server says a key is needed", async () => {
+    const api = await freshApi();
+    stubBackend({ trusted: false, keyRequired: true });
+    await api.apiFetch("/api/v1/sessions");
+    expect(api.isAuthRequired()).toBe(true);
+  });
+
+  it("asks the server only once", async () => {
+    const api = await freshApi();
+    const fetchMock = stubBackend({ trusted: true, keyRequired: false });
+    await api.apiFetch("/api/v1/sessions");
+    await api.apiFetch("/api/v1/sessions");
+    const statusCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).endsWith("/api/v1/auth/status"),
+    );
+    expect(statusCalls).toHaveLength(1);
+  });
+
+  it("loadAuthStatus reports trust and hides a raised prompt", async () => {
+    const api = await freshApi();
+    stubFetch401ThenTrusted();
+    await api.apiFetch("/api/v1/sessions");
+    expect(api.isAuthRequired()).toBe(true);
+
+    await api.loadAuthStatus(true);
+    expect(api.isTrustedNetwork()).toBe(true);
+    expect(api.isAuthRequired()).toBe(false);
+  });
+
+  /** First the status endpoint fails (old backend / blip), then says trusted. */
+  function stubFetch401ThenTrusted(): void {
+    let statusCalls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (!url.endsWith("/api/v1/auth/status")) {
+          return new Response("{}", { status: 401 });
+        }
+        statusCalls += 1;
+        return statusCalls === 1
+          ? new Response("{}", { status: 404 })
+          : new Response(
+              JSON.stringify({ trusted: true, keyRequired: false }),
+              { status: 200 },
+            );
+      }),
+    );
+  }
+});

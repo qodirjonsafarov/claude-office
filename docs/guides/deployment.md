@@ -458,6 +458,27 @@ type into Claude.
 Anyone on your tailnet can reach the ports, so keep the tailnet to your own
 devices (or restrict it with Tailscale ACLs).
 
+### Trusted networks (no token on the phone)
+
+If the tailnet holds only your own devices, skip the token there:
+
+```bash
+TRUST_TAILNET=true    # Tailscale clients need no key for the office UI
+TRUST_LOOPBACK=false  # same for this machine (127.0.0.1 / ::1), opt-in too
+```
+
+`TRUST_TAILNET` also lets Tailscale clients past the client-IP check (no
+need for `ALLOW_TAILNET` too). From a trusted client the UI's reads,
+WebSocket, renames and preferences work without `X-API-Key` (a stale key in
+the browser is ignored) and `GET /api/v1/auth/status` answers
+`{"trusted": true, "keyRequired": false}`, so the UI never asks for a token.
+Other addresses (home Wi-Fi, Docker bridges) are still rejected.
+
+These still need the key from every client: `POST /api/v1/sessions/{id}/prompt`
+(web chat), `POST /api/v1/sessions/{id}/focus`, `POST /api/v1/sessions/simulate`,
+`DELETE /api/v1/sessions` (clear all), `DELETE /api/v1/sessions/{id}` and
+`POST /api/v1/events` (hook ingestion).
+
 ## Related Documentation
 
 - [Architecture](../architecture/ARCHITECTURE.md) - System design and component details

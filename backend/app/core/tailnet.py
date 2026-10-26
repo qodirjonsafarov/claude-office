@@ -33,6 +33,11 @@ def is_tailscale_ip(host: str | None) -> bool:
     return addr is not None and any(addr in net for net in TAILSCALE_NETWORKS)
 
 
+def is_loopback_ip(host: str | None) -> bool:
+    addr = ip_of(host) if host else None
+    return addr is not None and addr.is_loopback
+
+
 def parse_hosts(raw: str) -> frozenset[str]:
     """Comma-separated MagicDNS names -> lowercase set, trailing dots dropped."""
     return frozenset(h.strip().lower().rstrip(".") for h in raw.split(",") if h.strip())

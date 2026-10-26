@@ -4,7 +4,8 @@
  * The backend no longer returns the API key over HTTP (SEC-001). Instead the
  * key is delivered out-of-band via a ?token= launch URL printed to the server
  * console; initApiKeyFromBrowser captures it into localStorage (so new tabs
- * and the phone stay connected). A 401 raises the paste-token prompt.
+ * and the phone stay connected). A 401 raises the paste-token prompt, unless
+ * the backend says this client is on a trusted network (GET /api/v1/auth/status).
  */
 
 /**
@@ -33,6 +34,15 @@ let _apiKey: string | null = null;
 let _initialized = false;
 let _authRequired = false;
 const _authListeners = new Set<() => void>();
+
+/** GET /api/v1/auth/status: does this client need a key for the office UI? */
+export interface AuthStatus {
+  trusted: boolean;
+  keyRequired: boolean;
+}
+
+let _authStatus: Promise<AuthStatus | null> | null = null;
+let _trusted = false;
 
 function readStored(storage: () => Storage): string | null {
   try {
@@ -144,7 +154,41 @@ export function initApiKeyFromBrowser(): void {
   }
 }
 
-/** Fetch wrapper that attaches X-API-Key and raises the prompt on a 401. */
+/** True once the backend said this client is on a trusted network. */
+export function isTrustedNetwork(): boolean {
+  return _trusted;
+}
+
+/**
+ * Ask the backend whether this client is trusted (TRUST_TAILNET /
+ * TRUST_LOOPBACK). The answer is cached (refresh asks again); a failed
+ * request is not, so the next 401 asks once more. A trusted client never
+ * sees the token prompt.
+ */
+export function loadAuthStatus(refresh = false): Promise<AuthStatus | null> {
+  if (_authStatus && !refresh) return _authStatus;
+  const pending: Promise<AuthStatus | null> = fetch(
+    `${API_BASE}/api/v1/auth/status`,
+  )
+    .then(async (res) => (res.ok ? ((await res.json()) as AuthStatus) : null))
+    .catch(() => null)
+    .then((status) => {
+      if (status === null) {
+        if (_authStatus === pending) _authStatus = null;
+        return null;
+      }
+      _trusted = status.trusted === true;
+      if (_trusted) setAuthRequired(false);
+      return status;
+    });
+  _authStatus = pending;
+  return pending;
+}
+
+/**
+ * Fetch wrapper that attaches X-API-Key and raises the prompt on a 401
+ * (never on a trusted network: there only the key-only endpoints answer 401).
+ */
 export async function apiFetch(
   path: string,
   init?: RequestInit,
@@ -156,7 +200,10 @@ export async function apiFetch(
     headers.set("X-API-Key", _apiKey);
   }
   const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
-  if (res.status === 401) setAuthRequired(true);
+  if (res.status === 401) {
+    const status = await loadAuthStatus();
+    if (!status?.trusted) setAuthRequired(true);
+  }
   return res;
 }
 

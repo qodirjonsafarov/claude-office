@@ -29,7 +29,7 @@ _LOCALHOST_HOSTS = frozenset({"127.0.0.1", "::1", "localhost", "testclient"})
 def _is_trusted_client(host: str | None) -> bool:
     if host in _LOCALHOST_HOSTS:
         return True
-    return settings.ALLOW_TAILNET and is_tailscale_ip(host)
+    return settings.tailnet_enabled and is_tailscale_ip(host)
 
 
 class TailnetCORSMiddleware(CORSMiddleware):
@@ -68,7 +68,7 @@ class LocalhostOnlyMiddleware(BaseHTTPMiddleware):
 # Paths that do NOT require an API key (health checks, interactive docs).
 # The OpenAPI schema URL is checked separately in the middleware because it is
 # served under settings.API_V1_STR (e.g. /api/v1/openapi.json), not /openapi.json.
-_NO_AUTH_PATHS = frozenset({"/health", "/docs", "/redoc"})
+_NO_AUTH_PATHS = frozenset({"/health", "/docs", "/redoc", f"{settings.API_V1_STR}/auth/status"})
 
 
 def _is_state_changing(path: str, method: str) -> bool:
@@ -90,6 +90,21 @@ def _is_state_changing(path: str, method: str) -> bool:
     )
 
 
+def _always_keyed(path: str, method: str) -> bool:
+    """Endpoints that need the key even from a trusted network.
+
+    The state-changing set above (clear all, simulate, focus, web prompt),
+    plus deleting a single session and event ingestion (the hooks always
+    carry the key; nothing on the tailnet may inject events).
+    """
+    prefix = settings.API_V1_STR + "/sessions"
+    return (
+        _is_state_changing(path, method)
+        or (path.startswith(f"{prefix}/") and method == "DELETE")
+        or (path == f"{settings.API_V1_STR}/events" and method == "POST")
+    )
+
+
 class ApiKeyMiddleware(BaseHTTPMiddleware):
     """Validate X-API-Key header for protected endpoints.
 
@@ -98,6 +113,9 @@ class ApiKeyMiddleware(BaseHTTPMiddleware):
     * When the key is empty (default), state-changing endpoints still require
       the per-launch auto-generated token (``settings.effective_api_key``).
       Read-only paths remain open for backwards compatibility.
+    * Clients on a trusted network (TRUST_TAILNET / TRUST_LOOPBACK) skip the
+      key for everything except ``_always_keyed`` endpoints; a stale key they
+      send is ignored.
     """
 
     async def dispatch(self, request: Request, call_next):  # type: ignore[override]
@@ -118,6 +136,12 @@ class ApiKeyMiddleware(BaseHTTPMiddleware):
         )
 
         if not requires_auth:
+            return await call_next(request)
+
+        client_host = request.client.host if request.client else None
+        if settings.is_trusted_network_client(client_host) and not _always_keyed(
+            request.url.path, request.method
+        ):
             return await call_next(request)
 
         provided = request.headers.get("X-API-Key", "")

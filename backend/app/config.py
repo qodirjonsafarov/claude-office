@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.core.tailnet import is_tailnet_origin, parse_hosts
+from app.core.tailnet import is_loopback_ip, is_tailnet_origin, is_tailscale_ip, parse_hosts
 
 _BACKEND_DIR = Path(__file__).parent.parent.resolve()
 _DEFAULT_DB_PATH = _BACKEND_DIR / "visualizer.db"
@@ -134,6 +134,15 @@ class Settings(BaseSettings):
     # "my-machine,my-machine.tailXXXX.ts.net".
     TAILNET_HOSTS: str = ""
 
+    # Trusted networks (opt-in). The office UI's own requests (reads, renames,
+    # preferences, WebSocket) from these clients need no X-API-Key, so the
+    # phone opens without a token. TRUST_TAILNET: Tailscale addresses (it also
+    # lets them past the client-IP check, like ALLOW_TAILNET); TRUST_LOOPBACK:
+    # this machine. Other addresses (home LAN) stay rejected, and the web
+    # prompt, focus, simulate, clear/delete and event ingestion keep the key.
+    TRUST_TAILNET: bool = False
+    TRUST_LOOPBACK: bool = False
+
     # Chat from the office UI: POST /sessions/{id}/prompt pastes the text into
     # the session's tmux pane. Off by default; works only with an explicit
     # CLAUDE_OFFICE_API_KEY (never with the auto token).
@@ -164,9 +173,20 @@ class Settings(BaseSettings):
         """TAILNET_HOSTS as a lowercase set of host names."""
         return parse_hosts(self.TAILNET_HOSTS)
 
+    @property
+    def tailnet_enabled(self) -> bool:
+        """Tailscale clients may reach the office (ALLOW_TAILNET or TRUST_TAILNET)."""
+        return self.ALLOW_TAILNET or self.TRUST_TAILNET
+
     def is_tailnet_origin(self, origin: str | None) -> bool:
-        """True when ALLOW_TAILNET is on and *origin* is the UI on the tailnet."""
-        return self.ALLOW_TAILNET and is_tailnet_origin(origin, self.tailnet_hosts)
+        """True when tailnet access is on and *origin* is the UI on the tailnet."""
+        return self.tailnet_enabled and is_tailnet_origin(origin, self.tailnet_hosts)
+
+    def is_trusted_network_client(self, host: str | None) -> bool:
+        """True for a client on a trusted network (TRUST_TAILNET / TRUST_LOOPBACK)."""
+        return (self.TRUST_TAILNET and is_tailscale_ip(host)) or (
+            self.TRUST_LOOPBACK and is_loopback_ip(host)
+        )
 
     model_config = SettingsConfigDict(env_file=".env")
 

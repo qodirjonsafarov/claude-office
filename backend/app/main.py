@@ -267,6 +267,19 @@ async def get_status() -> dict[str, bool | str | None]:
     }
 
 
+@app.get(f"{settings.API_V1_STR}/auth/status")
+async def get_auth_status(request: Request) -> dict[str, bool]:
+    """Whether this client needs a key for the office UI (no key needed to ask).
+
+    ``trusted``: the client is on a trusted network (TRUST_TAILNET /
+    TRUST_LOOPBACK). ``keyRequired``: reads need X-API-Key from this client.
+    The web prompt and admin endpoints need the key either way.
+    """
+    host = request.client.host if request.client else None
+    trusted = settings.is_trusted_network_client(host)
+    return {"trusted": trusted, "keyRequired": settings.has_explicit_key and not trusted}
+
+
 def _safe_static_path(requested_path: str) -> Path | None:
     """Resolve a static file path and verify it stays within STATIC_DIR.
 

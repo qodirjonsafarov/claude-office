@@ -29,7 +29,7 @@ import {
   selectDebugMode,
 } from "@/stores/gameStore";
 import { useTourStore } from "@/stores/tourStore";
-import { initApiKeyFromBrowser } from "@/utils/api";
+import { initApiKeyFromBrowser, loadAuthStatus } from "@/utils/api";
 import { Map, Minimize2 } from "lucide-react";
 import { SessionSidebar } from "@/components/layout/SessionSidebar";
 import { MobileOffice } from "@/components/layout/MobileOffice";
@@ -180,6 +180,8 @@ export default function V2TestPage(): React.ReactNode {
   // ------------------------------------------------------------------
   useEffect(() => {
     initApiKeyFromBrowser();
+    // On a trusted network (tailnet / loopback) the token prompt never shows.
+    void loadAuthStatus();
   }, []);
 
   useEffect(() => {

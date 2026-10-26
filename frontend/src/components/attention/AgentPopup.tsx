@@ -77,11 +77,11 @@ function cardState(row: TeamRow): CardState {
   return "idle";
 }
 
-const STATE_PILL: Record<CardState, string> = {
-  needsYou: "!bg-max-dim !border-transparent text-max",
-  working: "qo-pill-accent",
-  resting: "text-ink-soft",
-  idle: "text-ink-faint",
+const STATE_BADGE: Record<CardState, string> = {
+  needsYou: "qo-badge-max",
+  working: "qo-badge-accent",
+  resting: "",
+  idle: "!text-ink-faint",
 };
 
 function Stat({
@@ -95,13 +95,11 @@ function Stat({
 }): ReactNode {
   return (
     <div
-      className="rounded-xl2 bg-panel-2 border border-line px-3 py-2 min-w-0"
+      className="rounded-xl2 bg-panel-2 px-3 py-2.5 min-w-0"
       title={title ?? undefined}
     >
-      <div className="text-[10.5px] font-extrabold uppercase tracking-[0.1em] text-ink-faint truncate">
-        {label}
-      </div>
-      <div className="text-[15px] font-extrabold text-ink tabular-nums truncate">
+      <div className="qo-label !text-[10.5px] truncate">{label}</div>
+      <div className="mt-1 text-[16px] leading-none font-extrabold text-ink tabular-nums truncate">
         {value}
       </div>
     </div>
@@ -213,19 +211,17 @@ function AgentCard({
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
-          className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-[16px] font-extrabold text-on-accent"
+          className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-[17px] font-extrabold text-on-accent shadow-[inset_0_0_0_2px_var(--qo-line)]"
           style={{ background: row.color }}
         >
           {row.name.slice(0, 1).toUpperCase()}
         </span>
         <div className="flex-1 min-w-0">
-          <h2 className="m-0 text-[17px] leading-tight font-extrabold text-ink truncate">
+          <h2 className="m-0 text-[18px] leading-tight font-extrabold text-ink tracking-tight truncate">
             {row.name}
           </h2>
-          <div className="mt-1 flex items-center gap-2 min-w-0">
-            <span
-              className={`qo-pill !h-6 !px-2.5 !gap-1.5 !text-[11.5px] flex-shrink-0 ${STATE_PILL[state]}`}
-            >
+          <div className="mt-1.5 flex items-center gap-2 min-w-0">
+            <span className={`qo-badge ${STATE_BADGE[state]}`}>
               {state === "working" && (
                 <span
                   aria-hidden="true"
@@ -234,7 +230,7 @@ function AgentCard({
               )}
               {t(`card.state.${state}`)}
             </span>
-            <span className="text-[12.5px] font-bold text-ink-soft truncate">
+            <span className="text-[12.5px] font-bold text-ink-faint truncate">
               {role}
               {desk !== null && ` · ${t("card.desk")} ${desk}`}
             </span>
@@ -256,10 +252,10 @@ function AgentCard({
   const body = (
     <>
       {/* Now: the action and what it works on */}
-      <div className="mt-3 rounded-xl2 bg-panel-2 border border-line p-3">
-        <div className="qo-eyebrow">{t("card.now")}</div>
+      <div className="mt-4 rounded-xl2 bg-panel-2 px-3.5 py-3">
+        <div className="qo-label">{t("card.now")}</div>
         <p
-          className={`m-0 mt-1 text-[14px] font-extrabold truncate ${
+          className={`m-0 mt-1.5 text-[14.5px] font-extrabold truncate ${
             row.waiting ? "text-max" : row.busy ? "text-accent" : "text-ink"
           }`}
         >
@@ -274,23 +270,23 @@ function AgentCard({
           </p>
         )}
         {row.view.kind !== "none" && (
-          <div className="mt-2">
+          <div className="mt-2.5">
             <ActivityBar view={row.view} color={row.color} />
           </div>
         )}
       </div>
 
       {row.task && (
-        <div className="mt-3">
-          <div className="qo-eyebrow">{t("card.task")}</div>
-          <p className="m-0 mt-1 text-[13px] text-ink-soft line-clamp-3">
+        <div className="mt-4 px-0.5">
+          <div className="qo-label">{t("card.task")}</div>
+          <p className="m-0 mt-1.5 text-[13px] leading-snug text-ink-soft line-clamp-3">
             {row.task}
           </p>
         </div>
       )}
 
       {/* Numbers */}
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-4 grid grid-cols-2 gap-2">
         <Stat label={t("card.elapsed")} value={elapsed} />
         <Stat label={t("card.tools")} value={String(row.toolCount)} />
         <Stat
@@ -302,14 +298,14 @@ function AgentCard({
       </div>
 
       {/* Recent actions */}
-      <div className="mt-3">
-        <div className="qo-eyebrow">{t("card.recent")}</div>
+      <div className="mt-4 px-0.5">
+        <div className="qo-label">{t("card.recent")}</div>
         {recent.length === 0 ? (
-          <p className="m-0 mt-1 text-[12.5px] text-ink-faint">
+          <p className="m-0 mt-1.5 text-[12.5px] text-ink-faint">
             {t("card.noRecent")}
           </p>
         ) : (
-          <ul className="m-0 mt-1 p-0 list-none space-y-1">
+          <ul className="m-0 mt-2 p-0 list-none space-y-1.5">
             {recent.map((r, i) => (
               <li
                 key={`${r.at}-${i}`}
@@ -322,10 +318,10 @@ function AgentCard({
                     background: i === 0 ? row.color : "var(--qo-line-strong)",
                   }}
                 />
-                <span className="flex-1 min-w-0 font-bold text-ink truncate">
+                <span className="flex-1 min-w-0 font-semibold text-ink truncate">
                   {r.text}
                 </span>
-                <span className="flex-shrink-0 text-ink-faint tabular-nums">
+                <span className="flex-shrink-0 text-[12px] font-semibold text-ink-faint tabular-nums">
                   {t("card.ago", { time: formatDuration(now - r.at) })}
                 </span>
               </li>
@@ -335,7 +331,7 @@ function AgentCard({
       </div>
 
       {/* Actions */}
-      <div className="mt-4 flex gap-2">
+      <div className="mt-5 flex gap-2">
         <button
           type="button"
           onClick={() => jumpToLog(agentId)}
@@ -411,7 +407,7 @@ function AgentCard({
         data-side={place.side}
         className={`absolute qo-card ${
           leaving ? "qo-pop-out" : "qo-pop"
-        } p-4 shadow-[0_12px_40px_var(--qo-float-shade)] overflow-y-auto overscroll-contain`}
+        } p-5 !border-line-strong shadow-[var(--qo-shadow-pop)] overflow-y-auto overscroll-contain`}
         style={{
           left: place.left,
           top: place.top,

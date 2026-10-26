@@ -113,6 +113,12 @@ body {
   outline: 2px solid var(--qo-accent);
   outline-offset: 2px;
 }
+/* Fields mark their focus with their own lime border; a palette's field is
+   the whole box. */
+.qo-input:focus-visible,
+.qo-bare-field:focus-visible {
+  outline: none;
+}
 
 /* ---------- The page ---------- */
 .qo-bg {

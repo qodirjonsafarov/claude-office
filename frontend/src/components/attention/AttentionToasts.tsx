@@ -26,12 +26,12 @@ const STACK_PLACES: Record<LayoutMode, string> = {
     "left-[calc(var(--qo-rail-w)+12px)] bottom-[max(12px,env(safe-area-inset-bottom))] w-80 flex-col-reverse",
 };
 
-/** Olymp tones per urgency: the card's left edge and the icon chip. */
-const URGENCY_TONES: Record<UrgencyLevel, { edge: string; chip: string }> = {
-  critical: { edge: "border-l-danger", chip: "bg-danger-dim text-danger" },
-  high: { edge: "border-l-warn", chip: "bg-warn-dim text-warn" },
-  low: { edge: "border-l-accent", chip: "bg-accent-dim text-accent" },
-  info: { edge: "border-l-info", chip: "bg-info-dim text-info" },
+/** Olymp tones per urgency: the icon chip carries the colour, the card stays quiet. */
+const URGENCY_TONES: Record<UrgencyLevel, { chip: string }> = {
+  critical: { chip: "bg-danger-dim text-danger" },
+  high: { chip: "bg-warn-dim text-warn" },
+  low: { chip: "bg-accent-dim text-accent" },
+  info: { chip: "bg-info-dim text-info" },
 };
 
 const URGENCY_ICONS: Record<UrgencyLevel, LucideIcon> = {
@@ -115,21 +115,21 @@ function ToastItem({
 
   return (
     <div
-      className={`qo-pop pointer-events-auto flex items-center gap-3 p-2.5 pr-2 bg-panel border border-line-strong border-l-4 rounded-xl2 cursor-pointer shadow-[0_8px_24px_var(--qo-float-shade)] ${tone.edge}`}
+      className="qo-pop pointer-events-auto flex items-center gap-3 p-2.5 pr-2 bg-panel border border-line-strong rounded-xl3 cursor-pointer shadow-[var(--qo-shadow-float)] hover:bg-panel-2 transition-colors"
       onClick={onClick}
       role="alert"
     >
       <span
-        className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${tone.chip}`}
+        className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${tone.chip}`}
       >
         <Icon size={17} strokeWidth={2.2} aria-hidden="true" />
       </span>
       <div className="flex-1 min-w-0">
-        <p className="m-0 text-[13px] font-extrabold text-ink truncate">
+        <p className="m-0 text-[13.5px] font-extrabold text-ink truncate">
           {headline}
         </p>
         {toast.description && (
-          <p className="m-0 text-[12px] font-semibold text-ink-soft truncate">
+          <p className="m-0 mt-0.5 text-[12.5px] font-semibold text-ink-faint truncate">
             {toast.description}
           </p>
         )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity } from "lucide-react";
+import { Activity, AlertCircle, Check } from "lucide-react";
 
 // ============================================================================
 // TYPES
@@ -26,23 +26,30 @@ interface StatusToastProps {
  */
 export function StatusToast({ message }: StatusToastProps): React.ReactNode {
   if (!message) return null;
+  const Icon =
+    message.type === "success"
+      ? Check
+      : message.type === "error"
+        ? AlertCircle
+        : Activity;
 
   return (
     <div
       role="status"
-      className={`qo-pop qo-glass-panel h-10 px-4 rounded-full border shadow-[0_8px_24px_var(--qo-float-shade)] flex items-center gap-2.5 text-[13px] font-extrabold whitespace-nowrap
-        ${
-          message.type === "success"
-            ? "border-accent/30 text-accent"
-            : message.type === "error"
-              ? "border-danger/30 text-danger"
-              : "border-line-strong text-ink"
-        }`}
+      className="qo-pop qo-glass-panel h-11 pl-2 pr-4 rounded-full border border-line-strong shadow-[var(--qo-shadow-float)] flex items-center gap-2.5 text-[13.5px] font-extrabold text-ink whitespace-nowrap"
     >
-      <Activity
-        size={12}
-        className={message.type === "info" ? "animate-pulse" : ""}
-      />
+      <span
+        aria-hidden="true"
+        className={`w-7 h-7 rounded-full flex items-center justify-center ${
+          message.type === "success"
+            ? "bg-accent-dim text-accent"
+            : message.type === "error"
+              ? "bg-danger-dim text-danger"
+              : "bg-panel-3 text-ink-soft"
+        }`}
+      >
+        <Icon size={15} strokeWidth={2.4} />
+      </span>
       {message.text}
     </div>
   );

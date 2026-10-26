@@ -8,6 +8,18 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  BellOff,
+  Bug,
+  Construction,
+  Crown,
+  Hash,
+  Route,
+  Search,
+  Tag,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import { useAttentionStore } from "@/stores/attentionStore";
 import { useGameStore } from "@/stores/gameStore";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -26,7 +38,7 @@ function fuzzyMatch(query: string, text: string): boolean {
 interface CommandEntry {
   id: string;
   label: string;
-  icon: string;
+  icon: LucideIcon;
   action: () => void;
 }
 
@@ -59,7 +71,7 @@ export default function CommandBar(): ReactNode {
           "{name}",
           agent.name,
         ),
-        icon: "\u26A1",
+        icon: Zap,
         action: () => {
           openFocusPopup(agent.id, window.innerWidth / 2, 200);
           closeCommandBar();
@@ -71,7 +83,7 @@ export default function CommandBar(): ReactNode {
     cmds.push({
       id: "focus-boss",
       label: t("attention.commandBar.focusBoss"),
-      icon: "\uD83D\uDC54",
+      icon: Crown,
       action: () => {
         openFocusPopup("boss", window.innerWidth / 2, 200);
         closeCommandBar();
@@ -82,7 +94,7 @@ export default function CommandBar(): ReactNode {
     cmds.push({
       id: "dismiss-all",
       label: t("attention.commandBar.dismissAll"),
-      icon: "\uD83D\uDDD1\uFE0F",
+      icon: BellOff,
       action: () => {
         clearAllToasts();
         closeCommandBar();
@@ -92,7 +104,7 @@ export default function CommandBar(): ReactNode {
     cmds.push({
       id: "toggle-debug",
       label: t("attention.commandBar.toggleDebug"),
-      icon: "\uD83D\uDC1B",
+      icon: Bug,
       action: () => {
         setDebugMode(!useGameStore.getState().debugMode);
         closeCommandBar();
@@ -102,7 +114,7 @@ export default function CommandBar(): ReactNode {
     cmds.push({
       id: "toggle-paths",
       label: t("attention.commandBar.togglePaths"),
-      icon: "\uD83D\uDEE4\uFE0F",
+      icon: Route,
       action: () => {
         toggleDebugOverlay("paths");
         closeCommandBar();
@@ -112,7 +124,7 @@ export default function CommandBar(): ReactNode {
     cmds.push({
       id: "toggle-queue-slots",
       label: t("attention.commandBar.toggleQueueSlots"),
-      icon: "\uD83D\uDD22",
+      icon: Hash,
       action: () => {
         toggleDebugOverlay("queueSlots");
         closeCommandBar();
@@ -122,7 +134,7 @@ export default function CommandBar(): ReactNode {
     cmds.push({
       id: "toggle-phase-labels",
       label: t("attention.commandBar.togglePhaseLabels"),
-      icon: "\uD83C\uDFF7\uFE0F",
+      icon: Tag,
       action: () => {
         toggleDebugOverlay("phaseLabels");
         closeCommandBar();
@@ -132,7 +144,7 @@ export default function CommandBar(): ReactNode {
     cmds.push({
       id: "toggle-obstacles",
       label: t("attention.commandBar.toggleObstacles"),
-      icon: "\uD83D\uDEA7",
+      icon: Construction,
       action: () => {
         toggleDebugOverlay("obstacles");
         closeCommandBar();
@@ -197,13 +209,13 @@ export default function CommandBar(): ReactNode {
       }}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-scrim" />
+      <div className="absolute inset-0 bg-scrim qo-fade-in pointer-events-none" />
 
       {/* Command palette */}
-      <div className="relative w-full max-w-lg bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl overflow-hidden">
+      <div className="qo-pop relative w-[min(560px,calc(100vw-24px))] bg-panel border border-line-strong rounded-xl3 shadow-[var(--qo-shadow-pop)] overflow-hidden">
         {/* Search input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-neutral-800">
-          <span className="text-neutral-500">{"\uD83D\uDD0D"}</span>
+        <div className="flex items-center gap-3 pl-5 pr-3 h-14 border-b border-line">
+          <Search size={18} className="text-ink-faint flex-shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -214,34 +226,41 @@ export default function CommandBar(): ReactNode {
             }}
             onKeyDown={handleKeyDown}
             placeholder={t("attention.commandBar.placeholder")}
-            className="flex-1 bg-transparent text-neutral-200 placeholder-neutral-600 outline-none text-sm font-mono"
+            className="qo-bare-field flex-1 min-w-0 bg-transparent text-ink placeholder:text-ink-faint outline-none text-[15px] font-semibold"
           />
-          <kbd className="text-[10px] text-neutral-600 border border-neutral-700 rounded px-1.5 py-0.5">
-            ESC
-          </kbd>
+          <kbd className="qo-kbd !h-6 !text-[11px]">ESC</kbd>
         </div>
 
         {/* Command list */}
-        <div className="max-h-64 overflow-y-auto py-1">
+        <div className="max-h-72 overflow-y-auto p-1.5">
           {filtered.length === 0 ? (
-            <div className="px-4 py-6 text-center text-neutral-600 text-sm">
+            <div className="px-4 py-8 text-center text-ink-faint text-[13.5px] font-bold">
               {t("attention.commandBar.noResults")}
             </div>
           ) : (
-            filtered.map((cmd, i) => (
-              <button
-                key={cmd.id}
-                onClick={cmd.action}
-                className={`w-full flex items-center gap-3 px-4 py-2 text-left text-sm transition-colors ${
-                  i === selectedIndex
-                    ? "bg-purple-500/20 text-purple-300"
-                    : "text-neutral-400 hover:bg-neutral-800"
-                }`}
-              >
-                <span className="text-base">{cmd.icon}</span>
-                <span className="font-mono">{cmd.label}</span>
-              </button>
-            ))
+            filtered.map((cmd, i) => {
+              const Icon = cmd.icon;
+              return (
+                <button
+                  key={cmd.id}
+                  onClick={cmd.action}
+                  className={`w-full flex items-center gap-3 h-11 px-3 rounded-[12px] text-left text-[14px] font-bold transition-colors ${
+                    i === selectedIndex
+                      ? "bg-accent-dim text-accent"
+                      : "text-ink hover:bg-panel-2"
+                  }`}
+                >
+                  <Icon
+                    size={17}
+                    className={
+                      i === selectedIndex ? "text-accent" : "text-ink-faint"
+                    }
+                    aria-hidden="true"
+                  />
+                  <span className="truncate">{cmd.label}</span>
+                </button>
+              );
+            })
           )}
         </div>
       </div>

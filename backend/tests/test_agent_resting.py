@@ -16,7 +16,7 @@ from typing import Any, Literal
 import pytest
 
 from app.core.handlers.agent_handler import handle_subagent_stop
-from app.core.state_machine import StateMachine, native_id_from_transcript
+from app.core.state_machine import StateMachine, accept_tool_event, native_id_from_transcript
 from app.models.agents import AgentState
 from app.models.events import (
     AgentEvent,
@@ -142,21 +142,20 @@ class TestRecall:
 
         assert sm.agents[agent_id].state == AgentState.RESTING
 
-    def test_a_hook_tool_call_with_the_native_id_does_not_wake_it(self) -> None:
+    def test_a_hook_tool_call_with_the_native_id_wakes_it(self) -> None:
+        # Proven activity beats the rest flag (tests/test_rest_wake.py).
         sm = StateMachine()
         agent_id = finished_agent(sm)
-        sm.transition(
-            ToolEvent(
-                event_type=EventType.PRE_TOOL_USE,
-                session_id=SESSION,
-                timestamp=T0 + timedelta(minutes=9),
-                data=ToolEventData(
-                    agent_id="main", native_agent_id="abc123", tool_name="TodoWrite"
-                ),
-            )
+        event = ToolEvent(
+            event_type=EventType.PRE_TOOL_USE,
+            session_id=SESSION,
+            timestamp=T0 + timedelta(minutes=9),
+            data=ToolEventData(agent_id="main", native_agent_id="abc123", tool_name="TodoWrite"),
         )
+        assert accept_tool_event(sm, event)
+        sm.transition(event)
 
-        assert sm.agents[agent_id].state == AgentState.RESTING
+        assert sm.agents[agent_id].state == AgentState.WORKING
 
     def test_a_new_start_with_the_same_id_recalls_instead_of_duplicating(self) -> None:
         sm = StateMachine()

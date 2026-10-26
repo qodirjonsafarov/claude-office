@@ -125,17 +125,15 @@ def resolve_agent_for_stop(
     1. Direct agent_id match (synchronous agents)
     2. Native ID match (agents that received SubagentInfo)
     3. The agent named by the transcript's ``meta.json`` (``toolUseId``)
-    4. Fallback: link oldest unlinked agent from arrival_queue (missed SubagentInfo)
 
-    The fallback prefers the oldest unlinked agent (FIFO) to handle cases where
-    multiple background agents started but SubagentInfo was missed for some.
+    Nothing else: an unproven stop rests nobody.
 
     Args:
         agents: Dict of agent_id -> Agent
         arrival_queue: List of agent_ids in arrival order
         agent_id: Optional agent_id from event
         native_agent_id: Optional native_agent_id from event
-        allow_late_link: Whether steps 3-5 may bind an unknown native ID to an
+        allow_late_link: Whether step 3 may bind an unknown native ID to an
             unlinked agent. Pass False when the stop has no transcript on
             disk: Claude Code's hidden side-agents (e.g. the permission
             classifier) fire SubagentStop too, and linking them would evict
@@ -170,26 +168,8 @@ def resolve_agent_for_stop(
             return ResolvedAgent(agent_id=aid, agent=agent, was_late_linked=True)
         return None
 
-    # 4. Fallback: link oldest unlinked agent (FIFO from arrival_queue)
-    for aid in arrival_queue:
-        agent = agents.get(aid)
-        if agent and agent.native_id is None:
-            agent.native_id = native_agent_id
-            logger.info(
-                f"Late-linked agent {aid} to native ID {native_agent_id} (SubagentInfo was missed)"
-            )
-            return ResolvedAgent(agent_id=aid, agent=agent, was_late_linked=True)
-
-    # 5. Last resort: any unlinked agent not in arrival_queue
-    for aid, agent in agents.items():
-        if agent.native_id is None:
-            agent.native_id = native_agent_id
-            logger.warning(
-                f"Late-linked orphan agent {aid} to native ID {native_agent_id} "
-                f"(not in arrival_queue)"
-            )
-            return ResolvedAgent(agent_id=aid, agent=agent, was_late_linked=True)
-
+    # No guessing: a stop for an agent nobody can name rests nobody (the
+    # quiet net rests a lost worker later); a wrong guess rests a working one.
     return None
 
 
@@ -327,6 +307,28 @@ def _recall(agent: Agent) -> None:
     if agent.state == AgentState.RESTING:
         agent.state = AgentState.WORKING
         agent.resting_since = None
+
+
+def _proven_active(sm: "StateMachine", agent: Agent, event: ToolEvent) -> bool:
+    """True when a tool event proves this resting agent is running right now.
+
+    Hook copies carry the subagent's native id; poller copies do not and may
+    be a late read of the last call. The PostToolUse of a call opened before
+    the rest is the tail of old work, not new activity.
+    """
+    native = event.data.native_agent_id
+    if not native or native != agent.native_id:
+        return False
+    if event.event_type == EventType.POST_TOOL_USE:
+        return event.data.tool_use_id not in sm.agent_open_tools.get(agent.id, set())
+    return True
+
+
+def _recall_if_proven(sm: "StateMachine", agent_id: str, event: ToolEvent) -> None:
+    """Proven activity beats the rest flag: the agent works again."""
+    agent = sm.agents.get(agent_id)
+    if agent is not None and agent.state == AgentState.RESTING and _proven_active(sm, agent, event):
+        _recall(agent)
 
 
 def _as_utc(ts: datetime) -> datetime:
@@ -478,9 +480,10 @@ def _handle_pre_tool_use(sm: "StateMachine", event: AnyEvent) -> None:
     assert isinstance(event, ToolEvent)
     tool_name = event.data.tool_name
 
-    # Tool calls never wake a resting agent: the transcript poller may still
-    # read the last tool_use after SubagentStop. Only SUBAGENT_INFO /
-    # SUBAGENT_START with the same native id (a real resume) recall it.
+    # Unproven tool calls never wake a resting agent: the transcript poller
+    # may still read the last tool_use after SubagentStop. A hook call with
+    # the agent's native id does (``_proven_active``), as do SUBAGENT_INFO /
+    # SUBAGENT_START with the same native id (a real resume).
     progress_owner = _progress_owner(event)
     if progress_owner is not None:
         tool_input = event.data.tool_input or {}
@@ -511,6 +514,7 @@ def _handle_pre_tool_use(sm: "StateMachine", event: AnyEvent) -> None:
             sm.boss_bubble = bubble
             sm.boss_state = BossState.WAITING_PERMISSION if asks_owner else BossState.WORKING
         else:
+            _recall_if_proven(sm, agent_id, event)
             if agent_id not in sm.agents and len(sm.agents) < sm.MAX_AGENTS:
                 new_agent = sm.create_agent(
                     AgentEventData(
@@ -580,7 +584,8 @@ def _handle_permission_request(sm: "StateMachine", event: AnyEvent) -> None:
         sm.boss_state = BossState.WAITING_PERMISSION
         sm.boss_bubble = waiting_bubble
     else:
-        if agent_id in sm.agents:
+        _recall_if_proven(sm, agent_id, event)
+        if agent_id in sm.agents and sm.agents[agent_id].state != AgentState.RESTING:
             sm.agents[agent_id].state = AgentState.WAITING_PERMISSION
             sm.agents[agent_id].bubble = waiting_bubble
 
@@ -592,8 +597,11 @@ def _handle_post_tool_use(sm: "StateMachine", event: AnyEvent) -> None:
     agent_id = event.data.agent_id or "main"
     if agent_id == "main":
         sm.boss_state = BossState.IDLE
-    elif agent_id in sm.agents and sm.agents[agent_id].state == AgentState.WAITING_PERMISSION:
-        sm.agents[agent_id].state = AgentState.WORKING
+    else:
+        _recall_if_proven(sm, agent_id, event)
+        agent = sm.agents.get(agent_id)
+        if agent is not None and agent.state == AgentState.WAITING_PERMISSION:
+            agent.state = AgentState.WORKING
 
     sm.tool_uses_since_compaction += 1
     sm.whiteboard.track_tool_use(event)

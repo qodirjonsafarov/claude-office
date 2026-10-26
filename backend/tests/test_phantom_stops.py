@@ -65,15 +65,26 @@ class TestStateMachine:
         assert sm.agents["subagent_b"].state == AgentState.RESTING
         assert sm.agents["subagent_a"].state == AgentState.WORKING
 
-    def test_missed_subagent_info_still_late_links(self, subagents_dir: Path) -> None:
+    def test_missed_subagent_info_late_links_by_meta(self, subagents_dir: Path) -> None:
+        sm = StateMachine()
+        _background_agent(sm)
+        path = subagents_dir / "agent-n1.jsonl"
+        path.write_text("{}\n")
+        (subagents_dir / "agent-n1.meta.json").write_text('{"toolUseId": "toolu_bg"}')
+        sm.transition(_native_stop("n1", path))
+        agent = sm.agents["subagent_toolu_bg"]
+        assert agent.native_id == "n1"
+        assert agent.state == AgentState.RESTING
+
+    def test_missed_subagent_info_without_meta_rests_nobody(self, subagents_dir: Path) -> None:
         sm = StateMachine()
         _background_agent(sm)
         path = subagents_dir / "agent-n1.jsonl"
         path.write_text("{}\n")
         sm.transition(_native_stop("n1", path))
         agent = sm.agents["subagent_toolu_bg"]
-        assert agent.native_id == "n1"
-        assert agent.state == AgentState.RESTING
+        assert agent.native_id is None
+        assert agent.state == AgentState.WORKING
 
 
 def _send(session_id: str, event_type: EventType, data: dict[str, Any]) -> None:

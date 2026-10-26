@@ -21,5 +21,5 @@ export function fluidPanelWidth(
 }
 
 /** The sessions panel (left) and the team/events panel (right). */
-export const LEFT_PANEL: FluidWidth = { min: 220, share: 0.15, max: 380 };
-export const RIGHT_PANEL: FluidWidth = { min: 260, share: 0.17, max: 440 };
+export const LEFT_PANEL: FluidWidth = { min: 220, share: 0.15, max: 340 };
+export const RIGHT_PANEL: FluidWidth = { min: 260, share: 0.17, max: 400 };

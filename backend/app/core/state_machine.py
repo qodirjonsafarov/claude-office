@@ -362,6 +362,56 @@ def link_native(
     return None
 
 
+def subagent_transcript_for(transcript_path: str | None, native: str) -> str | None:
+    """``<session>/subagents/agent-<native>.jsonl`` next to a main transcript."""
+    if not transcript_path or not transcript_path.endswith(".jsonl"):
+        return None
+    return f"{transcript_path[: -len('.jsonl')]}/subagents/agent-{native}.jsonl"
+
+
+# Tool events reported twice for a subagent: by the hooks and the poller.
+_TOOL_CALL_EVENTS = frozenset({EventType.PRE_TOOL_USE, EventType.POST_TOOL_USE})
+_MAX_SEEN_TOOL_CALLS = 5000
+
+
+def accept_tool_event(sm: "StateMachine", event: AnyEvent) -> bool:
+    """Put a subagent's tool call on the subagent; False drops the event.
+
+    Hooks send a subagent's own tool calls as agent ``"main"`` with its
+    ``native_agent_id``: the call moves to that subagent (dropped when the
+    office has no such agent, it is never the boss's). The transcript poller
+    sends the same call again (same ``tool_use_id``); the second copy is
+    dropped. The boss's own Agent/Task calls also carry the spawned agent's
+    native id and stay on the boss.
+    """
+    if not isinstance(event, ToolEvent):
+        return True
+    data = event.data
+    agent_id = data.agent_id or "main"
+    if agent_id == "main" and data.native_agent_id and data.tool_name not in ("Task", "Agent"):
+        agent = link_native(
+            sm,
+            data.native_agent_id,
+            subagent_transcript_for(data.transcript_path, data.native_agent_id),
+            None,
+        )
+        if agent is None:
+            return False
+        data.agent_id = agent_id = agent.id
+    if event.event_type not in _TOOL_CALL_EVENTS or not data.tool_use_id:
+        return True
+    key = (str(event.event_type), data.tool_use_id)
+    first = sm.seen_tool_calls.get(key)
+    if first is not None and (first == agent_id or agent_id == "main"):
+        return False
+    # A first copy sent as "main" by older hooks (no native id) cannot be
+    # taken back; the subagent's copy still reaches the subagent.
+    sm.seen_tool_calls[key] = agent_id
+    while len(sm.seen_tool_calls) > _MAX_SEEN_TOOL_CALLS:
+        del sm.seen_tool_calls[next(iter(sm.seen_tool_calls))]
+    return True
+
+
 def _handle_subagent_info(sm: "StateMachine", event: AnyEvent) -> None:
     """Handle SUBAGENT_INFO: link the native id; a resumed agent wakes up."""
     assert isinstance(event, AgentEvent)
@@ -829,6 +879,10 @@ class StateMachine:
     # Time of each subagent's latest event (stuck-worker safety net)
     agent_last_event: dict[str, datetime] = field(
         default_factory=lambda: cast(dict[str, datetime], {})
+    )
+    # (event type, tool_use_id) -> agent id of the copy kept (accept_tool_event)
+    seen_tool_calls: dict[tuple[str, str], str] = field(
+        default_factory=lambda: cast(dict[tuple[str, str], str], {})
     )
 
     # ---------------------------------------------------------------------------

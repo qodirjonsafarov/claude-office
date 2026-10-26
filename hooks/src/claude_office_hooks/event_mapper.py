@@ -90,9 +90,6 @@ def _build_agent_transcript_path(main_transcript: str | None, native_agent_id: s
     return f"{session_dir}/subagents/agent-{native_agent_id}.jsonl"
 
 
-# Tools whose calls feed per-agent work progress in the backend.
-_PROGRESS_TOOLS = ("TodoWrite", "TaskCreate", "TaskUpdate")
-
 _TASK_ID_TEXT = re.compile(r"Task #(\w+) created")
 
 
@@ -115,15 +112,16 @@ def _created_task_id(tool_response: Any) -> str | None:
     return None
 
 
-def _mark_progress_tool(raw_data: dict[str, Any], data: dict[str, Any]) -> None:
-    """Keep the subagent id on progress tools fired inside a subagent.
+def _mark_subagent_tool(raw_data: dict[str, Any], data: dict[str, Any]) -> None:
+    """Keep the subagent id on tool calls fired inside a subagent.
 
-    Such calls are still sent as agent ``"main"`` (the transcript poller
-    reports them for the subagent), so the backend uses ``native_agent_id``
-    to keep them off the boss's todo list.
+    Such calls are still sent as agent ``"main"``; Claude Code puts the
+    subagent's id in ``agent_id`` of the hook input. The backend uses
+    ``native_agent_id`` to move the call (and its todo list) from the boss to
+    that subagent, and to drop the transcript poller's copy of the same call.
     """
     native_agent_id = raw_data.get("agent_id")
-    if data.get("tool_name") in _PROGRESS_TOOLS and native_agent_id:
+    if native_agent_id:
         data["native_agent_id"] = native_agent_id
 
 
@@ -170,7 +168,7 @@ def _handle_pre_tool_use(
         data.pop("tool_input", None)
     else:
         data["agent_id"] = "main"
-        _mark_progress_tool(raw_data, data)
+        _mark_subagent_tool(raw_data, data)
 
 
 def _handle_post_tool_use(
@@ -233,7 +231,7 @@ def _handle_post_tool_use(
                         data["agent_transcript_path"] = agent_path
     else:
         data["agent_id"] = "main"
-        _mark_progress_tool(raw_data, data)
+        _mark_subagent_tool(raw_data, data)
         if data["tool_name"] == "TaskCreate":
             task_id = _created_task_id(raw_data.get("tool_response"))
             if task_id:
@@ -336,6 +334,7 @@ def _handle_permission_request(raw_data: dict[str, Any], data: dict[str, Any]) -
     data["tool_name"] = raw_data.get("tool_name")
     data["tool_input"] = raw_data.get("tool_input")
     data["agent_id"] = "main"
+    _mark_subagent_tool(raw_data, data)
 
 
 def _handle_notification(raw_data: dict[str, Any], data: dict[str, Any]) -> None:

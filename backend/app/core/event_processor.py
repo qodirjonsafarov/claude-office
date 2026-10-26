@@ -52,7 +52,12 @@ from app.core.jsonl_parser import get_last_assistant_response
 from app.core.product_mapper import get_product_mapper
 from app.core.prompt_envelope import describe_envelope
 from app.core.room_orchestrator import RoomOrchestrator
-from app.core.state_machine import WEB_PROMPT_NOTIFICATION, StateMachine, is_phantom_stop
+from app.core.state_machine import (
+    WEB_PROMPT_NOTIFICATION,
+    StateMachine,
+    accept_tool_event,
+    is_phantom_stop,
+)
 from app.core.task_file_poller import init_task_file_poller
 from app.core.task_persistence import load_tasks, save_tasks
 from app.core.transcript_poller import get_transcript_poller, init_transcript_poller
@@ -171,6 +176,9 @@ def derive_git_root(working_dir: str) -> str | None:
 
     return None
 
+
+# Stored event types of one tool call (restore de-duplicates them).
+_TOOL_CALL_TYPES = frozenset({EventType.PRE_TOOL_USE.value, EventType.POST_TOOL_USE.value})
 
 # Event fields copied into a history entry's ``detail`` (frontend inspection).
 _DETAIL_FIELDS = [
@@ -564,6 +572,13 @@ class EventProcessor:
         Args:
             event: The incoming hook event.
         """
+        # A subagent's tool call goes to the subagent, and only once (hooks
+        # and the transcript poller both report it). Checked before any await
+        # so two copies racing in cannot both pass.
+        live = self.sessions.get(event.session_id)
+        if live is not None and not accept_tool_event(live, event):
+            return
+
         # Recover sessions whose real session_start never reached the backend
         # (office started late, backend restarted with a wiped DB). The first
         # event of such a session gets a synthetic SESSION_START carrying
@@ -877,7 +892,23 @@ class EventProcessor:
 
             sm = StateMachine()
             skipped_count = 0
+            # Older hooks stored a subagent's tool calls as "main" with no
+            # native id, next to the poller's copy; that copy names the agent.
+            subagent_calls = {
+                (rec.event_type, rec.data.get("tool_use_id"))
+                for rec in events
+                if rec.event_type in _TOOL_CALL_TYPES
+                and rec.data
+                and rec.data.get("tool_use_id")
+                and (rec.data.get("agent_id") or "main") != "main"
+            }
             for rec in events:
+                data = rec.data or {}
+                if (data.get("agent_id") or "main") == "main" and (
+                    rec.event_type,
+                    data.get("tool_use_id"),
+                ) in subagent_calls:
+                    continue
                 try:
                     # SQLite gives naive datetimes; they are stored as UTC.
                     ts = (
@@ -902,6 +933,8 @@ class EventProcessor:
                         continue
                     # Old hidden side-agent stops still in the DB: not real.
                     if is_phantom_stop(sm, evt):
+                        continue
+                    if not accept_tool_event(sm, evt):
                         continue
                     sm.transition(evt)
 

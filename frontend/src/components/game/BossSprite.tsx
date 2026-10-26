@@ -1,8 +1,9 @@
 /**
  * BossSprite Component
  *
- * Renders the boss character at their desk with state-based coloring.
- * Uses sprites for desk, chair, keyboard, monitor, and phone like agent desks.
+ * Renders the boss character at their executive desk: a leather chair, a
+ * wider walnut desk, keyboard and monitor drawn like the team's furniture
+ * (shared/furniture.ts) in the theme's materials.
  */
 
 "use client";
@@ -44,6 +45,16 @@ import { characterMood, type PersonSignals } from "@/systems/sceneSignals";
 import { SHAKE_MS, shakeOffset } from "@/systems/sceneMotion";
 import { useReducedMotion } from "@/systems/reducedMotion";
 import { AgentProgressBadge } from "./AgentProgressBadge";
+import { scenePalette } from "@/systems/scenePalette";
+import { useTheme } from "@/systems/themeStore";
+import {
+  bossDesk,
+  drawChair,
+  drawDesk,
+  drawKeyboard,
+  drawMonitor,
+  drawScreenGlow,
+} from "./shared/furniture";
 
 // ============================================================================
 // TYPES
@@ -55,10 +66,6 @@ export interface BossSpriteProps {
   bubble: BubbleContent | null;
   inUseBy: "arrival" | "departure" | null;
   currentTask: string | null;
-  chairTexture: Texture | null;
-  deskTexture: Texture | null;
-  keyboardTexture: Texture | null;
-  monitorTexture: Texture | null;
   phoneTexture: Texture | null;
   headsetTexture: Texture | null;
   sunglassesTexture: Texture | null;
@@ -125,20 +132,6 @@ const _STATE_COLORS: Record<BossState, number> = {
 // DRAWING FUNCTIONS
 // ============================================================================
 
-function drawFallbackChair(g: Graphics): void {
-  g.clear();
-  g.circle(0, 15, 25);
-  g.fill(0x4a5568);
-  g.stroke({ width: 2, color: 0x2d3748 });
-}
-
-function drawFallbackDesk(g: Graphics): void {
-  g.clear();
-  g.rect(-70, 15, 140, 80);
-  g.fill(0x5d3a1e);
-  g.stroke({ width: 4, color: 0x3d2a1e });
-}
-
 // ============================================================================
 // BUBBLE COMPONENT
 // ============================================================================
@@ -162,10 +155,6 @@ function BossSpriteComponent({
   bubble,
   inUseBy: _inUseBy,
   currentTask,
-  chairTexture,
-  deskTexture,
-  keyboardTexture,
-  monitorTexture,
   phoneTexture: _phoneTexture,
   headsetTexture,
   sunglassesTexture: _sunglassesTexture,
@@ -278,20 +267,39 @@ function BossSpriteComponent({
 
   const bubbleOffset = -80;
 
+  // Furniture in the theme's materials (shared/furniture.ts)
+  const palette = scenePalette(useTheme());
+  const drawChairCallback = useCallback(
+    (g: Graphics) => {
+      g.clear();
+      drawChair(g, palette, true);
+    },
+    [palette],
+  );
+  const drawDeskCallback = useCallback(
+    (g: Graphics) => {
+      g.clear();
+      drawDesk(g, palette, bossDesk(palette.materials));
+      drawKeyboard(g, palette.materials);
+    },
+    [palette],
+  );
+  const drawMonitorCallback = useCallback(
+    (g: Graphics) => {
+      g.clear();
+      drawMonitor(g, palette.materials, -45, !isAway);
+    },
+    [palette, isAway],
+  );
+  const drawGlowCallback = useCallback(
+    (g: Graphics) => drawScreenGlow(g, palette.materials),
+    [palette],
+  );
+
   return (
     <pixiContainer x={position.x} y={position.y} {...press}>
-      {/* Chair - behind everything */}
-      {chairTexture ? (
-        <pixiSprite
-          texture={chairTexture}
-          anchor={0.5}
-          x={5}
-          y={30}
-          scale={0.1386}
-        />
-      ) : (
-        <pixiGraphics draw={drawFallbackChair} />
-      )}
+      {/* Leather chair - behind everything */}
+      <pixiGraphics draw={drawChairCallback} />
 
       {/* Boss character (body + accessories) - hidden when away from desk */}
       {!isAway && (
@@ -317,28 +325,8 @@ function BossSpriteComponent({
         </pixiContainer>
       )}
 
-      {/* Desk surface - in front of boss */}
-      {deskTexture ? (
-        <pixiSprite
-          texture={deskTexture}
-          anchor={{ x: 0.5, y: 0 }}
-          y={30}
-          scale={0.105}
-        />
-      ) : (
-        <pixiGraphics draw={drawFallbackDesk} />
-      )}
-
-      {/* Keyboard - on desk surface */}
-      {keyboardTexture && (
-        <pixiSprite
-          texture={keyboardTexture}
-          anchor={0.5}
-          x={0}
-          y={42}
-          scale={0.04}
-        />
-      )}
+      {/* Executive desk and keyboard - in front of boss */}
+      <pixiGraphics draw={drawDeskCallback} />
 
       {/* Arms - the LPC worker has its own, so these stay off */}
       {!isAway && SHOW_CAPSULE_PARTS && (
@@ -359,16 +347,16 @@ function BossSpriteComponent({
         />
       )}
 
-      {/* Monitor - left side of desk */}
-      {monitorTexture && (
-        <pixiSprite
-          texture={monitorTexture}
-          anchor={0.5}
-          x={-45}
-          y={27}
-          scale={0.08}
+      {/* Monitor - left side of desk, its screen lighting the boss */}
+      {!isAway && (
+        <pixiGraphics
+          draw={drawGlowCallback}
+          x={-45 + 12}
+          y={2}
+          blendMode="add"
         />
       )}
+      <pixiGraphics draw={drawMonitorCallback} />
 
       {/* Boss label - hidden when away from desk */}
       {!isAway && <NameTag name="Claude" accent={0xff8a3d} y={-60} />}
@@ -385,7 +373,7 @@ function BossSpriteComponent({
       {/* Task marquee on desk - scrolling user prompt */}
       {currentTask && (
         <pixiContainer x={0} y={70}>
-          <MarqueeText text={currentTask} width={115} color="#00ff88" />
+          <MarqueeText text={currentTask} width={140} color="#f0b866" />
         </pixiContainer>
       )}
 

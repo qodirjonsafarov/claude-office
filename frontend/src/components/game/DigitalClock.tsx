@@ -3,11 +3,16 @@
 import { Graphics, TextStyle } from "pixi.js";
 import { useState, useCallback, useEffect, type ReactNode } from "react";
 import type { ClockFormat } from "@/stores/preferencesStore";
+import { scenePalette } from "@/systems/scenePalette";
+import { useTheme } from "@/systems/themeStore";
+
+/** The LCD digits: the Olymp lime. */
+const LCD = 0xa7f36a;
 
 /**
  * DigitalClock - LED-style digital clock display for the office wall
  *
- * Displays current time in a rectangular digital display format.
+ * Displays current time on a graphite LCD with lime digits.
  * Supports 12h and 24h time formats.
  */
 interface DigitalClockProps {
@@ -42,27 +47,30 @@ export function DigitalClock({ format }: DigitalClockProps): ReactNode {
     return date.getHours() >= 12 ? "PM" : "AM";
   }, []);
 
-  const drawClockBody = useCallback((g: Graphics) => {
-    g.clear();
-
-    // Outer black casing
-    g.roundRect(-54, -28, 108, 56, 6);
-    g.fill(0x1a1a1a);
-    g.stroke({ width: 2, color: 0x333333 });
-
-    // Inner display bezel
-    g.roundRect(-50, -24, 100, 48, 4);
-    g.fill(0x0a1a0a);
-    g.stroke({ width: 1, color: 0x2d3748 });
-
-    // LCD screen background (dark green-black)
-    g.roundRect(-48, -22, 96, 44, 3);
-    g.fill(0x0d1f0d);
-
-    // Subtle screen reflection highlight
-    g.roundRect(-46, -20, 92, 2, 1);
-    g.fill({ color: 0x1a3a1a, alpha: 0.5 });
-  }, []);
+  const palette = scenePalette(useTheme());
+  const drawClockBody = useCallback(
+    (g: Graphics) => {
+      g.clear();
+      const m = palette.materials;
+      // Shadow, graphite casing with a lit top edge, a recessed LCD
+      g.roundRect(-52, -24, 108, 56, 6);
+      g.fill(palette.shadow);
+      g.roundRect(-54, -28, 108, 56, 6);
+      g.fill(m.outline);
+      g.roundRect(-53, -27, 106, 54, 5);
+      g.fill(palette.frame);
+      g.rect(-48, -26, 96, 1);
+      g.fill(palette.frameLight);
+      g.roundRect(-48, -22, 96, 44, 3);
+      g.fill(m.screen);
+      g.rect(-46, -21, 92, 1);
+      g.fill({ color: 0x000000, alpha: 0.4 });
+      // Faint glass reflection
+      g.rect(-46, -18, 30, 1);
+      g.fill({ color: 0xffffff, alpha: 0.06 });
+    },
+    [palette],
+  );
 
   const timeString = formatTime(time);
 
@@ -80,9 +88,9 @@ export function DigitalClock({ format }: DigitalClockProps): ReactNode {
             fontFamily: "monospace",
             fontSize: 16,
             fontWeight: "bold",
-            fill: 0x33ff33,
+            fill: LCD,
             dropShadow: {
-              color: 0x33ff33,
+              color: LCD,
               blur: 4,
               alpha: 0.6,
               distance: 0,
@@ -102,9 +110,9 @@ export function DigitalClock({ format }: DigitalClockProps): ReactNode {
               fontFamily: "monospace",
               fontSize: 8,
               fontWeight: "bold",
-              fill: 0x33ff33,
+              fill: LCD,
               dropShadow: {
-                color: 0x33ff33,
+                color: LCD,
                 blur: 2,
                 alpha: 0.4,
                 distance: 0,

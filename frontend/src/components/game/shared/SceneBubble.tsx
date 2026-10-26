@@ -74,7 +74,7 @@ function SceneBubbleComponent({
       fontFamily:
         '"DejaVu Sans", Verdana, Arial, "Noto Color Emoji", sans-serif',
       fontSize: 34,
-      fill: "#0f172a",
+      fill: "#14201a",
       fontWeight: "bold",
       wordWrap: true,
       wordWrapWidth: (bWidth - 34) * 2,

@@ -7,8 +7,17 @@
  * - Animated paper emerging when printing
  */
 
-import { type ReactNode, useState, useEffect, useRef } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import { Graphics, Texture } from "pixi.js";
+import { scenePalette } from "@/systems/scenePalette";
+import { useTheme } from "@/systems/themeStore";
+import { drawCabinet } from "./shared/furniture";
 
 interface PrinterStationProps {
   /** X position of the printer station */
@@ -17,8 +26,6 @@ interface PrinterStationProps {
   y: number;
   /** Whether a report is being printed */
   isPrinting: boolean;
-  /** Desk texture for the printer stand */
-  deskTexture: Texture | null;
   /** Printer texture */
   printerTexture: Texture | null;
 }
@@ -110,9 +117,16 @@ export function PrinterStation({
   x,
   y,
   isPrinting,
-  deskTexture,
   printerTexture,
 }: PrinterStationProps): ReactNode {
+  const palette = scenePalette(useTheme());
+  const drawStand = useCallback(
+    (g: Graphics) => {
+      g.clear();
+      drawCabinet(g, palette, 84, 74);
+    },
+    [palette],
+  );
   const printProgress = usePrintAnimation(isPrinting);
   const [mask, setMask] = useState<Graphics | null>(null);
   const maskRef = useRef<Graphics | null>(null);
@@ -124,14 +138,8 @@ export function PrinterStation({
 
   return (
     <pixiContainer x={x} y={y}>
-      {/* Small desk as printer stand (60% width, full height) */}
-      {deskTexture && (
-        <pixiSprite
-          texture={deskTexture}
-          anchor={{ x: 0.5, y: 0 }}
-          scale={{ x: 0.105 * 0.6, y: 0.105 }}
-        />
-      )}
+      {/* A low oak cabinet as the printer stand */}
+      <pixiGraphics draw={drawStand} />
 
       {/* Printer (on top of desk) */}
       {printerTexture && (

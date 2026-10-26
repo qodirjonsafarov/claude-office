@@ -33,7 +33,7 @@ export interface MarqueeTextProps {
 export function MarqueeText({
   text,
   width,
-  color = "#00ff88",
+  color = "#a7f36a",
 }: MarqueeTextProps): ReactNode {
   const [offset, setOffset] = useState(0);
   const [maskGraphics, setMaskGraphics] = useState<Graphics | null>(null);
@@ -81,10 +81,12 @@ export function MarqueeText({
   const drawPanel = useCallback(
     (g: Graphics) => {
       g.clear();
-      // Dark semi-transparent background
+      // A small dark LED panel with a thin rim, lit along its top edge
       g.roundRect(-width / 2, -panelHeight / 2, width, panelHeight, 3);
-      g.fill({ color: 0x1a1a1a, alpha: 0.9 });
-      g.stroke({ width: 1, color: 0x444444 });
+      g.fill({ color: 0x0b1210, alpha: 0.95 });
+      g.stroke({ width: 1, color: 0x2f3f37, alignment: 1 });
+      g.rect(-width / 2 + 3, -panelHeight / 2 + 1, width - 6, 1);
+      g.fill({ color: 0xffffff, alpha: 0.06 });
     },
     [width],
   );
@@ -148,8 +150,8 @@ export function MarqueeText({
           y={0}
           anchor={{ x: shouldScroll ? 0 : 0.5, y: 0.5 }}
           style={{
-            fontFamily: '"Courier New", monospace',
-            fontSize: 18,
+            fontFamily: '"DejaVu Sans Mono", "Courier New", monospace',
+            fontSize: 17,
             fill: color,
             fontWeight: "bold",
           }}

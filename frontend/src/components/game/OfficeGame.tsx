@@ -104,12 +104,14 @@ import { Whiteboard } from "./Whiteboard";
 import { SafetySign } from "./SafetySign";
 import { CityWindow } from "./CityWindow";
 import { EmployeeOfTheMonth } from "./EmployeeOfTheMonth";
-import { OfficeDecor } from "./OfficeDecor";
+import { OfficeDecor, PottedPlant } from "./OfficeDecor";
 import { Elevator, isAgentInElevator } from "./Elevator";
 import { PrinterStation } from "./PrinterStation";
 import { DebugOverlays } from "./DebugOverlays";
 import { DayNightLayer } from "./DayNightLayer";
 import {
+  BossRug,
+  DeskChair,
   DeskSurfacesBase,
   DeskSurfacesTop,
   useDeskPositions,
@@ -159,35 +161,38 @@ function FloorSign({
   label: string;
   accent: string;
 }): ReactNode {
-  const w = 120;
-  const h = 24;
+  const palette = scenePalette(useTheme());
+  const w = Math.max(64, label.length * 7 + 22);
+  const h = 18;
   const drawSign = useCallback(
     (g: Graphics) => {
       g.clear();
-      // Backing plate
-      g.roundRect(-w / 2, -h / 2, w, h, 4);
-      g.fill({ color: 0x1e1e1e, alpha: 0.9 });
-      // Border
-      g.roundRect(-w / 2, -h / 2, w, h, 4);
       const hex = /^#[0-9a-fA-F]{6}$/.test(accent)
         ? parseInt(accent.slice(1), 16)
-        : 0x6366f1;
-      g.stroke({ color: hex, width: 1.5, alpha: 0.7 });
+        : palette.boardAccent;
+      // Flat shadow, a dark plate with a thin rim and an accent bar
+      g.roundRect(-w / 2 + 1, -h / 2 + 2, w, h, 4);
+      g.fill(palette.shadow);
+      g.roundRect(-w / 2, -h / 2, w, h, 4);
+      g.fill(palette.boardHeader);
+      g.stroke({ color: palette.frameLight, width: 1, alignment: 1 });
+      g.rect(-w / 2 + 5, -h / 2 + 5, 2, h - 10);
+      g.fill(hex);
     },
-    [accent],
+    [accent, palette, w],
   );
 
   return (
-    <pixiContainer x={ELEVATOR_POSITION.x} y={ELEVATOR_POSITION.y - 88}>
+    <pixiContainer x={ELEVATOR_POSITION.x} y={ELEVATOR_POSITION.y - 92}>
       <pixiGraphics draw={drawSign} />
-      <pixiContainer scale={0.5}>
+      <pixiContainer scale={0.5} x={4}>
         <pixiText
           text={label}
           anchor={0.5}
           style={{
-            fontSize: 18,
-            fill: "#ffffff",
-            fontFamily: "monospace",
+            fontSize: 20,
+            fill: "#f2f6f2",
+            fontFamily: '"DejaVu Sans", Verdana, Arial, sans-serif',
             fontWeight: "bold",
           }}
         />
@@ -655,21 +660,13 @@ export function OfficeGame(): ReactNode {
                   />
 
                   {/* Kitchen, lounge, library... on the extra canvas */}
-                  <OfficeWings items={wings} plantTexture={textures.plant} />
+                  <OfficeWings items={wings} />
 
                   {/* Boss area rug - rendered right after floor */}
-                  {textures.bossRug && (
-                    <pixiSprite
-                      texture={textures.bossRug}
-                      anchor={0.5}
-                      x={BOSS_RUG_POSITION.x}
-                      y={BOSS_RUG_POSITION.y}
-                      scale={0.3}
-                    />
-                  )}
+                  <BossRug x={BOSS_RUG_POSITION.x} y={BOSS_RUG_POSITION.y} />
 
                   {/* Modern decor: neon sign and plants */}
-                  <OfficeDecor plantTexture={textures.plant} />
+                  <OfficeDecor />
 
                   {/* Wall decorations */}
                   <pixiContainer
@@ -740,28 +737,22 @@ export function OfficeGame(): ReactNode {
                     isPrinting={
                       printReport && !isCompacting && !!boss.bubble.content
                     }
-                    deskTexture={textures.desk}
                     printerTexture={textures.printer}
                   />
 
                   {/* Plant - to the right of printer */}
-                  {textures.plant && (
-                    <pixiSprite
-                      texture={textures.plant}
-                      anchor={0.5}
-                      x={PLANT_POSITION.x}
-                      y={PLANT_POSITION.y}
-                      scale={0.1}
-                    />
-                  )}
+                  <PottedPlant
+                    x={PLANT_POSITION.x}
+                    y={PLANT_POSITION.y + 31}
+                    kind="leafy"
+                    seed={7}
+                  />
 
                   {/* Elevator with animated doors and agents inside */}
                   <Elevator
                     isOpen={isElevatorOpen}
                     agents={agents}
                     looks={agentLooks}
-                    frameTexture={textures.elevatorFrame}
-                    doorTexture={textures.elevatorDoor}
                     headsetTexture={textures.headset}
                     sunglassesTexture={textures.sunglasses}
                   />
@@ -786,15 +777,7 @@ export function OfficeGame(): ReactNode {
                           y={desk.y}
                           zIndex={chairZIndex}
                         >
-                          {textures.chair && (
-                            <pixiSprite
-                              texture={textures.chair}
-                              anchor={0.5}
-                              x={0}
-                              y={30}
-                              scale={0.1386}
-                            />
-                          )}
+                          <DeskChair />
                         </pixiContainer>
                       );
                     })}
@@ -840,12 +823,7 @@ export function OfficeGame(): ReactNode {
                   </pixiContainer>
 
                   {/* Desk surfaces and keyboards (behind agent arms) */}
-                  <DeskSurfacesBase
-                    deskCount={deskCount}
-                    occupiedDesks={occupiedDesks}
-                    deskTexture={textures.desk}
-                    keyboardTexture={textures.keyboard}
-                  />
+                  <DeskSurfacesBase deskCount={deskCount} />
 
                   {/* Seated workers' hands on the keyboards */}
                   <pixiContainer ref={setHandsSlot} />
@@ -881,7 +859,6 @@ export function OfficeGame(): ReactNode {
                     occupiedDesks={occupiedDesks}
                     deskTasks={deskTasks}
                     terminalDesks={terminalDesks}
-                    monitorTexture={textures.monitor}
                     coffeeMugTexture={textures.coffeeMug}
                     staplerTexture={textures.stapler}
                     deskLampTexture={textures.deskLamp}
@@ -900,10 +877,6 @@ export function OfficeGame(): ReactNode {
                     bubble={boss.bubble.content}
                     inUseBy={boss.inUseBy}
                     currentTask={boss.currentTask}
-                    chairTexture={textures.chair}
-                    deskTexture={textures.desk}
-                    keyboardTexture={textures.keyboard}
-                    monitorTexture={textures.monitor}
                     phoneTexture={textures.phone}
                     headsetTexture={textures.headset}
                     sunglassesTexture={textures.sunglasses}

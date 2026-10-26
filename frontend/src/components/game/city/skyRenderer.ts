@@ -270,11 +270,19 @@ export function drawSunAndClouds(
 /**
  * Draw the window pane divider cross.
  */
-export function drawWindowDividers(g: Graphics, bounds: SkyBounds): void {
+export function drawWindowDividers(
+  g: Graphics,
+  bounds: SkyBounds,
+  dividerColor = 0x3a3a3a,
+): void {
   const { skyX, skyY, innerWidth, innerHeight } = bounds;
-  const dividerColor = 0x3a3a3a;
   g.rect(skyX + innerWidth / 2 - 2, skyY, 4, innerHeight);
   g.fill(dividerColor);
   g.rect(skyX, skyY + innerHeight / 2 - 2, innerWidth, 4);
   g.fill(dividerColor);
+  // A thin shade under each mullion: the light comes from the top left
+  g.rect(skyX + innerWidth / 2 + 2, skyY, 1, innerHeight);
+  g.fill({ color: 0x000000, alpha: 0.25 });
+  g.rect(skyX, skyY + innerHeight / 2 + 2, innerWidth, 1);
+  g.fill({ color: 0x000000, alpha: 0.25 });
 }

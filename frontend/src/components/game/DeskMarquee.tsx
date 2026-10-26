@@ -19,7 +19,7 @@ export interface DeskMarqueeProps {
   text: string;
   /** Width of the marquee panel (default: 116) */
   width?: number;
-  /** Text color (default: #00ff88 - green) */
+  /** Text color (default: the Olymp lime) */
   color?: string;
   /** X position offset (default: 0) */
   x?: number;
@@ -34,7 +34,7 @@ export interface DeskMarqueeProps {
 export function DeskMarquee({
   text,
   width = 116,
-  color = "#00ff88",
+  color = "#a7f36a",
   x = 0,
   y = 70,
 }: DeskMarqueeProps): ReactNode {

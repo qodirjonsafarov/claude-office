@@ -21,6 +21,9 @@ import {
   useSceneHours,
 } from "@/systems/sceneClock";
 
+import { scenePalette } from "@/systems/scenePalette";
+import { useTheme } from "@/systems/themeStore";
+
 // City sub-modules
 import {
   computeTimeState,
@@ -80,6 +83,7 @@ function isRealSession(sessionId: string): boolean {
  */
 export function CityWindow(): ReactNode {
   const [time, setTime] = useState(new Date());
+  const palette = scenePalette(useTheme());
   const [debugHour, setDebugHour] = useState(0);
   const [fastTimeToggle, setFastTimeToggle] = useState(false);
   const debugMode = useGameStore(selectDebugMode);
@@ -227,61 +231,42 @@ export function CityWindow(): ReactNode {
     g.fill(0xffffff);
   }, []);
 
-  const drawFrame = useCallback((g: Graphics) => {
-    g.clear();
-
-    // Top border
-    g.rect(0, 0, FRAME_WIDTH, FRAME_THICKNESS);
-    g.fill(0x1a1a1a);
-    g.rect(2, 2, FRAME_WIDTH - 4, FRAME_THICKNESS - 2);
-    g.fill(0x2d2d2d);
-    g.rect(FRAME_THICKNESS - 2, FRAME_THICKNESS - 2, INNER_WIDTH + 4, 2);
-    g.fill(0x4a4a4a);
-
-    // Bottom border
-    g.rect(0, FRAME_HEIGHT - FRAME_THICKNESS, FRAME_WIDTH, FRAME_THICKNESS);
-    g.fill(0x1a1a1a);
-    g.rect(
-      2,
-      FRAME_HEIGHT - FRAME_THICKNESS,
-      FRAME_WIDTH - 4,
-      FRAME_THICKNESS - 2,
-    );
-    g.fill(0x2d2d2d);
-    g.rect(
-      FRAME_THICKNESS - 2,
-      FRAME_HEIGHT - FRAME_THICKNESS,
-      INNER_WIDTH + 4,
-      2,
-    );
-    g.fill(0x4a4a4a);
-
-    // Left border
-    g.rect(0, 0, FRAME_THICKNESS, FRAME_HEIGHT);
-    g.fill(0x1a1a1a);
-    g.rect(2, 2, FRAME_THICKNESS - 2, FRAME_HEIGHT - 4);
-    g.fill(0x2d2d2d);
-    g.rect(FRAME_THICKNESS - 2, FRAME_THICKNESS - 2, 2, INNER_HEIGHT + 4);
-    g.fill(0x4a4a4a);
-
-    // Right border
-    g.rect(FRAME_WIDTH - FRAME_THICKNESS, 0, FRAME_THICKNESS, FRAME_HEIGHT);
-    g.fill(0x1a1a1a);
-    g.rect(
-      FRAME_WIDTH - FRAME_THICKNESS,
-      2,
-      FRAME_THICKNESS - 2,
-      FRAME_HEIGHT - 4,
-    );
-    g.fill(0x2d2d2d);
-    g.rect(
-      FRAME_WIDTH - FRAME_THICKNESS,
-      FRAME_THICKNESS - 2,
-      2,
-      INNER_HEIGHT + 4,
-    );
-    g.fill(0x4a4a4a);
-  }, []);
+  const drawFrame = useCallback(
+    (g: Graphics) => {
+      g.clear();
+      const m = palette.materials;
+      const t = FRAME_THICKNESS;
+      // Frame: four bars with the shared outline, lit top-left, the glass
+      // set back (a shade line inside)
+      g.rect(0, 0, FRAME_WIDTH, t);
+      g.rect(0, FRAME_HEIGHT - t, FRAME_WIDTH, t);
+      g.rect(0, 0, t, FRAME_HEIGHT);
+      g.rect(FRAME_WIDTH - t, 0, t, FRAME_HEIGHT);
+      g.fill(palette.frame);
+      g.rect(0, 0, FRAME_WIDTH, FRAME_HEIGHT);
+      g.stroke({ width: 1, color: m.outline, alignment: 1 });
+      g.rect(t - 1, t - 1, INNER_WIDTH + 2, INNER_HEIGHT + 2);
+      g.stroke({ width: 1, color: m.outline, alignment: 1 });
+      g.rect(1, 1, FRAME_WIDTH - 2, 1);
+      g.rect(1, 1, 1, FRAME_HEIGHT - 2);
+      g.fill(palette.frameLight);
+      g.rect(t, t, INNER_WIDTH, 2);
+      g.fill({ color: 0x000000, alpha: 0.25 });
+      // Glass glints
+      g.poly([t + 10, t + 2, t + 22, t + 2, t + 2, t + 30, t + 2, t + 16]);
+      g.fill({ color: 0xffffff, alpha: 0.1 });
+      // Sill
+      g.rect(-6, FRAME_HEIGHT - 2, FRAME_WIDTH + 12, 7);
+      g.fill(m.outline);
+      g.rect(-5, FRAME_HEIGHT - 1, FRAME_WIDTH + 10, 5);
+      g.fill(m.woodLight);
+      g.rect(-5, FRAME_HEIGHT - 1, FRAME_WIDTH + 10, 1);
+      g.fill(palette.bevelLight);
+      g.rect(-4, FRAME_HEIGHT + 5, FRAME_WIDTH + 10, 3);
+      g.fill(palette.shadow);
+    },
+    [palette],
+  );
 
   const drawContent = useCallback(
     (g: Graphics) => {
@@ -320,13 +305,13 @@ export function CityWindow(): ReactNode {
       );
 
       // Window pane dividers (cross pattern)
-      drawWindowDividers(g, bounds);
+      drawWindowDividers(g, bounds, palette.frame);
 
       // Seasonal times are used inside drawStars/drawMoon/drawSunAndClouds;
       // we also need them for the drawContent dependency array.
       void getSeasonalTimes(time);
     },
-    [timeState, time, toggledWindows, citySeed, cloudOffsets],
+    [timeState, time, toggledWindows, citySeed, cloudOffsets, palette],
   );
 
   // ============================================================================

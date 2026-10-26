@@ -115,6 +115,8 @@ import {
 import { ZoomControls } from "./ZoomControls";
 import { LoadingScreen } from "./LoadingScreen";
 import { OfficeBackground, type RoomExtent } from "./OfficeBackground";
+import { OfficeWings } from "./OfficeWings";
+import { officeWings, wingLights } from "@/utils/officeWings";
 
 // Register PixiJS components
 extend({ Container, Text, Graphics, Sprite });
@@ -255,6 +257,10 @@ export function OfficeGame(): ReactNode {
 
   // The canvas takes the stage's shape; the room sits centred inside it.
   const layout = useSceneView((s) => s.layout);
+  // The office grows with the stage: zones around the room (utils/officeWings.ts)
+  const extent = useMemo(() => roomExtent(layout), [layout]);
+  const wings = useMemo(() => officeWings(extent), [extent]);
+  const wingPools = useMemo(() => wingLights(wings), [wings]);
   useEffect(() => {
     placeRoom(appRef.current, layout);
   }, [layout]);
@@ -628,8 +634,11 @@ export function OfficeGame(): ReactNode {
                   {/* Floor and walls, extended to the canvas edges */}
                   <OfficeBackground
                     floorTileTexture={textures.floorTile}
-                    extent={roomExtent(layout)}
+                    extent={extent}
                   />
+
+                  {/* Kitchen, lounge, library... on the extra canvas */}
+                  <OfficeWings items={wings} plantTexture={textures.plant} />
 
                   {/* Boss area rug - rendered right after floor */}
                   {textures.bossRug && (
@@ -910,7 +919,7 @@ export function OfficeGame(): ReactNode {
                   />
 
                   {/* Day / night grading (labels and bubbles stay untinted) */}
-                  <DayNightLayer extent={roomExtent(layout)} />
+                  <DayNightLayer extent={extent} extraPools={wingPools} />
 
                   {/* Debug overlays */}
                   {debugMode && (

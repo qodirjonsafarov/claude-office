@@ -100,7 +100,7 @@ export function GitStatusPanel() {
       <div className="qo-panel-head !pr-4">
         <h2 className="qo-title flex-shrink-0">{t("git.title")}</h2>
         <span
-          className="qo-badge qo-badge-accent min-w-0 !gap-1.5"
+          className="qo-badge qo-badge-accent min-w-0 !flex-shrink !gap-1.5"
           title={gitStatus.branch}
         >
           <GitBranch size={13} strokeWidth={2.4} className="flex-shrink-0" />

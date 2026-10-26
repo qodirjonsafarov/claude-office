@@ -88,9 +88,10 @@ body {
 }
 
 /* ======================================================================
-   Qodirjon Office in the Olymp look: the bridge from the older markup
-   (slate panels, uppercase titles, tiny text) to the tokens in
-   styles/tokens.css. Outside @layer, so it wins over Tailwind utilities.
+   Qodirjon Office in the Olymp look. The components (styles/tokens.css,
+   components/ui) carry the look; what is left here is page-wide: grey text
+   steps for the older dev pages, focus, the stage frame, the safe areas.
+   Outside @layer, so it wins over Tailwind utilities.
    ====================================================================== */
 
 /* Grey text keeps 4.5:1 on the panels: the darker slate steps read as the faint ink. */
@@ -124,90 +125,14 @@ body {
   color: var(--qo-ink);
 }
 
-/* Titles of panels: the Olymp eyebrow (small, extrabold, wide tracking). */
-.qo-bg .uppercase {
-  font-family: var(--qo-font);
-  letter-spacing: 0.1em;
-  font-weight: 800;
-}
-
-/* ---------- Icons: lucide with Olymp's heavier, round stroke ---------- */
-.qo-bg svg.lucide {
+/* ---------- Icons: lucide with Olymp's heavier, round stroke ----------
+   (page-wide, so the dialogs portaled to <body> draw the same line) */
+svg.lucide {
   stroke-width: 2.2;
 }
-.qo-bg nav svg.lucide {
+nav svg.lucide {
   stroke-width: 2.4;
 }
-
-/* ---------- Panels: Olymp cards ---------- */
-.qo-bg .flex.flex-col.bg-slate-950 {
-  background: var(--qo-panel) !important;
-  border: 1px solid var(--qo-line) !important;
-  border-radius: 18px !important;
-}
-.qo-bg .bg-slate-950.border-slate-800 {
-  background: var(--qo-panel);
-  border-color: var(--qo-line);
-}
-/* Card headers: no fill of their own, a hairline under them. */
-.qo-bg .bg-slate-900.border-b {
-  background: transparent !important;
-  border-bottom-color: var(--qo-line) !important;
-  padding-top: 12px;
-  padding-bottom: 12px;
-}
-.qo-bg .border-slate-800 { border-color: var(--qo-line); }
-.qo-bg .border-slate-700 { border-color: var(--qo-line-strong); }
-.qo-bg .rounded-lg { border-radius: 14px; }
-.qo-bg .rounded-xl { border-radius: 18px; }
-
-/* Rows: a soft fill on hover; the selected one in the accent's dim light. */
-.qo-bg .hover\:bg-slate-900\/50:hover,
-.qo-bg .hover\:bg-slate-800\/50:hover {
-  background: var(--qo-panel-2) !important;
-}
-.qo-bg .bg-purple-500\/20 {
-  background: var(--qo-accent-dim) !important;
-  border-left-color: transparent !important;
-}
-
-/* Event log rows: small cards. */
-.qo-bg .border-l-2.cursor-pointer {
-  background: var(--qo-panel-2);
-  border-radius: 12px !important;
-  border-left-color: var(--qo-line-strong) !important;
-  padding: 8px 10px !important;
-  transition: background-color 0.12s ease, border-color 0.12s ease;
-}
-.qo-bg .border-l-2.cursor-pointer:hover {
-  background: var(--qo-panel-3) !important;
-  border-left-color: var(--qo-accent) !important;
-}
-
-/* Empty states: a quiet dashed box in the middle of the card. */
-.qo-bg .italic.text-center {
-  font-family: var(--qo-font);
-  font-style: normal !important;
-  font-weight: 700;
-  color: var(--qo-ink-faint) !important;
-  margin: 10px;
-  padding: 22px 14px !important;
-  border: 1px dashed var(--qo-line-strong);
-  border-radius: 14px;
-}
-/* The empty state's sign: lucide's inbox, as on Olymp's empty lists. */
-.qo-bg .italic.text-center::before {
-  content: "";
-  display: block;
-  width: 24px;
-  height: 24px;
-  margin: 0 auto 10px;
-  background: var(--qo-ink-faint);
-  opacity: 0.8;
-  -webkit-mask: var(--qo-icon-inbox) center / contain no-repeat;
-  mask: var(--qo-icon-inbox) center / contain no-repeat;
-}
-.qo-bg .flex.italic.text-center { flex-direction: column; flex-grow: 0 !important; margin: auto 10px; }
 
 /* ---------- The office scene: a screen in the studio ---------- */
 .qo-stage {

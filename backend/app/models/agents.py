@@ -69,6 +69,32 @@ class AgentProgress(BaseModel):
     source: Literal["todos", "tasks"]
 
 
+class TokenUsage(BaseModel):
+    """Token totals: a whole session (main transcript plus its subagents) on
+    ``OfficeState``, or one character's own transcript on ``Boss`` / ``Agent``.
+
+    Each API message is counted once (by ``message.id``). ``model`` is the
+    latest model of the main session (of the character's transcript). ``cost_usd`` is an estimated
+    API-equivalent cost (list prices from ``token_tracker.py``, not what a
+    subscription costs); it is ``None`` when any model used in the session
+    has no known price.
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
+    model: str | None = None
+    cost_usd: float | None = None
+    # The same estimate split by token kind (all None when cost_usd is None).
+    cost_input_usd: float | None = None
+    cost_output_usd: float | None = None
+    cost_cache_read_usd: float | None = None
+    cost_cache_write_usd: float | None = None
+
+
 class Agent(BaseModel):
     """Represents a subagent in the office visualization."""
 
@@ -94,6 +120,8 @@ class Agent(BaseModel):
     agent_type: str | None = None
     # When a RESTING agent finished; it leaves after Settings.AGENT_REST_MINUTES
     resting_since: datetime | None = None
+    # Tokens and estimated cost of this agent's own transcript (None = unread)
+    token_usage: TokenUsage | None = None
 
 
 class Boss(BaseModel):
@@ -106,6 +134,9 @@ class Boss(BaseModel):
     bubble: BubbleContent | None = None
     position: dict[str, int] = {"x": 640, "y": 830}
     progress: AgentProgress | None = None  # None = boss has no todo list
+    # Tokens and estimated cost of the main agent alone; the session total
+    # (with subagents) stays in OfficeState.token_usage
+    token_usage: TokenUsage | None = None
 
 
 class ElevatorState(StrEnum):
@@ -123,31 +154,6 @@ class PhoneState(StrEnum):
     IDLE = "idle"
     RINGING = "ringing"
     IN_USE = "in_use"
-
-
-class TokenUsage(BaseModel):
-    """Token totals for a whole session (main transcript plus its subagents).
-
-    Each API message is counted once (by ``message.id``). ``model`` is the
-    latest model of the main session. ``cost_usd`` is an estimated
-    API-equivalent cost (list prices from ``token_tracker.py``, not what a
-    subscription costs); it is ``None`` when any model used in the session
-    has no known price.
-    """
-
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-    input_tokens: int = 0
-    output_tokens: int = 0
-    cache_read_tokens: int = 0
-    cache_write_tokens: int = 0
-    model: str | None = None
-    cost_usd: float | None = None
-    # The same estimate split by token kind (all None when cost_usd is None).
-    cost_input_usd: float | None = None
-    cost_output_usd: float | None = None
-    cost_cache_read_usd: float | None = None
-    cost_cache_write_usd: float | None = None
 
 
 class OfficeState(BaseModel):

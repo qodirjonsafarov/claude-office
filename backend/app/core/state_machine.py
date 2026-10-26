@@ -927,6 +927,7 @@ class StateMachine:
             current_task=self.boss_current_task,
             bubble=self.boss_bubble,
             progress=progress_from_todos(self.todos) or self.agent_progress.progress_for("main"),
+            token_usage=self.token_tracker.main_usage(),
         )
 
         desk_count = min(
@@ -939,7 +940,12 @@ class StateMachine:
         )
 
         agents_list: list[Agent] = [
-            agent.model_copy(update={"progress": self.agent_progress.progress_for(aid)})
+            agent.model_copy(
+                update={
+                    "progress": self.agent_progress.progress_for(aid),
+                    "token_usage": self.token_tracker.agent_usage(agent.native_id),
+                }
+            )
             for aid, agent in self.agents.items()
         ]
 

@@ -283,3 +283,91 @@ class TestContextWindow:
         tracker = TokenTracker()
         tracker.update_from_event(_event(f))
         assert tracker.total_tokens == 20_010
+
+
+class TestPerAgentUsage:
+    """Each character carries its own tokens: the boss only the main transcript."""
+
+    def _session(self, claude_home: Path) -> Path:
+        f = claude_home / "s1.jsonl"
+        f.write_text(_assistant("m1", model="claude-opus-5-5", inp=100, out=5))
+        sub = claude_home / "s1" / "subagents"
+        sub.mkdir(parents=True)
+        (sub / "agent-a1.jsonl").write_text(
+            _assistant("s1", model="claude-sonnet-5-5", inp=10, out=3)
+            + _assistant("s2", model="claude-sonnet-5-5", inp=20, out=4, cache_read=1000)
+        )
+        (sub / "agent-b2.jsonl").write_text(_assistant("s3", model="claude-haiku-5-5", out=9))
+        return f
+
+    def test_agent_usage_comes_from_its_own_transcript(self, claude_home: Path) -> None:
+        tracker = TokenTracker()
+        tracker.update_from_event(_event(self._session(claude_home)))
+        usage = tracker.agent_usage("a1")
+        assert usage is not None
+        assert (usage.input_tokens, usage.output_tokens) == (30, 7)
+        assert usage.cache_read_tokens == 1000
+        assert usage.model == "claude-sonnet-5-5"
+        expected = estimate_cost_usd(
+            [
+                ("claude-sonnet-5-5", (10, 3, 0, 0, 0)),
+                ("claude-sonnet-5-5", (20, 4, 1000, 0, 0)),
+            ]
+        )
+        assert usage.cost_usd == pytest.approx(expected)
+
+    def test_unknown_agent_has_no_usage(self, claude_home: Path) -> None:
+        tracker = TokenTracker()
+        tracker.update_from_event(_event(self._session(claude_home)))
+        assert tracker.agent_usage("nope") is None
+        assert tracker.agent_usage(None) is None
+
+    def test_main_usage_is_the_main_transcript_only(self, claude_home: Path) -> None:
+        tracker = TokenTracker()
+        tracker.update_from_event(_event(self._session(claude_home)))
+        main = tracker.main_usage()
+        assert main is not None
+        assert (main.input_tokens, main.output_tokens) == (100, 5)
+        assert main.model == "claude-opus-5-5"
+        session = tracker.session_usage()
+        assert session is not None and session.output_tokens == 5 + 7 + 9
+
+    def test_game_state_puts_usage_on_boss_and_agents(self, claude_home: Path) -> None:
+        sm = StateMachine()
+        sm.transition(
+            EventAdapter.validate_python(
+                {
+                    "event_type": EventType.SUBAGENT_START,
+                    "session_id": "s1",
+                    "data": {"agent_id": "subagent_x", "agent_name": "Dev"},
+                }
+            )
+        )
+        sm.agents["subagent_x"].native_id = "a1"
+        sm.transition(_event(self._session(claude_home)))
+
+        state = sm.to_game_state("s1")
+
+        assert state.boss.token_usage is not None
+        assert state.boss.token_usage.output_tokens == 5
+        assert state.agents[0].token_usage is not None
+        assert state.agents[0].token_usage.output_tokens == 7
+        assert state.office.token_usage is not None
+        assert state.office.token_usage.output_tokens == 21
+        wire = state.model_dump(by_alias=True)
+        assert wire["boss"]["tokenUsage"]["costUsd"] is not None
+        assert wire["agents"][0]["tokenUsage"]["outputTokens"] == 7
+
+    def test_agent_without_native_id_has_no_usage(self, claude_home: Path) -> None:
+        sm = StateMachine()
+        sm.transition(
+            EventAdapter.validate_python(
+                {
+                    "event_type": EventType.SUBAGENT_START,
+                    "session_id": "s1",
+                    "data": {"agent_id": "subagent_x", "agent_name": "Dev"},
+                }
+            )
+        )
+        sm.transition(_event(self._session(claude_home)))
+        assert sm.to_game_state("s1").agents[0].token_usage is None

@@ -12,9 +12,12 @@ const BUSY_AGENT_STATES: ReadonlySet<AgentState> = new Set<AgentState>([
   "waiting_permission",
 ]);
 
-/** The boss is busy in every state except idle. */
+/**
+ * The boss is busy in every state except idle and "completing": after STOP his
+ * turn is over and he waits for the user's next prompt.
+ */
 export function isBossBusy(state: BossState): boolean {
-  return state !== "idle";
+  return state !== "idle" && state !== "completing";
 }
 
 /** An agent is busy while it works, thinks, waits for a permission or types. */

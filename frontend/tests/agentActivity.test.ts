@@ -117,6 +117,12 @@ describe("describeAction", () => {
     );
   });
 
+  it("says the boss waits for you once his turn is over", () => {
+    expect(describeAction({ state: "completing", isTyping: true, tool })).toBe(
+      "Waiting for you",
+    );
+  });
+
   it("says idle when idle", () => {
     expect(describeAction({ state: "idle", isTyping: false, tool })).toBe(
       "Idle",
@@ -180,6 +186,12 @@ describe("progressView", () => {
   it("shows the waiting state for a permission request", () => {
     expect(progressView(progress, "waiting_permission", "x")).toEqual({
       kind: "wait",
+    });
+  });
+
+  it("shows no working pulse once the boss's turn is over", () => {
+    expect(progressView(null, "completing", "Waiting for you", true)).toEqual({
+      kind: "none",
     });
   });
 

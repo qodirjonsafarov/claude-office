@@ -18,8 +18,10 @@ import {
   Graphics,
   Sprite,
   TextureSource,
+  RenderLayer,
   Application as PixiApplication,
 } from "pixi.js";
+import { HandsLayerContext } from "./shared/handsLayer";
 import {
   useMemo,
   useEffect,
@@ -331,6 +333,21 @@ export function OfficeGame(): ReactNode {
     };
   }, []);
 
+  // The layer above the desks where seated workers' hands rest on the
+  // keyboards (systems/handsOnDesk.ts); a new one per Pixi app
+  const [handsSlot, setHandsSlot] = useState<Container | null>(null);
+  const handsLayer = useMemo(
+    () => (handsSlot ? new RenderLayer() : null),
+    [handsSlot],
+  );
+  useEffect(() => {
+    if (!handsSlot || !handsLayer) return;
+    handsSlot.addChild(handsLayer);
+    return () => {
+      handsSlot.removeChild(handsLayer);
+    };
+  }, [handsSlot, handsLayer]);
+
   // Subscribe to store state
   const agents = useGameStore(useShallow(selectAgents));
   const boss = useGameStore(selectBoss);
@@ -630,7 +647,7 @@ export function OfficeGame(): ReactNode {
 
               {/* Office content - hidden while loading */}
               {spritesLoaded && (
-                <>
+                <HandsLayerContext.Provider value={handsLayer}>
                   {/* Floor and walls, extended to the canvas edges */}
                   <OfficeBackground
                     floorTileTexture={textures.floorTile}
@@ -829,6 +846,9 @@ export function OfficeGame(): ReactNode {
                     deskTexture={textures.desk}
                     keyboardTexture={textures.keyboard}
                   />
+
+                  {/* Seated workers' hands on the keyboards */}
+                  <pixiContainer ref={setHandsSlot} />
 
                   {/* Agent arms - rendered after desk/keyboard, before headsets */}
                   {/* LPC workers have their own arms, so the capsule arms are off */}
@@ -1062,7 +1082,7 @@ export function OfficeGame(): ReactNode {
                       />
                     </pixiContainer>
                   )}
-                </>
+                </HandsLayerContext.Provider>
               )}
             </Application>
           </div>

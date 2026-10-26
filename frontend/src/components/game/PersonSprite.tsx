@@ -15,9 +15,26 @@
  * LPC frames. The only extra drawing is a soft shadow on the floor.
  */
 
-import { memo, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  memo,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useSceneTick } from "./shared/useSceneTick";
-import { Assets, Graphics, Rectangle, Texture } from "pixi.js";
+import {
+  Assets,
+  Graphics,
+  Rectangle,
+  Texture,
+  type RenderLayer,
+  type Sprite,
+} from "pixi.js";
+import { HandsLayerContext } from "./shared/handsLayer";
+import { HANDS_CROP, handsCropPlacement } from "@/systems/handsOnDesk";
+import { extractHands } from "@/systems/handsMask";
 import type { Position } from "@/types";
 import {
   TYPING_LINGER_MS,
@@ -30,6 +47,8 @@ import type { Gesture } from "@/systems/personPoses";
 import { useReducedMotion } from "@/systems/reducedMotion";
 import {
   FRAME,
+  ROW,
+  SHEET_X,
   sheetCell,
   type CellInput,
   type PersonMode,
@@ -95,17 +114,106 @@ function loadSheet(key: string): Promise<Texture> {
   return promise;
 }
 
-function frameTexture(sheet: Texture, key: string, x: number, y: number) {
-  const cacheKey = `${key}:${x}:${y}`;
+/** The seated frames facing the viewer whose hands rest on the desk. */
+const SEATED_CELLS = [
+  SHEET_X.sitChair,
+  SHEET_X.typeLeft,
+  SHEET_X.typeRight,
+  SHEET_X.blinkSit,
+  SHEET_X.read,
+].map((x) => ({ x, y: ROW.down * FRAME }));
+
+const handsPromises = new Map<string, Promise<Texture | null>>();
+const loadedHands = new Map<string, Texture | null>();
+
+/**
+ * A copy of the sheet with only the hands of the seated frames
+ * (systems/handsMask.ts), made once per look. Null without a 2D canvas.
+ */
+function loadHandsSheet(key: string): Promise<Texture | null> {
+  let promise = handsPromises.get(key);
+  if (!promise) {
+    promise = loadSheet(key).then((sheet) => {
+      let hands: Texture | null = null;
+      try {
+        const image = sheet.source.resource as CanvasImageSource;
+        const { width, height } = sheet.source;
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (ctx) {
+          ctx.drawImage(image, 0, 0);
+          const img = ctx.getImageData(0, 0, width, height);
+          const only = extractHands(
+            { data: img.data, width, height },
+            SEATED_CELLS,
+          );
+          img.data.set(only);
+          ctx.putImageData(img, 0, 0);
+          hands = Texture.from(canvas);
+          hands.source.scaleMode = "nearest";
+        }
+      } catch {
+        hands = null; // the hands stay under the desk, as before
+      }
+      loadedHands.set(key, hands);
+      return hands;
+    });
+    handsPromises.set(key, promise);
+  }
+  return promise;
+}
+
+function frameTexture(
+  sheet: Texture,
+  key: string,
+  x: number,
+  y: number,
+  w = FRAME,
+  h = FRAME,
+) {
+  const cacheKey = `${key}:${x}:${y}:${w}:${h}`;
   let texture = frameCache.get(cacheKey);
   if (!texture) {
     texture = new Texture({
       source: sheet.source,
-      frame: new Rectangle(x, y, FRAME, FRAME),
+      frame: new Rectangle(x, y, w, h),
     });
     frameCache.set(cacheKey, texture);
   }
   return texture;
+}
+
+/**
+ * The hands of the current frame, drawn again in the layer above the desk
+ * (systems/handsOnDesk.ts): they rest on the keyboard instead of typing
+ * under the desk top. Positioned by this sprite's own transform.
+ */
+function HandsOnDesk({
+  layer,
+  texture,
+  x,
+  y,
+  scale,
+}: {
+  layer: RenderLayer;
+  texture: Texture;
+  x: number;
+  y: number;
+  scale: number;
+}): ReactNode {
+  const [sprite, setSprite] = useState<Sprite | null>(null);
+  useEffect(() => {
+    if (!sprite) return;
+    layer.attach(sprite);
+    return () => {
+      layer.detach(sprite);
+    };
+  }, [layer, sprite]);
+  return (
+    <pixiSprite ref={setSprite} texture={texture} x={x} y={y} scale={scale} />
+  );
 }
 
 // ============================================================================
@@ -133,6 +241,8 @@ interface PersonSpriteProps {
   shadow?: boolean;
   /** Seated and reading (Read / Grep): head bowed instead of typing. */
   reading?: boolean;
+  /** Seated at a desk: the hands rest on its keyboard (above the desk). */
+  handsOnDesk?: boolean;
 }
 
 /** Shadow under the feet, in canvas px (before the sprite scale). */
@@ -155,7 +265,22 @@ function PersonSpriteComponent({
   glance = false,
   shadow = mode !== "sit" && mode !== "sleep",
   reading = false,
+  handsOnDesk = false,
 }: PersonSpriteProps): ReactNode {
+  const handsLayer = useContext(HandsLayerContext);
+  const [handsSheet, setHandsSheet] = useState<Texture | null>(
+    () => loadedHands.get(sheet) ?? null,
+  );
+  useEffect(() => {
+    if (!handsOnDesk) return;
+    let alive = true;
+    loadHandsSheet(sheet).then((t) => {
+      if (alive) setHandsSheet(t);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [sheet, handsOnDesk]);
   const [texture, setTexture] = useState<Texture | null>(
     () => loadedSheets.get(sheet) ?? null,
   );
@@ -220,6 +345,22 @@ function PersonSpriteComponent({
         y={feetY + bodyBob}
         scale={scale}
       />
+      {handsOnDesk && handsLayer && handsSheet && mode === "sit" && (
+        <HandsOnDesk
+          layer={handsLayer}
+          texture={frameTexture(
+            handsSheet,
+            `${sheet}-hands`,
+            cell.x + HANDS_CROP.x,
+            cell.row * FRAME + HANDS_CROP.y,
+            HANDS_CROP.w,
+            HANDS_CROP.h,
+          )}
+          x={handsCropPlacement(feetY, scale).x}
+          y={handsCropPlacement(feetY, scale).y + bodyBob}
+          scale={scale}
+        />
+      )}
     </>
   );
 }

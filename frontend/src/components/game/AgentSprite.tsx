@@ -259,6 +259,7 @@ function AgentSpriteComponent({
             feetY={feetY}
             typing={isTyping && !reading && !sleeping}
             reading={reading}
+            handsOnDesk={seated && desk !== undefined && desk !== null}
             walkDistance={motion.distance}
             gesture={
               stance === "walk" || stance === "sit" || stance === "stand"

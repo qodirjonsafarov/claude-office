@@ -1,15 +1,25 @@
 /**
  * Elevator Component
  *
- * Renders the elevator with animated doors, indicator light, and agents inside.
- * The elevator has three layers:
- * 1. Frame (background)
+ * Renders the elevator with animated doors, indicator light, and agents inside,
+ * drawn in the theme's materials (brushed steel doors in a graphite portal,
+ * a lime floor indicator). The elevator has three layers:
+ * 1. Cabin interior (background)
  * 2. Agents inside (middle)
- * 3. Doors and indicator (foreground)
+ * 3. Doors, portal and indicator (foreground)
  */
 
-import { type ReactNode, useState, useEffect, useRef } from "react";
-import { Texture } from "pixi.js";
+import {
+  type ReactNode,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
+import { Graphics, Texture } from "pixi.js";
+import { scenePalette, type ScenePalette } from "@/systems/scenePalette";
+import { useTheme } from "@/systems/themeStore";
+import { box, wash } from "./shared/pixelDraw";
 import { ELEVATOR_POSITION } from "@/systems/queuePositions";
 import { AgentSprite } from "./AgentSprite";
 import type { AgentAnimationState } from "@/stores/gameStore";
@@ -21,10 +31,6 @@ interface ElevatorProps {
   agents: Map<string, AgentAnimationState>;
   /** People sheet per agent id (look by role) */
   looks?: Map<string, string>;
-  /** Elevator frame texture */
-  frameTexture: Texture | null;
-  /** Elevator door texture */
-  doorTexture: Texture | null;
   /** Headset texture for agents */
   headsetTexture: Texture | null;
   /** Sunglasses texture for agents */
@@ -45,15 +51,135 @@ function isInsideElevator(
   return dx < 50 && dy < 80;
 }
 
+// Local geometry (the elevator's centre is ELEVATOR_POSITION)
+const DOOR_TOP = -53;
+const DOOR_BOTTOM = 71;
+const DOOR_HALF = 50;
+const PORTAL_HALF = 62;
+const PORTAL_TOP = -74;
+/** The closed door scale of the old sprite doors (kept as the animation range). */
+const CLOSED_SCALE = 0.09;
+
+/** The cabin behind the doors: back wall, handrail, ceiling light, floor. */
+function drawCabin(g: Graphics, p: ScenePalette): void {
+  const m = p.materials;
+  g.clear();
+  box(
+    g,
+    -DOOR_HALF,
+    DOOR_TOP,
+    DOOR_HALF * 2,
+    DOOR_BOTTOM - DOOR_TOP,
+    m.graphite,
+  );
+  // Back wall panels
+  for (const px of [-44, -14, 16]) {
+    box(g, px, DOOR_TOP + 10, 28, 84, m.graphiteLight);
+    wash(g, px, DOOR_TOP + 10, 28, 1, p.bevelLight);
+  }
+  // Ceiling light and its glow
+  box(g, -30, DOOR_TOP + 2, 60, 3, m.lampShade);
+  wash(g, -40, DOOR_TOP + 5, 80, 8, { color: m.lampShade, alpha: 0.12 });
+  // Handrail
+  box(g, -46, DOOR_TOP + 60, 92, 3, m.metal, m.outline);
+  // Floor
+  box(g, -DOOR_HALF, DOOR_BOTTOM - 16, DOOR_HALF * 2, 16, m.metalDark);
+  wash(g, -DOOR_HALF, DOOR_BOTTOM - 16, DOOR_HALF * 2, 1, p.bevelLight);
+}
+
+/** One brushed-steel door leaf, `w` wide, its edge toward the middle. */
+function drawLeaf(g: Graphics, p: ScenePalette, side: -1 | 1, w: number): void {
+  if (w < 1) return;
+  const m = p.materials;
+  const x = side < 0 ? -DOOR_HALF : DOOR_HALF - w;
+  const h = DOOR_BOTTOM - DOOR_TOP;
+  box(g, x, DOOR_TOP, w, h, m.metal, m.outline);
+  // Brushed steel: a lit strip and a few fine vertical lines
+  wash(g, x + 2, DOOR_TOP + 1, Math.max(1, w * 0.18), h - 2, p.bevelLight);
+  for (let lx = x + 6; lx < x + w - 3; lx += 7) {
+    wash(g, lx, DOOR_TOP + 4, 1, h - 8, { color: m.metalDark, alpha: 0.18 });
+  }
+  // Kick plate at the bottom
+  box(g, x + 1, DOOR_BOTTOM - 12, w - 2, 11, m.metalDark);
+}
+
+/** The portal round the doors, the floor display and the call buttons. */
+function drawPortal(g: Graphics, p: ScenePalette, open: boolean): void {
+  const m = p.materials;
+  g.clear();
+  // Jambs and header in graphite with a lit inner edge
+  box(
+    g,
+    -PORTAL_HALF,
+    PORTAL_TOP,
+    12,
+    DOOR_BOTTOM - PORTAL_TOP + 2,
+    m.graphiteLight,
+    m.outline,
+  );
+  box(
+    g,
+    DOOR_HALF,
+    PORTAL_TOP,
+    12,
+    DOOR_BOTTOM - PORTAL_TOP + 2,
+    m.graphiteLight,
+    m.outline,
+  );
+  box(
+    g,
+    -PORTAL_HALF,
+    PORTAL_TOP,
+    PORTAL_HALF * 2,
+    DOOR_TOP - PORTAL_TOP,
+    m.graphiteLight,
+    m.outline,
+  );
+  wash(
+    g,
+    -PORTAL_HALF + 1,
+    PORTAL_TOP + 1,
+    PORTAL_HALF * 2 - 2,
+    1,
+    p.bevelLight,
+  );
+  wash(g, DOOR_HALF - 1, DOOR_TOP, 1, DOOR_BOTTOM - DOOR_TOP, p.bevelShade);
+  wash(g, -DOOR_HALF, DOOR_TOP, 1, DOOR_BOTTOM - DOOR_TOP, p.bevelShade);
+  // Floor display: a dark panel with the arrow (lit while open)
+  box(g, -16, PORTAL_TOP + 5, 32, 12, m.screen, m.outline);
+  const lit = open ? m.accent : m.metalDark;
+  g.poly([-9, PORTAL_TOP + 14, -5, PORTAL_TOP + 8, -1, PORTAL_TOP + 14]);
+  g.fill(lit);
+  // The floor number "1"
+  const digit = open ? m.accent : m.graphiteLight;
+  box(g, 6, PORTAL_TOP + 8, 2, 6, digit);
+  box(g, 4, PORTAL_TOP + 9, 2, 1, digit);
+  box(g, 4, PORTAL_TOP + 13, 6, 1, digit);
+  // Threshold plate on the floor
+  box(
+    g,
+    -DOOR_HALF - 4,
+    DOOR_BOTTOM - 1,
+    DOOR_HALF * 2 + 8,
+    4,
+    m.metal,
+    m.outline,
+  );
+  // Call buttons on the wall to the right
+  box(g, PORTAL_HALF + 4, -6, 9, 20, m.metal, m.outline);
+  box(g, PORTAL_HALF + 7, -2, 3, 3, open ? m.accent : m.metalDark);
+  box(g, PORTAL_HALF + 7, 6, 3, 3, m.metalDark);
+}
+
 /**
  * Hook for animated door scale
  */
 function useDoorAnimation(isOpen: boolean): number {
-  const [doorScale, setDoorScale] = useState(0.09);
-  const doorScaleRef = useRef(0.09);
+  const [doorScale, setDoorScale] = useState(CLOSED_SCALE);
+  const doorScaleRef = useRef(CLOSED_SCALE);
 
   useEffect(() => {
-    const targetScale = isOpen ? 0 : 0.09;
+    const targetScale = isOpen ? 0 : CLOSED_SCALE;
     const duration = 500; // 0.5 seconds
     const startScale = doorScaleRef.current;
     const startTime = performance.now();
@@ -85,12 +211,28 @@ export function Elevator({
   isOpen,
   agents,
   looks,
-  frameTexture,
-  doorTexture,
   headsetTexture,
   sunglassesTexture,
 }: ElevatorProps): ReactNode {
   const doorScale = useDoorAnimation(isOpen);
+  const palette = scenePalette(useTheme());
+  const leafWidth = Math.round((DOOR_HALF * doorScale) / CLOSED_SCALE);
+  const drawCabinCallback = useCallback(
+    (g: Graphics) => drawCabin(g, palette),
+    [palette],
+  );
+  const drawDoorsCallback = useCallback(
+    (g: Graphics) => {
+      g.clear();
+      drawLeaf(g, palette, -1, leafWidth);
+      drawLeaf(g, palette, 1, leafWidth);
+    },
+    [palette, leafWidth],
+  );
+  const drawPortalCallback = useCallback(
+    (g: Graphics) => drawPortal(g, palette, isOpen),
+    [palette, isOpen],
+  );
 
   // Filter agents that are inside the elevator
   const agentsInside = Array.from(agents.values()).filter((agent) =>
@@ -104,12 +246,10 @@ export function Elevator({
 
   return (
     <>
-      {/* Elevator frame (background) */}
-      {frameTexture && (
-        <pixiContainer x={ELEVATOR_POSITION.x} y={ELEVATOR_POSITION.y}>
-          <pixiSprite texture={frameTexture} anchor={0.5} scale={0.26} />
-        </pixiContainer>
-      )}
+      {/* Cabin interior (background) */}
+      <pixiContainer x={ELEVATOR_POSITION.x} y={ELEVATOR_POSITION.y}>
+        <pixiGraphics draw={drawCabinCallback} />
+      </pixiContainer>
 
       {/* Agents inside elevator (behind doors) */}
       {agentsInside.map((agent) => (
@@ -132,35 +272,11 @@ export function Elevator({
         />
       ))}
 
-      {/* Elevator doors and indicator (in front of agents inside) */}
-      {doorTexture && (
-        <pixiContainer x={ELEVATOR_POSITION.x} y={ELEVATOR_POSITION.y}>
-          {/* Left door - shrinks into left wall when open */}
-          <pixiSprite
-            texture={doorTexture}
-            anchor={{ x: 0, y: 0.5 }}
-            x={-50}
-            y={9}
-            scale={{ x: doorScale, y: 0.183 }}
-          />
-          {/* Right door - shrinks into right wall when open */}
-          <pixiSprite
-            texture={doorTexture}
-            anchor={{ x: 1, y: 0.5 }}
-            x={50}
-            y={9}
-            scale={{ x: doorScale, y: 0.183 }}
-          />
-          {/* Indicator light - square overlay on frame light */}
-          <pixiGraphics
-            draw={(g) => {
-              g.clear();
-              g.rect(-5, -67, 10, 8);
-              g.fill(isOpen ? 0x48bb78 : 0xef4444);
-            }}
-          />
-        </pixiContainer>
-      )}
+      {/* Doors, portal and indicator (in front of agents inside) */}
+      <pixiContainer x={ELEVATOR_POSITION.x} y={ELEVATOR_POSITION.y}>
+        <pixiGraphics draw={drawDoorsCallback} />
+        <pixiGraphics draw={drawPortalCallback} />
+      </pixiContainer>
     </>
   );
 }

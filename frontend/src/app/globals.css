@@ -95,15 +95,6 @@ body {
    styles/tokens.css. Outside @layer, so it wins over Tailwind utilities.
    ====================================================================== */
 
-/* Larger, readable panel text (the scene's tiny labels were made for a 2x canvas). */
-.text-\[8px\] { font-size: 10px; }
-.text-\[9px\] { font-size: 11px; }
-.text-\[10px\] { font-size: 12px; }
-.text-\[11px\] { font-size: 13px; }
-.text-\[12px\] { font-size: 14px; }
-.text-xs { font-size: 13px; line-height: 1.45; }
-.text-sm { font-size: 14.5px; line-height: 1.5; }
-
 /* Grey text keeps 4.5:1 on the panels: the darker slate steps read as the faint ink. */
 .text-slate-600 { color: var(--qo-ink-faint); }
 .text-slate-500 { color: var(--qo-ink-faint); }

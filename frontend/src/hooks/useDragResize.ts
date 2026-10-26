@@ -135,8 +135,11 @@ export function useDragResize({
 
       const onMouseUp = () => {
         setIsDragging(false);
-        setUserSized(true);
-        if (storageKey) writeStoredSize(browserStorage(), storageKey, latest);
+        // A click on the handle (no change) keeps a fluid default fluid.
+        if (latest !== startSize) {
+          setUserSized(true);
+          if (storageKey) writeStoredSize(browserStorage(), storageKey, latest);
+        }
         document.body.style.cursor = "";
         document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("mouseup", onMouseUp);

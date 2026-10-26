@@ -92,3 +92,47 @@ describe("useDragResize with a fluid default", () => {
     expect(seen()).toBe(333);
   });
 });
+
+function HandleProbe({ storageKey }: { storageKey: string }) {
+  const { size, handleDragStart } = useDragResize({
+    initialSize: () => fluidPanelWidth(window.innerWidth, LEFT),
+    minSize: 200,
+    maxSize: 600,
+    direction: "horizontal",
+    storageKey,
+  });
+  return <i data-size={size} onMouseDown={handleDragStart} />;
+}
+
+function mouse(type: string, target: EventTarget, clientX: number) {
+  act(() => {
+    target.dispatchEvent(new MouseEvent(type, { bubbles: true, clientX }));
+  });
+}
+
+describe("useDragResize handle", () => {
+  it("a click without a move keeps the fluid default and saves nothing", () => {
+    resizeTo(1920);
+    act(() => root.render(<HandleProbe storageKey="t-click" />));
+    const handle = host.querySelector("i")!;
+    mouse("mousedown", handle, 300);
+    mouse("mouseup", document, 300);
+
+    expect(localStorage.getItem("t-click")).toBeNull();
+    resizeTo(1280);
+    expect(seen()).toBe(220);
+  });
+
+  it("a drag saves the new size and stops following the window", () => {
+    resizeTo(1920);
+    act(() => root.render(<HandleProbe storageKey="t-drag" />));
+    const handle = host.querySelector("i")!;
+    mouse("mousedown", handle, 300);
+    mouse("mousemove", document, 340);
+    mouse("mouseup", document, 340);
+
+    expect(localStorage.getItem("t-drag")).toBe("328");
+    resizeTo(1280);
+    expect(seen()).toBe(328);
+  });
+});

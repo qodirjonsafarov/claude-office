@@ -11,6 +11,10 @@ describe("isBossBusy", () => {
     expect(isBossBusy("delegating")).toBe(true);
     expect(isBossBusy("waiting_permission")).toBe(true);
   });
+
+  it("is false once the boss finished his turn and waits for the user", () => {
+    expect(isBossBusy("completing")).toBe(false);
+  });
 });
 
 describe("isAgentBusy", () => {
@@ -43,5 +47,9 @@ describe("countWorking", () => {
 
   it("is zero for an idle office", () => {
     expect(countWorking("idle", [])).toBe(0);
+  });
+
+  it("does not count a boss whose turn is over", () => {
+    expect(countWorking("completing", [])).toBe(0);
   });
 });

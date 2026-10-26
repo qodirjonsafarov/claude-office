@@ -65,7 +65,6 @@ const BUSY_STATES = new Set([
   "delegating",
   "receiving",
   "reviewing",
-  "completing",
   "on_phone",
   "phone_ringing",
 ]);
@@ -98,6 +97,8 @@ export function progressView(
       label: `${progress.current ?? action} · ${progress.done}/${progress.total}`,
     };
   }
+  // The boss's turn is over (STOP): no pulse, even if typing still lingers.
+  if (state === "completing") return { kind: "none" };
   if (isTyping || BUSY_STATES.has(state)) return { kind: "busy" };
   return { kind: "none" };
 }
@@ -187,7 +188,7 @@ const STATE_ACTIONS: Record<string, string> = {
   receiving: "Getting a task",
   delegating: "Delegating",
   reviewing: "Reviewing",
-  completing: "Wrapping up",
+  completing: "Waiting for you",
 };
 
 /** A person's action now, in plain words. */
@@ -198,6 +199,7 @@ export function describeAction(input: {
 }): string {
   const { state, isTyping, tool } = input;
   if (state === "waiting_permission") return "Waiting for permission";
+  if (state === "completing") return STATE_ACTIONS.completing;
   if (state === "working" || isTyping) {
     return tool ? describeTool(tool.name, tool.input) : "Working";
   }

@@ -7,6 +7,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
+import { MousePointerClick } from "lucide-react";
 
 interface PointerRingProps {
   targetTourId: string | null;
@@ -72,17 +73,11 @@ export function PointerRing({
         height: rect.height + padding * 2,
       }}
     >
-      <div
-        className="absolute inset-0 rounded-lg"
-        style={{
-          border: "2px solid rgba(249, 115, 22, 0.7)",
-          boxShadow: "0 0 12px rgba(249, 115, 22, 0.4)",
-          animation: "tourPulse 2s ease-in-out infinite",
-        }}
-      />
+      <div className="absolute inset-0 rounded-xl2 border-2 border-accent motion-safe:animate-[tourPulse_2s_ease-in-out_infinite]" />
       {label && (
-        <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-orange-400 text-xs font-mono font-bold">
-          {"\u{1F446}"} {label}
+        <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 whitespace-nowrap h-7 px-3 rounded-full bg-accent text-on-accent text-[12.5px] font-extrabold flex items-center gap-1.5 shadow-[var(--qo-shadow-float)]">
+          <MousePointerClick size={14} strokeWidth={2.4} aria-hidden="true" />
+          {label}
         </div>
       )}
     </div>

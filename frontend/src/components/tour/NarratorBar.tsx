@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { MousePointerClick, Play } from "lucide-react";
 import type { TourStepType } from "@/stores/tourStore";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -27,31 +28,33 @@ export function NarratorBar({
   const progress = ((stepIndex + 1) / totalSteps) * 100;
   const { t } = useTranslation();
 
+  const Icon = stepType === "interactive" ? MousePointerClick : Play;
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[60] pointer-events-auto">
-      <div className="mx-4 mb-4 bg-panel border border-orange-500/40 rounded-lg px-5 py-3 flex items-center gap-4 shadow-[0_12px_40px_var(--qo-float-shade)]">
-        <div className="w-8 h-8 bg-orange-500/20 border border-orange-500/40 rounded-full flex items-center justify-center text-orange-500 font-bold text-sm flex-shrink-0">
-          {stepType === "interactive" ? "\u2726" : "\u25B6"}
-        </div>
+    <div className="fixed bottom-0 left-0 right-0 z-[60] pointer-events-auto flex justify-center px-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+      <div className="qo-pop w-full max-w-[680px] bg-panel border border-line-strong rounded-xl3 pl-4 pr-5 py-4 flex items-center gap-4 shadow-[var(--qo-shadow-pop)]">
+        <span className="w-10 h-10 rounded-full bg-accent-dim text-accent flex items-center justify-center flex-shrink-0">
+          <Icon size={18} strokeWidth={2.4} aria-hidden="true" />
+        </span>
         <div className="flex-1 min-w-0">
-          <div className="text-orange-400 text-xs font-bold font-mono mb-0.5">
-            {stepIndex + 1} / {totalSteps} &mdash; {title}
+          <div className="qo-label !text-accent mb-1">
+            {stepIndex + 1} / {totalSteps}
           </div>
-          <div className="text-slate-300 text-sm leading-snug">
+          <div className="text-[15px] font-extrabold text-ink leading-tight">
+            {title}
+          </div>
+          <div className="mt-1 text-[13.5px] text-ink-soft leading-snug">
             {description}
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-          <div className="w-20 h-1 bg-slate-800 rounded-full overflow-hidden">
+        <div className="flex flex-col items-end gap-2.5 flex-shrink-0">
+          <div className="w-24 h-1.5 bg-panel-3 rounded-full overflow-hidden">
             <div
-              className="h-full bg-orange-500 rounded-full transition-all duration-500"
+              className="h-full bg-accent rounded-full transition-all duration-500"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <button
-            onClick={onSkip}
-            className="text-[10px] text-slate-500 hover:text-slate-300 font-mono transition-colors"
-          >
+          <button onClick={onSkip} className="qo-btn qo-btn-ghost !h-8 !px-3">
             {t("tour.skip")}
           </button>
         </div>

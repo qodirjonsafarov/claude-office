@@ -76,16 +76,14 @@ body {
   }
 }
 
-/* Tour pulse animation */
+/* Tour pulse animation: the lime ring round the place to look at breathes. */
 @keyframes tourPulse {
   0%,
   100% {
-    box-shadow: 0 0 12px color-mix(in srgb, var(--qo-max) 40%, transparent);
-    border-color: color-mix(in srgb, var(--qo-max) 70%, transparent);
+    box-shadow: 0 0 0 0 var(--qo-pulse-end), 0 0 10px 0 var(--qo-pulse-end);
   }
   50% {
-    box-shadow: 0 0 24px color-mix(in srgb, var(--qo-max) 60%, transparent);
-    border-color: var(--qo-max);
+    box-shadow: 0 0 0 4px var(--qo-accent-dim), 0 0 18px 4px var(--qo-pulse);
   }
 }
 

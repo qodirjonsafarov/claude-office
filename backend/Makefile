@@ -1,10 +1,10 @@
 .PHONY: dev start test lint fmt typecheck checkall
 
 dev:
-	uv run uvicorn app.main:app --reload --reload-dir app --host 0.0.0.0 --port 8000
+	uv run uvicorn app.main:app --reload --reload-dir app --host 0.0.0.0 --port 8000 --no-proxy-headers
 
 start:
-	uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+	uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers
 
 test:
 	uv run pytest

@@ -28,9 +28,12 @@ const POOLS: ReadonlyArray<{ x: number; y: number; r: number }> = [
   { x: 86, y: 280, r: 55 },
 ];
 
-function drawPools(g: Graphics): void {
+function drawPools(
+  g: Graphics,
+  extra: ReadonlyArray<{ x: number; y: number; r: number }>,
+): void {
   g.clear();
-  for (const p of POOLS) {
+  for (const p of [...POOLS, ...extra]) {
     // Stacked ellipses: a soft pool without a blur filter
     for (let i = 0; i < 4; i++) {
       const k = 1 - i * 0.22;
@@ -43,12 +46,17 @@ function drawPools(g: Graphics): void {
 interface DayNightLayerProps {
   /** The canvas around the room, in room coordinates (default: the room). */
   extent?: { left: number; top: number; right: number; bottom: number };
+  /** More lamps (the zones around the room, utils/officeWings.ts). */
+  extraPools?: ReadonlyArray<{ x: number; y: number; r: number }>;
 }
+
+const NO_POOLS: ReadonlyArray<{ x: number; y: number; r: number }> = [];
 
 const ROOM = { left: 0, top: 0, right: CANVAS_WIDTH, bottom: CANVAS_HEIGHT };
 
 function DayNightLayerComponent({
   extent = ROOM,
+  extraPools = NO_POOLS,
 }: DayNightLayerProps): ReactNode {
   const { left, top, right, bottom } = extent;
   const hours = useSceneHours();
@@ -64,11 +72,16 @@ function DayNightLayerComponent({
     [left, top, right, bottom],
   );
 
+  const drawLamps = useCallback(
+    (g: Graphics) => drawPools(g, extraPools),
+    [extraPools],
+  );
+
   if (alpha <= 0) return null;
   return (
     <>
       <pixiGraphics draw={drawTint} blendMode="multiply" alpha={alpha} />
-      <pixiGraphics draw={drawPools} blendMode="add" alpha={glow} />
+      <pixiGraphics draw={drawLamps} blendMode="add" alpha={glow} />
     </>
   );
 }

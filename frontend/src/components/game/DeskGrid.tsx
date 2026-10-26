@@ -10,6 +10,10 @@
 import { type ReactNode, useMemo } from "react";
 import { Graphics, Texture } from "pixi.js";
 import { DeskMarquee } from "./DeskMarquee";
+import {
+  DESK_SURFACE_OFFSET_Y,
+  KEYBOARD_OFFSET_Y,
+} from "@/constants/positions";
 
 // ============================================================================
 // TYPES
@@ -150,7 +154,7 @@ export function DeskSurfacesBase({
             <pixiSprite
               texture={deskTexture}
               anchor={{ x: 0.5, y: 0 }}
-              y={30}
+              y={DESK_SURFACE_OFFSET_Y}
               scale={0.105}
             />
           )}
@@ -160,7 +164,7 @@ export function DeskSurfacesBase({
               texture={keyboardTexture}
               anchor={0.5}
               x={0}
-              y={42}
+              y={KEYBOARD_OFFSET_Y}
               scale={0.04}
             />
           )}

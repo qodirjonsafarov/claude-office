@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   browserStorage,
   readStoredSize,
@@ -6,7 +6,11 @@ import {
 } from "@/utils/storedSize";
 
 interface UseDragResizeOptions {
-  initialSize: number;
+  /**
+   * The default size, or a function of the window (a share of it): then the
+   * size follows window resizes until the user drags (a remembered size).
+   */
+  initialSize: number | (() => number);
   minSize: number;
   /** Max size in pixels, or a function that returns max size (for viewport-relative values) */
   maxSize: number | (() => number);
@@ -41,8 +45,14 @@ export function useDragResize({
   edge,
   storageKey,
 }: UseDragResizeOptions): UseDragResizeReturn {
-  const [size, setSize] = useState(initialSize);
+  const fluid = typeof initialSize === "function" ? initialSize : null;
+  // A fluid default is measured after mount (the server has no window)
+  const [size, setSize] = useState(
+    typeof initialSize === "function" ? minSize : initialSize,
+  );
   const [isDragging, setIsDragging] = useState(false);
+  // A fluid default follows the window until the user picks a size.
+  const [userSized, setUserSized] = useState(false);
 
   // The remembered size, after mount (the server renders the default).
   useEffect(() => {
@@ -50,12 +60,36 @@ export function useDragResize({
     const restore = () => {
       const max = typeof maxSize === "function" ? maxSize() : maxSize;
       const stored = readStoredSize(browserStorage(), storageKey, minSize, max);
-      if (stored !== null) setSize(stored);
+      if (stored !== null) {
+        setSize(stored);
+        setUserSized(true);
+      }
     };
     restore();
     // Only once: the limits are fixed per panel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey]);
+
+  const fluidRef = useRef(fluid);
+  useEffect(() => {
+    fluidRef.current = fluid;
+  });
+  const isFluid = fluid !== null;
+  useEffect(() => {
+    if (!isFluid || userSized) return;
+    // A remembered size wins (restored by the effect above)
+    if (
+      storageKey &&
+      readStoredSize(browserStorage(), storageKey, 0, Infinity) !== null
+    )
+      return;
+    const follow = () => {
+      if (fluidRef.current) setSize(fluidRef.current());
+    };
+    follow();
+    window.addEventListener("resize", follow);
+    return () => window.removeEventListener("resize", follow);
+  }, [isFluid, userSized, storageKey]);
 
   // Default edge based on direction
   const resolvedEdge = edge ?? (direction === "horizontal" ? "right" : "down");
@@ -101,6 +135,7 @@ export function useDragResize({
 
       const onMouseUp = () => {
         setIsDragging(false);
+        setUserSized(true);
         if (storageKey) writeStoredSize(browserStorage(), storageKey, latest);
         document.body.style.cursor = "";
         document.removeEventListener("mousemove", onMouseMove);

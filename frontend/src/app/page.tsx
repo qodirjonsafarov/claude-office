@@ -21,6 +21,7 @@ import { useWebSocketEvents } from "@/hooks/useWebSocketEvents";
 import { useSessions } from "@/hooks/useSessions";
 import { useSessionSwitch } from "@/hooks/useSessionSwitch";
 import { useLayoutMode } from "@/hooks/useLayoutMode";
+import { useFocusMode } from "@/hooks/useFocusMode";
 import { useBackgroundAlerts } from "@/hooks/useBackgroundAlerts";
 import {
   useGameStore,
@@ -29,7 +30,7 @@ import {
 } from "@/stores/gameStore";
 import { useTourStore } from "@/stores/tourStore";
 import { initApiKeyFromBrowser } from "@/utils/api";
-import { Map } from "lucide-react";
+import { Map, Minimize2 } from "lucide-react";
 import { SessionSidebar } from "@/components/layout/SessionSidebar";
 import { MobileOffice } from "@/components/layout/MobileOffice";
 import { BrandMark } from "@/components/layout/BrandMark";
@@ -109,6 +110,9 @@ export default function V2TestPage(): React.ReactNode {
   }, []);
   const layoutMode = useLayoutMode();
   const isMobile = layoutMode !== "desktop";
+  // Focus mode: header and side panels hidden, the office fills the window
+  const focus = useFocusMode(!isMobile);
+  const focused = focus.focused;
 
   // Session pending delete drives the delete-confirmation modal
   const [sessionPendingDelete, setSessionPendingDelete] =
@@ -240,7 +244,12 @@ export default function V2TestPage(): React.ReactNode {
   // Render
   // ------------------------------------------------------------------
   return (
-    <main className="qo-bg flex h-screen h-[100dvh] flex-col p-3 overflow-hidden relative">
+    <main
+      className={`qo-bg flex h-screen h-[100dvh] flex-col overflow-hidden relative ${
+        focused ? "p-0" : "p-3"
+      }`}
+      data-focus={focused ? "on" : undefined}
+    >
       {/* ----------------------------------------------------------------
           Modals
       ---------------------------------------------------------------- */}
@@ -291,6 +300,12 @@ export default function V2TestPage(): React.ReactNode {
         }
       >
         <div className="space-y-3 font-mono text-sm">
+          <div className="flex justify-between items-center py-2 border-b border-slate-700">
+            <kbd className="min-w-8 px-2 py-1 bg-panel-3 border border-line-strong rounded-lg text-ink font-extrabold text-center">
+              F
+            </kbd>
+            <span className="text-slate-300">{t("modal.focusMode")}</span>
+          </div>
           <div className="flex justify-between items-center py-2 border-b border-slate-700">
             <kbd className="min-w-8 px-2 py-1 bg-panel-3 border border-line-strong rounded-lg text-ink font-extrabold text-center">
               D
@@ -379,7 +394,7 @@ export default function V2TestPage(): React.ReactNode {
           onOpenSettings={() => setIsSettingsModalOpen(true)}
           onOpenHelp={() => setIsHelpModalOpen(true)}
         />
-      ) : (
+      ) : focused ? null : (
         /* ----------------------------------------------------------------
             Desktop header: the mark, the counters, the controls
         ---------------------------------------------------------------- */
@@ -405,6 +420,7 @@ export default function V2TestPage(): React.ReactNode {
             onToggleDebug={handleToggleDebug}
             onOpenSettings={() => setIsSettingsModalOpen(true)}
             onOpenHelp={() => setIsHelpModalOpen(true)}
+            onToggleFocus={focus.toggle}
           />
         </header>
       )}
@@ -416,28 +432,37 @@ export default function V2TestPage(): React.ReactNode {
         /* ----------------------------------------------------------------
             The office: sessions, the scene, the team and events
         ---------------------------------------------------------------- */
-        <div className="flex-grow flex gap-2 overflow-hidden min-h-0">
-          <SessionSidebar
-            sessions={sessions}
-            sessionsLoading={sessionsLoading}
-            sessionId={sessionId}
-            isCollapsed={leftSidebarCollapsed}
-            onToggleCollapsed={() => {
-              setLeftSidebarCollapsed(!leftSidebarCollapsed);
-              writeStoredFlag(
-                browserStorage(),
-                "qo-left-collapsed",
-                !leftSidebarCollapsed,
-              );
-            }}
-            onSessionSelect={handleSessionSelect}
-            onDeleteSession={setSessionPendingDelete}
-            onRenameSession={handleRenameSession}
-          />
+        <div
+          className={`flex-grow flex overflow-hidden min-h-0 ${
+            focused ? "" : "gap-2"
+          }`}
+        >
+          {/* Hidden, not unmounted, in focus mode: panels keep their state */}
+          <div className={focused ? "hidden" : "contents"}>
+            <SessionSidebar
+              sessions={sessions}
+              sessionsLoading={sessionsLoading}
+              sessionId={sessionId}
+              isCollapsed={leftSidebarCollapsed}
+              onToggleCollapsed={() => {
+                setLeftSidebarCollapsed(!leftSidebarCollapsed);
+                writeStoredFlag(
+                  browserStorage(),
+                  "qo-left-collapsed",
+                  !leftSidebarCollapsed,
+                );
+              }}
+              onSessionSelect={handleSessionSelect}
+              onDeleteSession={setSessionPendingDelete}
+              onRenameSession={handleRenameSession}
+            />
+          </div>
 
           <div
             data-tour-id="game-canvas"
-            className="qo-stage qo-studio flex-grow overflow-hidden relative"
+            className={`qo-stage qo-studio flex-grow overflow-hidden relative ${
+              focused ? "qo-stage-focus" : ""
+            }`}
           >
             {/* The scene fills the stage; the canvas takes its shape */}
             <div className="qo-stage-inner">
@@ -445,9 +470,23 @@ export default function V2TestPage(): React.ReactNode {
                 <OfficeGame />
               </div>
             </div>
+            {focused && (
+              <button
+                type="button"
+                onClick={focus.exit}
+                className="qo-focus-exit qo-btn qo-btn-secondary"
+                title={t("header.exitFocus")}
+                aria-label={t("header.exitFocus")}
+              >
+                <Minimize2 size={16} />
+                Esc
+              </button>
+            )}
           </div>
 
-          <RightSidebar />
+          <div className={focused ? "hidden" : "contents"}>
+            <RightSidebar />
+          </div>
         </div>
       )}
 

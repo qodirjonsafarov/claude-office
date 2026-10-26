@@ -43,6 +43,17 @@ export const PRINTER_STATION_POSITION = { x: 50, y: 945 };
 export const PLANT_POSITION = { x: 118, y: 970 };
 
 // ============================================================================
+// DESK (offsets from a desk's origin)
+// ============================================================================
+
+/** The desk sprite's top edge. */
+export const DESK_SURFACE_OFFSET_Y = 30;
+
+/** The keyboard on the desk (centre) and its drawn height. */
+export const KEYBOARD_OFFSET_Y = 42;
+export const KEYBOARD_HEIGHT = 14;
+
+// ============================================================================
 // BOSS AREA
 // ============================================================================
 

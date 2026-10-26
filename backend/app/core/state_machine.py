@@ -373,6 +373,10 @@ def _handle_subagent_info(sm: "StateMachine", event: AnyEvent) -> None:
         _recall(agent)
 
 
+# Tools that wait for the owner's answer while they run.
+_OWNER_INPUT_TOOLS = frozenset({"AskUserQuestion"})
+
+
 def _handle_pre_tool_use(sm: "StateMachine", event: AnyEvent) -> None:
     """Handle PRE_TOOL_USE: update boss/agent state and process TodoWrite events."""
     assert isinstance(event, ToolEvent)
@@ -404,9 +408,12 @@ def _handle_pre_tool_use(sm: "StateMachine", event: AnyEvent) -> None:
         agent_id = event.data.agent_id or "main"
 
         bubble = sm.tool_to_thought(event)
+        # AskUserQuestion has no PermissionRequest: the question itself waits
+        # for the owner until its PostToolUse ("needs you" meanwhile).
+        asks_owner = tool_name in _OWNER_INPUT_TOOLS
         if agent_id == "main":
             sm.boss_bubble = bubble
-            sm.boss_state = BossState.WORKING
+            sm.boss_state = BossState.WAITING_PERMISSION if asks_owner else BossState.WORKING
         else:
             if agent_id not in sm.agents and len(sm.agents) < sm.MAX_AGENTS:
                 new_agent = sm.create_agent(
@@ -421,7 +428,9 @@ def _handle_pre_tool_use(sm: "StateMachine", event: AnyEvent) -> None:
 
             if agent_id in sm.agents and sm.agents[agent_id].state != AgentState.RESTING:
                 sm.agents[agent_id].bubble = bubble
-                sm.agents[agent_id].state = AgentState.WORKING
+                sm.agents[agent_id].state = (
+                    AgentState.WAITING_PERMISSION if asks_owner else AgentState.WORKING
+                )
                 if agent_id in sm.arrival_queue:
                     sm.arrival_queue.remove(agent_id)
 

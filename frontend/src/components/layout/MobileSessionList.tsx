@@ -8,7 +8,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useGameStore, selectGitStatus } from "@/stores/gameStore";
 import type { Session } from "@/hooks/useSessions";
-import { groupSessionsByProject } from "@/utils/sessionGroups";
+import {
+  groupSessionsByProject,
+  splitSessionGroup,
+} from "@/utils/sessionGroups";
 import { usageLabel } from "@/utils/tokenUsage";
 
 // ============================================================================
@@ -70,50 +73,52 @@ export function MobileSessionList({
       ) : (
         <ul className="m-0 p-0 list-none flex flex-col gap-1">
           {[...groups.entries()].map(([projectKey, groupSessions]) => {
-            const hasActive = groupSessions.some((s) => s.status === "active");
-            const isActiveSelected = groupSessions.some(
-              (s) => s.id === sessionId,
-            );
+            // Every running session is a card; ended ones fold.
+            const { cards, older: rest } = splitSessionGroup(groupSessions);
             const isExpanded =
-              expandedGroups.has(projectKey) || isActiveSelected;
-            const primary = groupSessions[0];
-            const rest = groupSessions.slice(1);
-            const selected = primary.id === sessionId;
+              expandedGroups.has(projectKey) ||
+              rest.some((s) => s.id === sessionId);
 
             return (
               <li key={projectKey} className="flex flex-col gap-1">
-                <button
-                  type="button"
-                  onClick={() => onSessionSelect(primary.id)}
-                  aria-current={selected ? "true" : undefined}
-                  className="qo-row min-h-[60px] !px-3.5 !py-3"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      aria-hidden="true"
-                      className={`qo-live-dot ${hasActive ? "" : "qo-live-dot-idle"}`}
-                    />
-                    <span
-                      className={`text-[15px] font-extrabold truncate flex-1 ${
-                        selected ? "text-accent" : "text-ink"
-                      }`}
+                {cards.map((primary) => {
+                  const selected = primary.id === sessionId;
+                  return (
+                    <button
+                      key={primary.id}
+                      type="button"
+                      onClick={() => onSessionSelect(primary.id)}
+                      aria-current={selected ? "true" : undefined}
+                      className="qo-row min-h-[60px] !px-3.5 !py-3"
                     >
-                      {primary.displayName ?? projectKey}
-                    </span>
-                    <span className="flex-shrink-0 text-[12px] font-bold text-ink-faint">
-                      {ago(primary.updatedAt)}
-                    </span>
-                  </div>
-                  {/* Its own line, wrapping if needed: the tokens are never cut. */}
-                  <div className="mt-1 pl-[18px] text-[12.5px] font-semibold text-ink-faint">
-                    {[
-                      t("sessions.events", { count: primary.eventCount }),
-                      usageLabel(primary.tokenUsage),
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </div>
-                </button>
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          aria-hidden="true"
+                          className={`qo-live-dot ${primary.status === "active" ? "" : "qo-live-dot-idle"}`}
+                        />
+                        <span
+                          className={`text-[15px] font-extrabold truncate flex-1 ${
+                            selected ? "text-accent" : "text-ink"
+                          }`}
+                        >
+                          {primary.displayName ?? projectKey}
+                        </span>
+                        <span className="flex-shrink-0 text-[12px] font-bold text-ink-faint">
+                          {ago(primary.updatedAt)}
+                        </span>
+                      </div>
+                      {/* Its own line, wrapping if needed: the tokens are never cut. */}
+                      <div className="mt-1 pl-[18px] text-[12.5px] font-semibold text-ink-faint">
+                        {[
+                          t("sessions.events", { count: primary.eventCount }),
+                          usageLabel(primary.tokenUsage),
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </div>
+                    </button>
+                  );
+                })}
 
                 {rest.length > 0 && (
                   <>

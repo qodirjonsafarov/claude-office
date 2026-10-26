@@ -13,7 +13,11 @@ import { formatDistanceToNow } from "date-fns";
 import { GitStatusPanel } from "@/components/layout/GitStatusPanel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { Session } from "@/hooks/useSessions";
-import { getProjectKey, groupSessionsByProject } from "@/utils/sessionGroups";
+import {
+  getProjectKey,
+  groupSessionsByProject,
+  splitSessionGroup,
+} from "@/utils/sessionGroups";
 import { usageLabel } from "@/utils/tokenUsage";
 import { useDragResize } from "@/hooks/useDragResize";
 import { fluidPanelWidth, LEFT_PANEL } from "@/utils/panelWidth";
@@ -254,94 +258,96 @@ export function SessionSidebar({
               ) : (
                 <div className="flex flex-col gap-1">
                   {[...groups.entries()].map(([projectKey, groupSessions]) => {
-                    const hasActive = groupSessions.some(
-                      (s) => s.status === "active",
-                    );
-                    const isActiveSelected = groupSessions.some(
-                      (s) => s.id === sessionId,
-                    );
+                    // Every running session is a card; ended ones fold.
+                    const { cards, older: rest } =
+                      splitSessionGroup(groupSessions);
                     const isExpanded =
-                      expandedGroups.has(projectKey) || isActiveSelected;
-                    const primary = groupSessions[0];
-                    const rest = groupSessions.slice(1);
-                    const selected = primary.id === sessionId;
+                      expandedGroups.has(projectKey) ||
+                      rest.some((s) => s.id === sessionId);
 
                     return (
-                      <div key={projectKey} className="flex flex-col">
-                        {/* Primary session card (always visible) */}
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          aria-current={selected ? "true" : undefined}
-                          className="qo-row group relative cursor-pointer"
-                          onClick={() => onSessionSelect(primary.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              onSessionSelect(primary.id);
-                            }
-                          }}
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span
-                              aria-hidden="true"
-                              className={`qo-live-dot flex-shrink-0 ${
-                                hasActive ? "" : "qo-live-dot-idle"
-                              }`}
-                            />
-                            <EditableName
-                              session={primary}
-                              isEditing={editingSessionId === primary.id}
-                              onStartEdit={() =>
-                                setEditingSessionId(primary.id)
-                              }
-                              onCommit={(name) => {
-                                setEditingSessionId(null);
-                                onRenameSession(primary.id, name);
+                      <div key={projectKey} className="flex flex-col gap-1">
+                        {cards.map((primary) => {
+                          const selected = primary.id === sessionId;
+                          return (
+                            <div
+                              key={primary.id}
+                              role="button"
+                              tabIndex={0}
+                              aria-current={selected ? "true" : undefined}
+                              className="qo-row group relative cursor-pointer"
+                              onClick={() => onSessionSelect(primary.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  onSessionSelect(primary.id);
+                                }
                               }}
-                              onCancel={() => setEditingSessionId(null)}
-                              className={`text-[13.5px] font-extrabold truncate flex-1 min-w-0 ${
-                                selected ? "text-accent" : "text-ink"
-                              }`}
-                            />
-                          </div>
-                          <div
-                            className="mt-1 pl-[18px] text-[12px] font-semibold text-ink-faint truncate"
-                            title={primary.id}
-                          >
-                            {[
-                              ago(primary.updatedAt),
-                              t("sessions.events", {
-                                count: primary.eventCount,
-                              }),
-                              usageLabel(primary.tokenUsage),
-                            ]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </div>
-                          {/* The danger action: only on the open session
-                              (hover or focus elsewhere), quiet until hovered */}
-                          <div
-                            className={`mt-2 pl-[12px] ${
-                              selected
-                                ? "flex"
-                                : "hidden group-hover:flex group-focus-within:flex"
-                            }`}
-                          >
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteSession(primary);
-                              }}
-                              className="qo-btn !h-8 !px-2.5 !gap-1.5 !text-[12.5px] text-danger hover:bg-danger-dim"
-                              aria-label={`${t("sessions.deleteSession")} ${primary.id}`}
                             >
-                              <Trash2 size={14} />
-                              {t("sessions.deleteSession")}
-                            </button>
-                          </div>
-                        </div>
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <span
+                                  aria-hidden="true"
+                                  className={`qo-live-dot flex-shrink-0 ${
+                                    primary.status === "active"
+                                      ? ""
+                                      : "qo-live-dot-idle"
+                                  }`}
+                                />
+                                <EditableName
+                                  session={primary}
+                                  isEditing={editingSessionId === primary.id}
+                                  onStartEdit={() =>
+                                    setEditingSessionId(primary.id)
+                                  }
+                                  onCommit={(name) => {
+                                    setEditingSessionId(null);
+                                    onRenameSession(primary.id, name);
+                                  }}
+                                  onCancel={() => setEditingSessionId(null)}
+                                  className={`text-[13.5px] font-extrabold truncate flex-1 min-w-0 ${
+                                    selected ? "text-accent" : "text-ink"
+                                  }`}
+                                />
+                              </div>
+                              <div
+                                className="mt-1 pl-[18px] text-[12px] font-semibold text-ink-faint truncate"
+                                title={primary.id}
+                              >
+                                {[
+                                  ago(primary.updatedAt),
+                                  t("sessions.events", {
+                                    count: primary.eventCount,
+                                  }),
+                                  usageLabel(primary.tokenUsage),
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </div>
+                              {/* The danger action: only on the open session
+                              (hover or focus elsewhere), quiet until hovered */}
+                              <div
+                                className={`mt-2 pl-[12px] ${
+                                  selected
+                                    ? "flex"
+                                    : "hidden group-hover:flex group-focus-within:flex"
+                                }`}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDeleteSession(primary);
+                                  }}
+                                  className="qo-btn !h-8 !px-2.5 !gap-1.5 !text-[12.5px] text-danger hover:bg-danger-dim"
+                                  aria-label={`${t("sessions.deleteSession")} ${primary.id}`}
+                                >
+                                  <Trash2 size={14} />
+                                  {t("sessions.deleteSession")}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
 
                         {/* Expand/collapse for older sessions */}
                         {rest.length > 0 && (

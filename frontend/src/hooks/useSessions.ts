@@ -9,6 +9,7 @@ import {
   selectAutoFollowNewSessions,
 } from "@/stores/preferencesStore";
 import { apiFetch } from "@/utils/api";
+import { isLiveSession, pickSession } from "@/utils/sessionPick";
 
 // ============================================================================
 // TYPES
@@ -38,20 +39,33 @@ interface UseSessionsResult {
   sessions: Session[];
   sessionsLoading: boolean;
   sessionId: string;
+  /** Show a session the user chose (the office stays on it until it ends). */
   setSessionId: (id: string) => void;
   fetchSessions: () => Promise<Session[] | null>;
   showStatus: (text: string, type?: "info" | "error" | "success") => void;
 }
 
 /**
- * Manages session list fetching, auto-selection, auto-follow, and session
- * deletion event handling. Exposes fetchSessions so callers can trigger
+ * Manages session list fetching, auto-selection (utils/sessionPick.ts: the
+ * most recently active running session, re-checked on every list refresh),
+ * auto-follow, and session deletion event handling. Exposes fetchSessions so callers can trigger
  * a manual refresh (e.g., after delete or clear operations).
  */
 export function useSessions(
   showStatus: (text: string, type?: "info" | "error" | "success") => void,
 ): UseSessionsResult {
   const [sessionId, setSessionId] = useState("");
+  // The user chose the shown session (cleared by every automatic pick).
+  const manualPick = useRef(false);
+  // Whether the shown session was running when the list was last seen.
+  const lastSeen = useRef<{ id: string; live: boolean }>({
+    id: "",
+    live: false,
+  });
+  const selectSession = useCallback((id: string) => {
+    manualPick.current = true;
+    setSessionId(id);
+  }, []);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
 
@@ -63,7 +77,6 @@ export function useSessions(
 
   // Track known session IDs for auto-follow detection
   const knownSessionIds = useRef<Set<string>>(new Set());
-  const hasAutoSelected = useRef(false);
 
   // Fetch sessions list
   const fetchSessions = useCallback(async (): Promise<Session[] | null> => {
@@ -132,35 +145,50 @@ export function useSessions(
       window.removeEventListener("session-deleted", handleSessionDeleted);
   }, [fetchSessions, sessionId, showStatus, t]);
 
-  // Auto-select most active session on initial mount only
+  // Auto-select: on load (also after a backend restart or on a new device),
+  // when the shown session ends, and (automatic choice only) when another
+  // running session took over. Never away from a running manual pick.
   useEffect(() => {
-    // Only auto-select once on initial load, not when user manually selects sim session
-    if (!hasAutoSelected.current && sessions.length > 0 && sessionId === "") {
-      hasAutoSelected.current = true;
-      // Pick the active session with the most events — this is always the long-running
-      // main session, not short-lived child sessions which have few events.
-      const activeSessions = sessions.filter((s) => s.status === "active");
-      const candidates = activeSessions.length > 0 ? activeSessions : sessions;
-      const bestSession = candidates.reduce(
-        (best, s) => (s.eventCount > best.eventCount ? s : best),
-        candidates[0],
-      );
-      if (bestSession) {
-        const bestSessionId = bestSession.id;
-        const statusText = t("status.connectedTo", {
-          sessionName:
-            bestSession.label ||
-            bestSession.projectName ||
-            bestSession.id.slice(0, 8),
-        });
-        // Deferred by a tick so the switch does not render synchronously
-        // inside the effect (react-hooks/set-state-in-effect).
-        setTimeout(() => {
-          setSessionId(bestSessionId);
-          showStatus(statusText, "info");
-        }, 0);
+    const current = sessions.find((s) => s.id === sessionId);
+    const seen = lastSeen.current;
+    const currentWasLive = current
+      ? seen.id === sessionId
+        ? seen.live
+        : isLiveSession(current)
+      : false;
+    if (current)
+      lastSeen.current = { id: sessionId, live: isLiveSession(current) };
+
+    const nextId = pickSession({
+      sessions,
+      currentId: sessionId,
+      manual: manualPick.current,
+      currentWasLive,
+      now: Date.now(),
+    });
+    const next = sessions.find((s) => s.id === nextId);
+    if (!next || next.id === sessionId) return;
+
+    const firstPick = sessionId === "";
+    const statusText = t(
+      firstPick ? "status.connectedTo" : "status.autoFollowed",
+      {
+        sessionName: next.label || next.projectName || next.id.slice(0, 8),
+      },
+    );
+    // Deferred by a tick so the switch does not render synchronously
+    // inside the effect (react-hooks/set-state-in-effect).
+    const timeout = setTimeout(() => {
+      if (!firstPick) {
+        agentMachineService.reset();
+        useGameStore.getState().resetForSessionSwitch();
       }
-    }
+      manualPick.current = false;
+      lastSeen.current = { id: next.id, live: isLiveSession(next) };
+      setSessionId(next.id);
+      showStatus(statusText, "info");
+    }, 0);
+    return () => clearTimeout(timeout);
   }, [sessions, sessionId, showStatus, t]);
 
   // Auto-follow new sessions in the current project
@@ -209,7 +237,7 @@ export function useSessions(
     sessions,
     sessionsLoading,
     sessionId,
-    setSessionId,
+    setSessionId: selectSession,
     fetchSessions,
     showStatus,
   };

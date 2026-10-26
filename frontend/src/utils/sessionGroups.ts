@@ -43,3 +43,17 @@ export function groupSessionsByProject(
   });
   return new Map(sorted);
 }
+
+/**
+ * One project group as the list shows it: every running session as its own
+ * card (newest first), ended ones folded under "older". Without a running
+ * session the newest ended one is the card.
+ */
+export function splitSessionGroup(group: Session[]): {
+  cards: Session[];
+  older: Session[];
+} {
+  const running = group.filter((s) => s.status === "active");
+  const cards = running.length > 0 ? running : group.slice(0, 1);
+  return { cards, older: group.filter((s) => !cards.includes(s)) };
+}

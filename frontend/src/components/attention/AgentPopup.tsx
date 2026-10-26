@@ -46,6 +46,7 @@ import {
   toolTarget,
 } from "@/utils/agentActivity";
 import { cardUsage } from "@/utils/tokenUsage";
+import AgentPortrait from "@/components/ui/AgentPortrait";
 
 const POPOVER_WIDTH = 340;
 /** The card's height before it is measured. */
@@ -208,15 +209,15 @@ function AgentCard({
   const head = (
     <>
       {/* Head: who, role, state */}
-      <div className="flex items-start gap-3">
-        <span
-          aria-hidden="true"
-          className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-[17px] font-extrabold text-on-accent shadow-[inset_0_0_0_2px_var(--qo-line)]"
-          style={{ background: row.color }}
-        >
-          {row.name.slice(0, 1).toUpperCase()}
-        </span>
-        <div className="flex-1 min-w-0">
+      <div className="flex items-start gap-3.5">
+        <AgentPortrait
+          id={row.id}
+          name={row.name}
+          color={row.color}
+          size={64}
+          status={state}
+        />
+        <div className="flex-1 min-w-0 self-center">
           <h2 className="m-0 text-[18px] leading-tight font-extrabold text-ink tracking-tight truncate">
             {row.name}
           </h2>

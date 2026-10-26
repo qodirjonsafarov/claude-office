@@ -62,6 +62,7 @@ import { bubbleSize, stackBubbles, type Box } from "@/systems/bubbleLayout";
 import { truncateBubbleText } from "@/utils/bubbleText";
 import { nameTagWidth } from "./NameTag";
 import { AgentLookCache } from "@/systems/agentLooks";
+import { useAgentLooks } from "@/stores/agentLookStore";
 import { SceneSignalsCache, type PersonSignals } from "@/systems/sceneSignals";
 import { useOfficeTextures } from "@/hooks/useOfficeTextures";
 import { sceneLayout, type SceneLayout } from "@/utils/sceneLayout";
@@ -479,6 +480,9 @@ export function OfficeGame(): ReactNode {
     () => lookCache.compute(Array.from(agents.values())),
     [agents, lookCache],
   );
+  // The card and team portraits show the same person (stores/agentLookStore.ts)
+  const setLooks = useAgentLooks((s) => s.setLooks);
+  useEffect(() => setLooks(agentLooks), [agentLooks, setLooks]);
 
   const [crowdCache] = useState(() => new CrowdLayoutCache());
   const { crowdOffsets, labelPositions } = useMemo(

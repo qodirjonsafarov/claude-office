@@ -26,6 +26,9 @@ import {
 } from "@/utils/agentActivity";
 import { isAgentBusy, isBossBusy } from "@/utils/workStatus";
 import { cleanPromptText } from "@/utils/promptText";
+import AgentPortrait, {
+  type PortraitStatus,
+} from "@/components/ui/AgentPortrait";
 
 // ============================================================================
 // TYPES
@@ -292,6 +295,14 @@ export function ActivityBar({
   );
 }
 
+/** The status dot on a person's portrait. */
+function rowStatus(row: TeamRow): PortraitStatus {
+  if (row.waiting) return "needsYou";
+  if (row.resting) return "resting";
+  if (row.busy) return "working";
+  return "idle";
+}
+
 interface TeamRowItemProps {
   row: TeamRow;
   now: number;
@@ -320,87 +331,91 @@ function TeamRowItemComponent({
 
   return (
     <li
-      className={`flex flex-col gap-1 px-3 py-2.5 rounded-xl2 transition-colors ${
+      className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl2 transition-colors ${
         row.waiting ? "bg-max-dim" : row.busy ? "bg-panel-2" : ""
       }`}
     >
-      <div className="flex items-center gap-2.5 min-w-0">
-        <span
-          aria-hidden="true"
-          className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-            row.busy && !row.waiting ? "qo-live-dot" : ""
-          }`}
-          style={{
-            background: row.resting ? "var(--qo-ink-faint)" : row.color,
-          }}
-        />
-        <span
-          className={`${md ? "text-[14.5px]" : "text-[13.5px]"} font-extrabold text-ink truncate`}
-        >
-          {row.name}
-        </span>
-        <span className="ml-auto flex-shrink-0 flex items-center gap-1.5">
-          {row.waiting ? (
-            <span className="qo-badge qo-badge-max !h-[22px] !px-2 !text-[11.5px]">
-              <span
-                aria-hidden="true"
-                className="w-3.5 h-3.5 rounded-full bg-max text-on-accent text-[10px] font-extrabold flex items-center justify-center"
-              >
-                !
+      <AgentPortrait
+        id={row.id}
+        name={row.name}
+        color={row.color}
+        size={32}
+        status={rowStatus(row)}
+      />
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <div className="flex items-center gap-2.5 min-w-0 min-h-[20px]">
+          <span
+            className={`${md ? "text-[14.5px]" : "text-[13.5px]"} font-extrabold text-ink truncate`}
+          >
+            {row.name}
+          </span>
+          <span className="ml-auto flex-shrink-0 flex items-center gap-1.5">
+            {row.waiting ? (
+              <span className="qo-badge qo-badge-max !h-[22px] !px-2 !text-[11.5px]">
+                <span
+                  aria-hidden="true"
+                  className="w-3.5 h-3.5 rounded-full bg-max text-on-accent text-[10px] font-extrabold flex items-center justify-center"
+                >
+                  !
+                </span>
+                {t("team.needsYou")}
               </span>
-              {t("team.needsYou")}
-            </span>
-          ) : row.view.kind === "bar" ? (
-            <span
-              className={`text-[12px] font-extrabold tabular-nums ${
-                row.view.percent >= 100 ? "text-accent" : "text-ink-soft"
-              }`}
-            >
-              {row.view.percent}%
-            </span>
-          ) : null}
-        </span>
-      </div>
-
-      <p
-        className={`m-0 pl-5 ${text} font-bold truncate ${
-          row.waiting ? "text-max" : row.busy ? "text-accent" : "text-ink-faint"
-        }`}
-        title={lines.status}
-      >
-        {lines.status}
-      </p>
-
-      {lines.action && (
-        <p
-          className={`m-0 pl-5 -mt-0.5 ${text} font-semibold text-ink truncate`}
-          title={lines.action}
-        >
-          {lines.action}
-        </p>
-      )}
-
-      {row.view.kind !== "none" && (
-        <div className="pl-5 pt-0.5">
-          <ActivityBar view={row.view} color={row.color} />
+            ) : row.view.kind === "bar" ? (
+              <span
+                className={`text-[12px] font-extrabold tabular-nums ${
+                  row.view.percent >= 100 ? "text-accent" : "text-ink-soft"
+                }`}
+              >
+                {row.view.percent}%
+              </span>
+            ) : null}
+          </span>
         </div>
-      )}
 
-      {row.task && (
         <p
-          className={`m-0 pl-5 pt-0.5 ${text} leading-snug text-ink-soft line-clamp-2`}
+          className={`m-0 ${text} font-bold truncate ${
+            row.waiting
+              ? "text-max"
+              : row.busy
+                ? "text-accent"
+                : "text-ink-faint"
+          }`}
+          title={lines.status}
         >
-          {row.task}
+          {lines.status}
         </p>
-      )}
 
-      {debugMode && (
-        <p className="m-0 pl-5 font-mono text-[11px] text-ink-faint truncate">
-          {row.debug.state} · {row.debug.phase}
-          {row.debug.queue ? ` · ${row.debug.queue}` : ""}
-          {row.isBoss ? "" : ` · #${row.id.slice(0, 7)}`}
-        </p>
-      )}
+        {lines.action && (
+          <p
+            className={`m-0 -mt-0.5 ${text} font-semibold text-ink truncate`}
+            title={lines.action}
+          >
+            {lines.action}
+          </p>
+        )}
+
+        {row.view.kind !== "none" && (
+          <div className="pt-0.5">
+            <ActivityBar view={row.view} color={row.color} />
+          </div>
+        )}
+
+        {row.task && (
+          <p
+            className={`m-0 pt-0.5 ${text} leading-snug text-ink-soft line-clamp-2`}
+          >
+            {row.task}
+          </p>
+        )}
+
+        {debugMode && (
+          <p className="m-0 font-mono text-[11px] text-ink-faint truncate">
+            {row.debug.state} · {row.debug.phase}
+            {row.debug.queue ? ` · ${row.debug.queue}` : ""}
+            {row.isBoss ? "" : ` · #${row.id.slice(0, 7)}`}
+          </p>
+        )}
+      </div>
     </li>
   );
 }

@@ -16,6 +16,7 @@ import type { Session } from "@/hooks/useSessions";
 import { getProjectKey, groupSessionsByProject } from "@/utils/sessionGroups";
 import { usageLabel } from "@/utils/tokenUsage";
 import { useDragResize } from "@/hooks/useDragResize";
+import { fluidPanelWidth, LEFT_PANEL } from "@/utils/panelWidth";
 import { useGameStore, selectGitStatus } from "@/stores/gameStore";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -25,7 +26,12 @@ import { useTranslation } from "@/hooks/useTranslation";
 
 const SIDEBAR_MIN_WIDTH = 180;
 const SIDEBAR_MAX_WIDTH = 500;
-const SIDEBAR_DEFAULT_WIDTH = 288; // equivalent to w-72
+/** The default width: a share of the window (utils/panelWidth.ts). */
+const defaultWidth = () =>
+  fluidPanelWidth(
+    typeof window === "undefined" ? 0 : window.innerWidth,
+    LEFT_PANEL,
+  );
 const SESSIONS_MIN_HEIGHT = 80;
 const SESSIONS_DEFAULT_HEIGHT = 280;
 
@@ -154,7 +160,7 @@ export function SessionSidebar({
     isDragging: isWidthDragging,
     handleDragStart: handleWidthDragStart,
   } = useDragResize({
-    initialSize: SIDEBAR_DEFAULT_WIDTH,
+    initialSize: defaultWidth,
     minSize: SIDEBAR_MIN_WIDTH,
     maxSize: SIDEBAR_MAX_WIDTH,
     direction: "horizontal",

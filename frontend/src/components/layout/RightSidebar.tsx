@@ -6,6 +6,7 @@ import { AgentStatus } from "@/components/game/AgentStatus";
 import { EventLog } from "@/components/layout/EventLog";
 import { ConversationHistory } from "@/components/layout/ConversationHistory";
 import { useDragResize } from "@/hooks/useDragResize";
+import { fluidPanelWidth, RIGHT_PANEL } from "@/utils/panelWidth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAttentionStore } from "@/stores/attentionStore";
 import {
@@ -20,7 +21,12 @@ import {
 
 const SIDEBAR_MIN_WIDTH = 200;
 const SIDEBAR_MAX_WIDTH = 600;
-const SIDEBAR_DEFAULT_WIDTH = 320; // equivalent to w-80
+/** The default width: a share of the window (utils/panelWidth.ts). */
+const defaultWidth = () =>
+  fluidPanelWidth(
+    typeof window === "undefined" ? 0 : window.innerWidth,
+    RIGHT_PANEL,
+  );
 const AGENT_PANEL_MIN_HEIGHT = 60;
 const AGENT_PANEL_DEFAULT_HEIGHT = 360;
 /** The collapsed panel: just the button that opens it again. */
@@ -53,7 +59,7 @@ export function RightSidebar(): React.ReactNode {
     isDragging: isWidthDragging,
     handleDragStart: handleWidthDragStart,
   } = useDragResize({
-    initialSize: SIDEBAR_DEFAULT_WIDTH,
+    initialSize: defaultWidth,
     minSize: SIDEBAR_MIN_WIDTH,
     maxSize: SIDEBAR_MAX_WIDTH,
     direction: "horizontal",

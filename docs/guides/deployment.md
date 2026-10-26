@@ -456,7 +456,13 @@ Web chat from the phone additionally needs `WEB_PROMPT_TAILNET_HOST` (see
 type into Claude.
 
 Anyone on your tailnet can reach the ports, so keep the tailnet to your own
-devices (or restrict it with Tailscale ACLs).
+devices (or restrict it with Tailscale ACLs). `100.64.0.0/10` is shared CGNAT
+space, so also list your devices' Tailscale addresses; then no other address
+counts as a tailnet client:
+
+```bash
+TAILNET_CLIENT_IPS=100.66.186.99   # comma list; empty = the whole range
+```
 
 ### Trusted networks (no token on the phone)
 
@@ -473,6 +479,13 @@ WebSocket, renames and preferences work without `X-API-Key` (a stale key in
 the browser is ignored) and `GET /api/v1/auth/status` answers
 `{"trusted": true, "keyRequired": false}`, so the UI never asks for a token.
 Other addresses (home Wi-Fi, Docker bridges) are still rejected.
+
+The keyless access holds only when the request names this machine in its
+`Host` header (`localhost`, `127.0.0.1`, `[::1]`, a Tailscale IP or a
+`TAILNET_HOSTS` name), so a DNS-rebinding page gets nothing without the key.
+A request carrying `X-Forwarded-For`, `Forwarded` or `X-Real-IP` gets no
+network trust at all (uvicorn would otherwise take the client address from
+it), and `make dev` starts uvicorn with `--no-proxy-headers`.
 
 These still need the key from every client: `POST /api/v1/sessions/{id}/prompt`
 (web chat), `POST /api/v1/sessions/{id}/focus`, `POST /api/v1/sessions/simulate`,

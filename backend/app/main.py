@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from rich.logging import RichHandler
 from sqlalchemy import delete, select, update
 
+from app.api.client_trust import is_trusted_network
 from app.api.middleware import ApiKeyMiddleware, LocalhostOnlyMiddleware, TailnetCORSMiddleware
 from app.api.routes import events, floors, preferences, prompt, sessions, websockets
 from app.config import get_settings
@@ -275,8 +276,7 @@ async def get_auth_status(request: Request) -> dict[str, bool]:
     TRUST_LOOPBACK). ``keyRequired``: reads need X-API-Key from this client.
     The web prompt and admin endpoints need the key either way.
     """
-    host = request.client.host if request.client else None
-    trusted = settings.is_trusted_network_client(host)
+    trusted = is_trusted_network(request)
     return {"trusted": trusted, "keyRequired": settings.has_explicit_key and not trusted}
 
 

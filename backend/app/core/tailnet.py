@@ -6,7 +6,7 @@ device on the home Wi-Fi (192.168.x) stays outside the trust boundary.
 
 import ipaddress
 from collections.abc import Iterable
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit
 
 # Tailscale address ranges: CGNAT IPv4 and the tailnet ULA prefix.
 TAILSCALE_NETWORKS = (
@@ -41,6 +41,23 @@ def is_loopback_ip(host: str | None) -> bool:
 def parse_hosts(raw: str) -> frozenset[str]:
     """Comma-separated MagicDNS names -> lowercase set, trailing dots dropped."""
     return frozenset(h.strip().lower().rstrip(".") for h in raw.split(",") if h.strip())
+
+
+def parse_ips(raw: str) -> frozenset[ipaddress.IPv4Address | ipaddress.IPv6Address]:
+    """Comma-separated IP addresses -> set of addresses; invalid entries dropped."""
+    parsed = (ip_of(part.strip()) for part in raw.split(","))
+    return frozenset(addr for addr in parsed if addr is not None)
+
+
+def host_name(host_header: str | None) -> str | None:
+    """Host header (``name:port``, ``[v6]:port``) -> lowercase name without port."""
+    if not host_header:
+        return None
+    try:
+        name = urlsplit(f"//{host_header.strip()}").hostname
+    except ValueError:
+        return None
+    return name.rstrip(".") if name else None
 
 
 def is_tailnet_origin(origin: str | None, hosts: Iterable[str]) -> bool:

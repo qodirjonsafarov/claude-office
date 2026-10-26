@@ -4,7 +4,7 @@
  * pick: it clears an earlier manual pick, so the followed session does not
  * stick as if the user had chosen it.
  */
-import { act } from "react";
+import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Session } from "../src/hooks/useSessions";
@@ -45,9 +45,12 @@ function session(over: Partial<Session>): Session {
   };
 }
 
-let api: ReturnType<typeof useSessions>;
-function Probe() {
-  api = useSessions(() => {});
+type Api = ReturnType<typeof useSessions>;
+let api: Api;
+const noStatus = () => {};
+function Probe({ onRender }: { onRender: (a: Api) => void }) {
+  const current = useSessions(noStatus);
+  useEffect(() => onRender(current));
   return null;
 }
 
@@ -85,7 +88,15 @@ describe("useSessions auto-follow", () => {
       session({ id: "A", updatedAt: ago(30 * MIN) }),
       session({ id: "Z", projectRoot: "/q" }),
     ];
-    act(() => root.render(<Probe />));
+    act(() =>
+      root.render(
+        <Probe
+          onRender={(a) => {
+            api = a;
+          }}
+        />,
+      ),
+    );
     await refresh(listed);
     expect(api.sessionId).toBe("Z");
 

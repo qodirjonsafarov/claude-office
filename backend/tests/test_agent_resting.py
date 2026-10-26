@@ -379,6 +379,30 @@ class TestStuckWorkerSafetyNet:
 
         assert sm.quiet_workers(T0 + timedelta(minutes=70), minutes=10) == ["w"]
 
+    def test_a_call_interrupted_by_the_stop_does_not_outlive_it(self) -> None:
+        """No PostToolUse after an interrupt: the resumed agent is not 'in a call'."""
+        sm = StateMachine()
+        start(sm, "w", T0)
+        bash(sm, "w", "b1", EventType.PRE_TOOL_USE, T0 + timedelta(minutes=1))
+        stop(sm, T0 + timedelta(minutes=2), "abc", agent_id="w")
+        info(sm, T0 + timedelta(minutes=3), "abc")
+        tool(sm, "w", T0 + timedelta(minutes=4))
+
+        assert sm.agents["w"].state == AgentState.WORKING
+        assert sm.quiet_workers(T0 + timedelta(minutes=15), minutes=10) == ["w"]
+
+    def test_a_call_open_when_the_sweep_rests_it_does_not_outlive_the_rest(self) -> None:
+        sm = StateMachine()
+        start(sm, "w", T0)
+        bash(sm, "w", "b1", EventType.PRE_TOOL_USE, T0 + timedelta(minutes=1))
+        sm.rest_agent("w", T0 + timedelta(minutes=70))
+        sm.agents["w"].native_id = "abc"
+        info(sm, T0 + timedelta(minutes=71), "abc")
+        tool(sm, "w", T0 + timedelta(minutes=72))
+
+        assert sm.agents["w"].state == AgentState.WORKING
+        assert sm.quiet_workers(T0 + timedelta(minutes=83), minutes=10) == ["w"]
+
     def test_resting_agents_are_not_quiet_workers(self) -> None:
         sm = StateMachine()
         finished_agent(sm)

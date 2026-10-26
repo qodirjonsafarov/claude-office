@@ -1,14 +1,22 @@
 "use client";
 
 /**
- * The agent card (wave 3 mockup): tap a character or its desk and see who it
- * is and what it does now. A popover beside the character on desktop, a
- * bottom sheet on phones. Real numbers come from the team rows and the event
- * log; what the backend does not send yet (per-agent tokens and cost) shows
- * a dash and a "soon" note.
+ * The agent card: tap (or long-press, on phones) a character or its desk and
+ * see who it is and what it does now. A popover beside the character on
+ * desktop, kept inside the stage; a bottom sheet on phones that closes on a
+ * pull down. Focus stays inside while it is open, Escape closes it and gives
+ * focus back. It rises and fades in and out, or just appears with reduced
+ * motion. Numbers come from the team rows, the event log and the per-person
+ * token usage of the state updates.
  */
 
-import { useCallback, useMemo, useRef, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { X, ScrollText, SquareTerminal } from "lucide-react";
 import { useAttentionStore, selectFocusPopup } from "@/stores/attentionStore";
@@ -20,6 +28,10 @@ import {
 import { useTranslation } from "@/hooks/useTranslation";
 import { useLayoutMode } from "@/hooks/useLayoutMode";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
+import { usePresence } from "@/hooks/usePresence";
+import { useSheetPull } from "@/hooks/useSheetPull";
+import { useReducedMotion } from "@/systems/reducedMotion";
+import { placePopover, type Rect } from "@/utils/popoverPlacement";
 import {
   ActivityBar,
   useNow,
@@ -33,12 +45,28 @@ import {
   recentActions,
   toolTarget,
 } from "@/utils/agentActivity";
-import { formatCost, formatTokens } from "@/utils/tokenUsage";
+import { cardUsage } from "@/utils/tokenUsage";
 
 const POPOVER_WIDTH = 340;
+/** The card's height before it is measured. */
 const POPOVER_HEIGHT = 470;
-const MARGIN = 16;
 const RECENT_LIMIT = 5;
+/** The close animation (qo-pop-out / qo-sheet-down in tokens.css). */
+const EXIT_MS = 180;
+
+/** The office area on screen (desktop), within the window. */
+function stageRect(): Rect {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const r = document.querySelector(".qo-stage")?.getBoundingClientRect();
+  if (!r) return { left: 0, top: 0, right: vw, bottom: vh };
+  return {
+    left: Math.max(0, r.left),
+    top: Math.max(0, r.top),
+    right: Math.min(vw, r.right),
+    bottom: Math.min(vh, r.bottom),
+  };
+}
 
 type CardState = "needsYou" | "working" | "resting" | "idle";
 
@@ -59,24 +87,22 @@ const STATE_PILL: Record<CardState, string> = {
 function Stat({
   label,
   value,
-  note,
+  title,
 }: {
   label: string;
   value: string;
-  note?: string;
+  title?: string | null;
 }): ReactNode {
   return (
-    <div className="rounded-xl2 bg-panel-2 border border-line px-3 py-2 min-w-0">
+    <div
+      className="rounded-xl2 bg-panel-2 border border-line px-3 py-2 min-w-0"
+      title={title ?? undefined}
+    >
       <div className="text-[10.5px] font-extrabold uppercase tracking-[0.1em] text-ink-faint truncate">
         {label}
       </div>
       <div className="text-[15px] font-extrabold text-ink tabular-nums truncate">
         {value}
-        {note && (
-          <span className="ml-1 text-[11px] font-bold text-ink-faint">
-            {note}
-          </span>
-        )}
       </div>
     </div>
   );
@@ -84,19 +110,27 @@ function Stat({
 
 export default function AgentPopup(): ReactNode {
   const focusPopup = useAttentionStore(selectFocusPopup);
-  if (!focusPopup) return null;
+  const reduced = useReducedMotion();
+  // The last card stays for its close animation.
+  const { shown, leaving } = usePresence(focusPopup, reduced ? 0 : EXIT_MS);
+  if (!shown) return null;
   if (typeof document === "undefined") return null;
-  return createPortal(<AgentCard {...focusPopup} />, document.body);
+  return createPortal(
+    <AgentCard key={shown.agentId} {...shown} leaving={leaving} />,
+    document.body,
+  );
 }
 
 function AgentCard({
   agentId,
   screenX,
   screenY,
+  leaving,
 }: {
   agentId: string;
   screenX: number;
   screenY: number;
+  leaving: boolean;
 }): ReactNode {
   const { t } = useTranslation();
   const layout = useLayoutMode();
@@ -106,7 +140,7 @@ function AgentCard({
   const jumpToLog = useAttentionStore((s) => s.jumpToLog);
   const sessionId = useGameStore(selectSessionId);
   const eventLog = useGameStore(selectEventLog);
-  const sessionUsage = useGameStore((s) => s.tokenUsage);
+  const usage = useGameStore((s) => s.agentUsage.get(agentId) ?? null);
   const agentType = useGameStore((s) =>
     agentId === "boss" ? null : (s.agents.get(agentId)?.agentType ?? null),
   );
@@ -116,8 +150,30 @@ function AgentCard({
   const rows = useTeamRows();
   const row = rows.find((r) => r.id === agentId) ?? null;
   const now = useNow();
-  const box = useRef<HTMLDivElement>(null);
-  useDialogFocus(box, { onEscape: closeFocusPopup });
+  // The sheet follows a pull down on its head and closes past a point.
+  const { box, handlers: pullHandlers } =
+    useSheetPull<HTMLDivElement>(closeFocusPopup);
+  // Focus inside while open; given back the moment it starts closing.
+  useDialogFocus(box, { active: !leaving, onEscape: closeFocusPopup });
+
+  // Desktop: the measured card height and the window size place the popover.
+  const [height, setHeight] = useState(POPOVER_HEIGHT);
+  const [, setViewport] = useState(0);
+  useEffect(() => {
+    const el = box.current;
+    if (phone || !el) return;
+    // The natural height: the content plus the borders (not capped).
+    const observer = new ResizeObserver(() =>
+      setHeight(el.scrollHeight + el.offsetHeight - el.clientHeight),
+    );
+    observer.observe(el);
+    const onResize = () => setViewport((n) => n + 1);
+    window.addEventListener("resize", onResize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", onResize);
+    };
+  }, [phone, box]);
 
   const tool = useMemo(
     () => lastToolByAgent(eventLog).get(agentId) ?? null,
@@ -148,13 +204,10 @@ function AgentCard({
   // No lifespan from the whiteboard yet: count from the first event in the log.
   const startedAt = row.startedAt ?? seenAt;
   const elapsed = startedAt !== null ? formatDuration(now - startedAt) : "—";
-  // Tokens and cost: the backend sums them per session only (boss = the session).
-  const tokens =
-    row.isBoss && sessionUsage ? formatTokens(sessionUsage.total) : "—";
-  const cost = row.isBoss ? formatCost(sessionUsage?.costUsd ?? null) : null;
-  const soon = row.isBoss ? undefined : t("card.soon");
+  // Tokens and cost from this person's own transcript ("—" until known).
+  const spent = cardUsage(usage);
 
-  const body = (
+  const head = (
     <>
       {/* Head: who, role, state */}
       <div className="flex items-start gap-3">
@@ -183,7 +236,7 @@ function AgentCard({
             </span>
             <span className="text-[12.5px] font-bold text-ink-soft truncate">
               {role}
-              {desk !== null && ` · ${t("attention.popup.desk")} ${desk}`}
+              {desk !== null && ` · ${t("card.desk")} ${desk}`}
             </span>
           </div>
         </div>
@@ -197,7 +250,11 @@ function AgentCard({
           <X size={18} />
         </button>
       </div>
+    </>
+  );
 
+  const body = (
+    <>
       {/* Now: the action and what it works on */}
       <div className="mt-3 rounded-xl2 bg-panel-2 border border-line p-3">
         <div className="qo-eyebrow">{t("card.now")}</div>
@@ -236,8 +293,12 @@ function AgentCard({
       <div className="mt-3 grid grid-cols-2 gap-2">
         <Stat label={t("card.elapsed")} value={elapsed} />
         <Stat label={t("card.tools")} value={String(row.toolCount)} />
-        <Stat label={t("card.tokens")} value={tokens} note={soon} />
-        <Stat label={t("card.cost")} value={cost ?? "—"} note={soon} />
+        <Stat
+          label={t("card.tokens")}
+          value={spent.tokens}
+          title={spent.title}
+        />
+        <Stat label={t("card.cost")} value={spent.cost} title={spent.title} />
       </div>
 
       {/* Recent actions */}
@@ -287,7 +348,7 @@ function AgentCard({
           type="button"
           onClick={handleFocusTerminal}
           className={`qo-btn qo-btn-secondary ${phone ? "qo-btn-lg" : ""}`}
-          title={t("attention.popup.focusTerminal")}
+          title={t("card.terminalTitle")}
         >
           <SquareTerminal size={16} aria-hidden="true" />
           {t("card.terminal")}
@@ -299,7 +360,9 @@ function AgentCard({
   if (phone) {
     return (
       <div
-        className="fixed inset-0 z-[90] flex items-end justify-center bg-scrim qo-fade-in"
+        className={`fixed inset-0 z-[90] flex items-end justify-center bg-scrim ${
+          leaving ? "qo-fade-out pointer-events-none" : "qo-fade-in"
+        }`}
         onClick={closeFocusPopup}
       >
         <div
@@ -308,31 +371,34 @@ function AgentCard({
           aria-modal="true"
           aria-label={row.name}
           onClick={(e) => e.stopPropagation()}
-          className="qo-sheet-up w-full max-w-[560px] max-h-[88svh] overflow-y-auto overscroll-contain rounded-t-xl3 bg-panel border border-line border-b-0 shadow-[0_-8px_32px_var(--qo-float-shade)] [--qo-gutter:20px] pt-2.5 pb-[max(16px,env(safe-area-inset-bottom))] qo-safe-x"
+          className={`${
+            leaving ? "qo-sheet-down" : "qo-sheet-up"
+          } w-full max-w-[560px] max-h-[88svh] overflow-y-auto overscroll-contain rounded-t-xl3 bg-panel border border-line border-b-0 shadow-[0_-8px_32px_var(--qo-float-shade)] [--qo-gutter:20px] pb-[max(16px,env(safe-area-inset-bottom))] qo-safe-x`}
         >
-          <span
-            aria-hidden="true"
-            className="block w-10 h-1 mx-auto mb-3 rounded-full bg-line-strong"
-          />
+          {/* The handle and the head: pull down here to close */}
+          <div className="touch-none pt-2.5" {...pullHandlers}>
+            <span
+              aria-hidden="true"
+              className="block w-10 h-1 mx-auto mb-3 rounded-full bg-line-strong"
+            />
+            {head}
+          </div>
           {body}
         </div>
       </div>
     );
   }
 
-  // Desktop: beside the character, kept inside the window.
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  let x = screenX + 24;
-  if (x + POPOVER_WIDTH > vw - MARGIN) x = screenX - POPOVER_WIDTH - 24;
-  x = Math.max(MARGIN, x);
-  let y = screenY - 120;
-  if (y + POPOVER_HEIGHT > vh - MARGIN) y = vh - POPOVER_HEIGHT - MARGIN;
-  y = Math.max(MARGIN, y);
+  // Desktop: beside the character, kept inside the stage.
+  const place = placePopover(
+    { x: screenX, y: screenY },
+    { width: POPOVER_WIDTH, height },
+    stageRect(),
+  );
 
   return (
     <div
-      className="fixed inset-0 z-[90]"
+      className={`fixed inset-0 z-[90] ${leaving ? "pointer-events-none" : ""}`}
       onClick={(e) => {
         if (e.target === e.currentTarget) closeFocusPopup();
       }}
@@ -342,9 +408,18 @@ function AgentCard({
         role="dialog"
         aria-modal="true"
         aria-label={row.name}
-        className="absolute qo-card qo-pop p-4 shadow-[0_12px_40px_var(--qo-float-shade)] max-h-[calc(100vh-32px)] overflow-y-auto"
-        style={{ left: x, top: y, width: POPOVER_WIDTH }}
+        data-side={place.side}
+        className={`absolute qo-card ${
+          leaving ? "qo-pop-out" : "qo-pop"
+        } p-4 shadow-[0_12px_40px_var(--qo-float-shade)] overflow-y-auto overscroll-contain`}
+        style={{
+          left: place.left,
+          top: place.top,
+          width: POPOVER_WIDTH,
+          maxHeight: place.maxHeight,
+        }}
       >
+        {head}
         {body}
       </div>
     </div>

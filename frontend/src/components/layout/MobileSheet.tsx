@@ -1,9 +1,10 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useCallback, useEffect, useRef, type ReactNode } from "react";
+import { useCallback, type ReactNode } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
+import { useSheetPull } from "@/hooks/useSheetPull";
 
 interface MobileSheetProps {
   title: string;
@@ -32,51 +33,11 @@ export function MobileSheet({
   headerContent,
 }: MobileSheetProps): React.ReactNode {
   const { t } = useTranslation();
-  const box = useRef<HTMLDivElement>(null);
-  const pull = useRef<{ y: number; at: number; moved: number } | null>(null);
-
-  const closeTimer = useRef<number | null>(null);
-  useEffect(
-    () => () => {
-      if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
-    },
-    [],
-  );
   const close = useCallback(() => onClose(), [onClose]);
+  const { box, handlers: pullHandlers } = useSheetPull<HTMLDivElement>(close);
 
   // Focus the close button, trap Tab; Escape only while no modal is on top.
   useDialogFocus(box, { onEscape: close });
-
-  const pullStart = (e: React.PointerEvent) => {
-    if (e.pointerType === "mouse") return;
-    pull.current = { y: e.clientY, at: Date.now(), moved: 0 };
-  };
-  const pullMove = (e: React.PointerEvent) => {
-    const sheet = box.current;
-    if (!pull.current || !sheet) return;
-    const moved = Math.max(0, e.clientY - pull.current.y);
-    pull.current.moved = moved;
-    sheet.style.transition = "none";
-    if (moved < 8) {
-      sheet.style.transform = "";
-      return;
-    }
-    sheet.style.transform = `translateY(${moved}px)`;
-  };
-  const pullEnd = () => {
-    const sheet = box.current;
-    const state = pull.current;
-    pull.current = null;
-    if (!state || !sheet) return;
-    const fast = state.moved / Math.max(1, Date.now() - state.at) > 0.5;
-    sheet.style.transition = "transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)";
-    if (state.moved > 110 || (fast && state.moved > 30)) {
-      sheet.style.transform = "translateY(110%)";
-      closeTimer.current = window.setTimeout(close, 180);
-    } else {
-      sheet.style.transform = "";
-    }
-  };
 
   return (
     <div
@@ -93,10 +54,7 @@ export function MobileSheet({
       >
         <div
           className="flex-shrink-0 touch-none px-5 pt-2.5 pb-2 border-b border-line"
-          onPointerDown={pullStart}
-          onPointerMove={pullMove}
-          onPointerUp={pullEnd}
-          onPointerCancel={pullEnd}
+          {...pullHandlers}
         >
           <span
             aria-hidden="true"

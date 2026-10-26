@@ -115,6 +115,7 @@ export function useWebSocketEvents({
               useGameStore
                 .getState()
                 .setTokenUsage(message.state.office?.tokenUsage);
+              useGameStore.getState().syncAgentUsage(message.state);
               // Can the composer send into this session's terminal?
               useChatStore
                 .getState()

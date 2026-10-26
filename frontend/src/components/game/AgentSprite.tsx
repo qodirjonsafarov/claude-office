@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useCharacterPress } from "@/hooks/useCharacterPress";
 import {
   memo,
   useEffect,
@@ -19,8 +20,6 @@ import { useTick } from "@pixi/react";
 import { Graphics, Texture } from "pixi.js";
 import type { Position, BubbleContent, AgentState } from "@/types";
 import type { AgentPhase } from "@/stores/gameStore";
-import { useAttentionStore } from "@/stores/attentionStore";
-import { usePreferencesStore } from "@/stores/preferencesStore";
 import {
   BOSS_POSITION,
   getDeskPosition,
@@ -146,9 +145,6 @@ function AgentSpriteComponent({
   sheet: sheetProp,
   signals,
 }: AgentSpriteProps): ReactNode {
-  const clickToFocusEnabled = usePreferencesStore((s) => s.clickToFocusEnabled);
-  const openFocusPopup = useAttentionStore((s) => s.openFocusPopup);
-
   const colorSheet = useMemo(() => sheetForColor(color, id), [color, id]);
   const sheet = sheetProp ?? colorSheet;
   const seed = useMemo(() => seedFromId(id), [id]);
@@ -230,17 +226,8 @@ function AgentSpriteComponent({
   const landedMs = useSince(reduced && landed.n > 0 ? landed.n : null, FADE_MS);
   const landAlpha = reduced && landed.n > 0 ? fadeIn(landedMs) : 1;
 
-  // Click handler for focus popup
-  const handlePointerTap = useCallback(() => {
-    if (!clickToFocusEnabled) return;
-    const canvas = document.querySelector(".pixi-canvas-container canvas");
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const scale = rect.width / 1280; // CANVAS_WIDTH = 1280
-    const screenX = rect.left + position.x * scale;
-    const screenY = rect.top + position.y * scale;
-    openFocusPopup(id, screenX, screenY);
-  }, [clickToFocusEnabled, id, position.x, position.y, openFocusPopup]);
+  // Tap or long-press: open the agent card
+  const press = useCharacterPress(id, position);
 
   // Bubble offset for capsule rendering
   const bubbleOffset = -93;
@@ -249,8 +236,7 @@ function AgentSpriteComponent({
     <pixiContainer
       x={position.x + (offset?.x ?? 0)}
       y={position.y + (offset?.y ?? 0)}
-      onPointerTap={handlePointerTap}
-      interactive={clickToFocusEnabled}
+      {...press}
     >
       {/* Waiting for the user: amber ring on the floor */}
       {/* (seated: around the waist, the desk hides the floor) */}

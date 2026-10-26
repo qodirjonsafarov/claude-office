@@ -18,6 +18,7 @@ import type {
 import type { EventLogEntry, CompactionAnimationPhase } from "./types";
 import { MIN_DESK_COUNT } from "@/constants/positions";
 import {
+  agentUsageMap,
   parseTokenUsage,
   sameTokenTotals,
   type TokenTotals,
@@ -58,6 +59,8 @@ export type OfficeSlice = {
   eventLog: EventLogEntry[];
   conversation: ConversationEntry[];
   tokenUsage: TokenTotals | null;
+  /** Per-person usage ("boss" and agent ids); people without usage are absent. */
+  agentUsage: ReadonlyMap<string, TokenTotals>;
 
   setSessionId: (id: string) => void;
   setElevatorState: (state: ElevatorState) => void;
@@ -77,6 +80,8 @@ export type OfficeSlice = {
   setConversation: (conversation: ConversationEntry[]) => void;
   /** Store the backend's optional office `tokenUsage` (raw, parsed here). */
   setTokenUsage: (raw: unknown) => void;
+  /** Store `boss.tokenUsage` and each `agents[i].tokenUsage` of a state update. */
+  syncAgentUsage: (state: Parameters<typeof agentUsageMap>[0]) => void;
 };
 
 export const initialOfficeState = {
@@ -94,6 +99,7 @@ export const initialOfficeState = {
   eventLog: [] as EventLogEntry[],
   conversation: [] as ConversationEntry[],
   tokenUsage: null as TokenTotals | null,
+  agentUsage: new Map() as ReadonlyMap<string, TokenTotals>,
 };
 
 export const createOfficeSlice: StateCreator<GameStore, [], [], OfficeSlice> = (
@@ -169,5 +175,15 @@ export const createOfficeSlice: StateCreator<GameStore, [], [], OfficeSlice> = (
       return sameTokenTotals(state.tokenUsage, tokenUsage)
         ? state
         : { tokenUsage };
+    }),
+
+  syncAgentUsage: (backendState) =>
+    set((state) => {
+      const next = agentUsageMap(backendState);
+      const prev = state.agentUsage;
+      const same =
+        next.size === prev.size &&
+        [...next].every(([id, t]) => sameTokenTotals(prev.get(id) ?? null, t));
+      return same ? state : { agentUsage: next };
     }),
 });

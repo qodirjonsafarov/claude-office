@@ -715,6 +715,17 @@
   .qo-fade-in {
     animation: qo-fade-in 0.24s ease-out both;
   }
+  /* Departures (0.18s, EXIT_MS in AgentPopup.tsx). No "from": they start
+     wherever the element is, e.g. a sheet already pulled half down. */
+  .qo-sheet-down {
+    animation: qo-sheet-down 0.18s cubic-bezier(0.4, 0, 1, 1) both;
+  }
+  .qo-pop-out {
+    animation: qo-pop-out 0.18s ease-in both;
+  }
+  .qo-fade-out {
+    animation: qo-fade-out 0.18s ease-in both;
+  }
 }
 
 @keyframes qo-breathe {
@@ -776,6 +787,22 @@
     opacity: 1;
   }
 }
+@keyframes qo-sheet-down {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes qo-pop-out {
+  to {
+    transform: translateY(8px) scale(0.97);
+    opacity: 0;
+  }
+}
+@keyframes qo-fade-out {
+  to {
+    opacity: 0;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .qo-live-dot,
   .qo-progress-busy > span,
@@ -783,7 +810,10 @@
   .qo-spinner,
   .qo-sheet-up,
   .qo-pop,
-  .qo-fade-in {
+  .qo-fade-in,
+  .qo-sheet-down,
+  .qo-pop-out,
+  .qo-fade-out {
     animation: none !important;
   }
 }

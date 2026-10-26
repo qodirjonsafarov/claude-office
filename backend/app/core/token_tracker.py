@@ -357,6 +357,10 @@ class TokenTracker:
 
     usage: TranscriptUsage = field(default_factory=TranscriptUsage)
 
+    # Replay from the DB (see defer_reads): transcript paths to read at the
+    # end, in event order. None = read live, on every event.
+    _deferred: list[tuple[str | None, str | None]] | None = None
+
     # ------------------------------------------------------------------
     # Public interface
     # ------------------------------------------------------------------
@@ -405,6 +409,8 @@ class TokenTracker:
 
         # Fast path: token counts embedded directly in event data.
         if event.data.input_tokens is not None or event.data.output_tokens is not None:
+            # Deferred reads come first, as they would have live.
+            self._read_deferred()
             if event.data.input_tokens is not None:
                 self.total_input_tokens = event.data.input_tokens
             if event.data.output_tokens is not None:
@@ -416,7 +422,34 @@ class TokenTracker:
             return
 
         # Slow path: read the transcripts incrementally.
-        self.read_transcripts(event.data.transcript_path, event.data.agent_transcript_path)
+        paths = (event.data.transcript_path, event.data.agent_transcript_path)
+        if self._deferred is not None:
+            self._deferred.append(paths)
+            return
+        self.read_transcripts(*paths)
+
+    def defer_reads(self) -> None:
+        """Collect transcript reads instead of doing them (session restore).
+
+        On a replay the transcripts are already complete: the first read gets
+        everything and every later event only re-scans them (all subagent
+        files, path checks), which made restoring a long session take tens of
+        seconds. ``flush_deferred`` reads each path pair once, in the order of
+        its last use, which leaves the same totals as reading live.
+        """
+        self._deferred = []
+
+    def flush_deferred(self) -> None:
+        """Read what ``defer_reads`` collected and go back to live reads."""
+        self._read_deferred()
+        self._deferred = None
+
+    def _read_deferred(self) -> None:
+        if not self._deferred:
+            return
+        pending, self._deferred = self._deferred, []
+        for paths in reversed(dict.fromkeys(reversed(pending))):
+            self.read_transcripts(*paths)
 
     def read_transcripts(
         self, transcript_path: str | None, agent_transcript_path: str | None = None

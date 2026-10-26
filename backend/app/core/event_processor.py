@@ -264,6 +264,9 @@ class EventProcessor:
         # (see ``_process_event_internal``). Cleared whenever the DB is wiped
         # so wiped sessions are re-checked on their next event.
         self._recovery_checked: set[str] = set()
+        # One restore per session at a time: every viewer (tabs, phone) and
+        # the first hook event after a restart wait for the same replay.
+        self._restores: dict[str, asyncio.Task[StateMachine | None]] = {}
         # Coalesces Command Center overview broadcasts: bursts of events schedule
         # a single deferred flush instead of rebuilding the full peer-merge once
         # per event (O(N x events/sec)). See ``_schedule_overview_broadcast``.
@@ -625,7 +628,7 @@ class EventProcessor:
         sm_preexisting = event.session_id in self.sessions
         restored: StateMachine | None = None
         if event.session_id not in self.sessions:
-            restored = await self._build_restored_state_machine(event.session_id)
+            restored = await self._shared_restore(event.session_id)
 
         async with self._sessions_lock:
             if event.session_id not in self.sessions:
@@ -891,6 +894,10 @@ class EventProcessor:
             logger.info(f"Restoring session {session_id} from {len(events)} events in DB")
 
             sm = StateMachine()
+            # Transcripts are complete already: read them once, after the loop.
+            sm.token_tracker.defer_reads()
+            # The same goes for the last reply of a transcript (one per path).
+            last_replies: dict[str, str | None] = {}
             skipped_count = 0
             # Older hooks stored a subagent's tool calls as "main" with no
             # native id, next to the poller's copy; that copy names the agent.
@@ -981,9 +988,11 @@ class EventProcessor:
                         if evt.data.transcript_path:
                             settings = get_settings()
                             translated_path = settings.translate_path(evt.data.transcript_path)
-                            response = await asyncio.to_thread(
-                                get_last_assistant_response, translated_path
-                            )
+                            if translated_path not in last_replies:
+                                last_replies[translated_path] = await asyncio.to_thread(
+                                    get_last_assistant_response, translated_path
+                                )
+                            response = last_replies[translated_path]
                             if response:
                                 assistant_entry: ConversationEntry = {
                                     "id": str(evt.timestamp.timestamp()),
@@ -1025,6 +1034,8 @@ class EventProcessor:
                     )
                     continue
 
+            sm.token_tracker.flush_deferred()
+
             if skipped_count > 0:
                 logger.warning(f"Skipped {skipped_count} malformed events during restoration")
 
@@ -1043,10 +1054,30 @@ class EventProcessor:
         it under ``_sessions_lock`` so the registry stays consistent with
         readers such as ``build_overview``.
         """
-        sm = await self._build_restored_state_machine(session_id)
+        sm = await self._shared_restore(session_id)
         if sm is not None:
             async with self._sessions_lock:
-                self.sessions[session_id] = sm
+                self.sessions.setdefault(session_id, sm)
+
+    async def _shared_restore(self, session_id: str) -> StateMachine | None:
+        """``_build_restored_state_machine``, shared by concurrent callers.
+
+        A viewer that goes away (cancelled) does not cancel the replay for the
+        others; a failed replay is not cached, the next call tries again.
+        """
+        task = self._restores.get(session_id)
+        if task is None:
+            task = asyncio.create_task(self._build_restored_state_machine(session_id))
+            self._restores[session_id] = task
+
+            def _done(t: asyncio.Task[StateMachine | None]) -> None:
+                if self._restores.get(session_id) is t:
+                    del self._restores[session_id]
+                if not t.cancelled():
+                    t.exception()  # retrieved: no "never retrieved" warning
+
+            task.add_done_callback(_done)
+        return await asyncio.shield(task)
 
     async def _persist_event(
         self,

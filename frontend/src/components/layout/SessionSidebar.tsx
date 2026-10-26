@@ -159,6 +159,7 @@ export function SessionSidebar({
     maxSize: SIDEBAR_MAX_WIDTH,
     direction: "horizontal",
     edge: "right",
+    storageKey: "qo-left-width",
   });
 
   const {
@@ -171,6 +172,7 @@ export function SessionSidebar({
     maxSize: getMaxPanelHeight,
     direction: "vertical",
     edge: "down",
+    storageKey: "qo-left-split",
   });
 
   const isDragging = isWidthDragging || isHeightDragging;
@@ -182,7 +184,9 @@ export function SessionSidebar({
   return (
     <aside
       className={`relative flex flex-col gap-1.5 flex-shrink-0 overflow-hidden ${
-        isDragging ? "select-none" : "transition-all duration-300"
+        isDragging
+          ? "select-none"
+          : "transition-all duration-300 motion-reduce:transition-none"
       }`}
       style={{ width: isCollapsed ? 40 : sidebarWidth }}
     >
@@ -195,6 +199,12 @@ export function SessionSidebar({
             ? t("sessions.expandSidebar")
             : t("sessions.collapseSidebar")
         }
+        aria-label={
+          isCollapsed
+            ? t("sessions.expandSidebar")
+            : t("sessions.collapseSidebar")
+        }
+        aria-expanded={!isCollapsed}
       >
         {isCollapsed ? (
           <PanelLeftOpen size={16} />

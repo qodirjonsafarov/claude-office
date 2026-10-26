@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useCharacterPress } from "@/hooks/useCharacterPress";
 import { memo, useMemo, useState, useCallback, type ReactNode } from "react";
 import { useTick } from "@pixi/react";
 import { Graphics, Texture } from "pixi.js";
@@ -174,6 +175,8 @@ function BossSpriteComponent({
   progress = null,
   signals,
 }: BossSpriteProps): ReactNode {
+  // Tap or long-press: open the boss's card
+  const press = useCharacterPress("boss", position);
   // Busy boss (tool use, with a short linger) stands up and directs the team
   const directingElapsed = useActivityClock(
     (isTyping || state === "delegating") && !isAway,
@@ -276,7 +279,7 @@ function BossSpriteComponent({
   const bubbleOffset = -80;
 
   return (
-    <pixiContainer x={position.x} y={position.y}>
+    <pixiContainer x={position.x} y={position.y} {...press}>
       {/* Chair - behind everything */}
       {chairTexture ? (
         <pixiSprite

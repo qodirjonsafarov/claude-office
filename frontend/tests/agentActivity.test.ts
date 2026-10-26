@@ -10,11 +10,14 @@ import {
   bossTurnStart,
   describeAction,
   describeTool,
+  firstSeenAt,
   formatDuration,
   lastToolByAgent,
   parseProgress,
   progressView,
+  recentActions,
   toolCountsByAgent,
+  toolTarget,
 } from "../src/utils/agentActivity";
 
 describe("describeTool", () => {
@@ -389,5 +392,97 @@ describe("resting agents", () => {
         now: 60_000,
       }),
     ).toEqual({ status: "Done 5/5 · resting 1m", action: null });
+  });
+});
+
+describe("recentActions", () => {
+  const at = (s: number) => new Date(2026, 9, 26, 12, 0, s);
+  const log = [
+    {
+      type: "pre_tool_use",
+      agentId: "a1",
+      timestamp: at(5),
+      detail: { toolName: "Bash", toolInput: { command: "npm test" } },
+    },
+    {
+      type: "post_tool_use",
+      agentId: "a1",
+      timestamp: at(4),
+      detail: { toolName: "Edit", toolInput: { file_path: "x/api.ts" } },
+    },
+    {
+      type: "pre_tool_use",
+      agentId: "main",
+      timestamp: at(3),
+      detail: { toolName: "Read", toolInput: { file_path: "b.md" } },
+    },
+    {
+      type: "pre_tool_use",
+      agentId: "a1",
+      timestamp: at(2),
+      detail: { toolName: "Edit", toolInput: { file_path: "x/api.ts" } },
+    },
+    {
+      type: "pre_tool_use",
+      agentId: "a1",
+      timestamp: at(1),
+      detail: { toolName: "Read", toolInput: { file_path: "x/a.ts" } },
+    },
+  ];
+
+  it("lists one person's tool calls, newest first, in plain words", () => {
+    expect(recentActions(log, "a1", 5).map((r) => r.text)).toEqual([
+      "Running tests",
+      "Editing api.ts",
+      "Reading a.ts",
+    ]);
+  });
+
+  it("keeps the time of each call and stops at the limit", () => {
+    const rows = recentActions(log, "a1", 2);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].at).toBe(at(5).getTime());
+  });
+
+  it("maps the main session to the boss", () => {
+    expect(recentActions(log, "boss", 5).map((r) => r.text)).toEqual([
+      "Reading b.md",
+    ]);
+  });
+});
+
+describe("toolTarget", () => {
+  it("gives the file of a file tool", () => {
+    expect(
+      toolTarget({ name: "Edit", input: { file_path: "/r/src/api.ts" } }),
+    ).toBe("src/api.ts");
+  });
+
+  it("gives the command of a shell call", () => {
+    expect(
+      toolTarget({ name: "Bash", input: { command: "npm run lint" } }),
+    ).toBe("npm run lint");
+  });
+
+  it("is null without a target", () => {
+    expect(toolTarget({ name: "TodoWrite", input: {} })).toBeNull();
+    expect(toolTarget(null)).toBeNull();
+  });
+});
+
+describe("firstSeenAt", () => {
+  const at = (s: number) => new Date(2026, 9, 26, 12, 0, s);
+  const log = [
+    { type: "pre_tool_use", agentId: "a1", timestamp: at(9) },
+    { type: "pre_tool_use", agentId: "main", timestamp: at(5) },
+    { type: "subagent_start", agentId: "a1", timestamp: at(3) },
+  ];
+
+  it("gives the oldest event of the person (the log is newest first)", () => {
+    expect(firstSeenAt(log, "a1")).toBe(at(3).getTime());
+  });
+
+  it("is null for someone not in the log", () => {
+    expect(firstSeenAt(log, "zz")).toBeNull();
   });
 });

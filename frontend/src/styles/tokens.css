@@ -7,7 +7,8 @@
  * bg-accent, rounded-xl3 ...). Older markup still uses Tailwind's slate/purple/
  * emerald/rose/amber/orange classes, so those palettes are re-pointed here at
  * the same tokens: one place decides every colour of the UI.
- * The office scene (Pixi canvas) is not styled by this file.
+ * The office scene (Pixi canvas) is not styled by this file: its colours are in
+ * systems/scenePalette.ts, one palette per theme.
  */
 
 @font-face {
@@ -48,10 +49,11 @@
   --qo-line: rgba(176, 207, 193, 0.13);
   --qo-line-strong: rgba(176, 207, 193, 0.24);
 
-  /* The studio the office stands in: dark teal, lighter towards the floor. */
-  --qo-stage-top: #102524;
-  --qo-stage-bottom: #1e3533;
-  --qo-stage-shade: rgba(3, 10, 9, 0.38);
+  /* The studio the office stands in: dark Olymp green, lighter towards the floor.
+     The scene inside it has its own palette (systems/scenePalette.ts). */
+  --qo-stage-top: #0d1a13;
+  --qo-stage-bottom: #1a2c20;
+  --qo-stage-shade: rgba(3, 9, 5, 0.4);
 
   /* Text. Faint text still passes 4.5:1 on the lighter panels. */
   --qo-ink: #f2f6f2;
@@ -84,6 +86,8 @@
   --qo-pulse-end: rgba(167, 243, 106, 0);
   /* The shadow under what floats over the page: menus, popovers, sheets. */
   --qo-float-shade: rgba(0, 0, 0, 0.5);
+  /* The knob of a switch, on the lime or the grey track. */
+  --qo-knob: #f2f6f2;
 
   /* Lucide's inbox (2 px round strokes), for the empty states drawn from CSS. */
   --qo-icon-inbox: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='22 12 16 12 14 15 10 15 8 12 2 12'/%3E%3Cpath d='M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'/%3E%3C/svg%3E");
@@ -93,6 +97,60 @@
   /* Heights of the phone bars, so the content can keep clear of them. */
   --qo-bar-h: 60px;
   --qo-rail-w: 68px;
+}
+
+/*
+ * Light theme. A Radix-style 12-step olive scale:
+ *  1 #fcfdfc app bg   2 #f8faf8 subtle bg   3 #eff1ef element   4 #e7e9e7 hover
+ *  5 #dfe2df pressed  6 #d7dad7 line        7 #cccfcc border    8 #b9bcb8 strong
+ *  9 #898e87 solid   10 #7f847d hover      11 #60655f low text 12 #1d211c text
+ * and one darker lime accent that reads on white: #4f8a1f (the carpet line of
+ * the daytime office) taken one step deeper, so accent text passes WCAG AA on
+ * every surface. The status colours are deepened the same way
+ * (tests/themeContrast.test.ts checks every pair).
+ */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --qo-bg: #f8faf8;
+  --qo-panel: #fcfdfc;
+  --qo-panel-2: #eff1ef;
+  --qo-panel-3: #e7e9e7;
+  --qo-line: rgba(29, 33, 28, 0.12);
+  --qo-line-strong: rgba(29, 33, 28, 0.22);
+
+  --qo-stage-top: #e4ecdc;
+  --qo-stage-bottom: #d2dec6;
+  --qo-stage-shade: rgba(60, 80, 40, 0.18);
+
+  --qo-ink: #1d211c;
+  --qo-ink-soft: #4c5249;
+  --qo-ink-faint: #60655f;
+
+  --qo-accent: #3e6d18;
+  --qo-accent-dark: #345c14;
+  --qo-accent-dim: rgba(62, 109, 24, 0.12);
+  --qo-on-accent: #ffffff;
+
+  --qo-danger: #b73229;
+  --qo-danger-dim: rgba(183, 50, 41, 0.1);
+  --qo-warn: #865900;
+  --qo-warn-dim: rgba(134, 89, 0, 0.12);
+  --qo-info: #1d68a3;
+  --qo-info-dim: rgba(29, 104, 163, 0.1);
+  --qo-max: #925300;
+  --qo-max-dim: rgba(146, 83, 0, 0.12);
+
+  --qo-logo-bg: #1d211c;
+  --qo-logo-hill: #34542c;
+  --qo-logo-figure: #a7f36a;
+  --qo-logo-ring: rgba(79, 138, 31, 0.55);
+
+  --qo-scrim: rgba(29, 33, 28, 0.38);
+  --qo-pulse: rgba(79, 138, 31, 0.4);
+  --qo-pulse-end: rgba(79, 138, 31, 0);
+  --qo-float-shade: rgba(29, 33, 28, 0.16);
+  --qo-knob: #ffffff;
 }
 
 @theme {
@@ -120,6 +178,7 @@
   --color-max: var(--qo-max);
   --color-max-dim: var(--qo-max-dim);
   --color-scrim: var(--qo-scrim);
+  --color-knob: var(--qo-knob);
 
   --radius-xl2: 14px;
   --radius-xl3: 18px;
@@ -392,8 +451,10 @@
     color: var(--qo-ink);
     background: var(--qo-panel-2);
   }
+  /* The red tint sits on an opaque panel, so the text keeps 4.5:1 inside a
+     tinted card too (a selected session). */
   .qo-btn-danger {
-    background: var(--qo-danger-dim);
+    background: linear-gradient(var(--qo-danger-dim), var(--qo-danger-dim)) var(--qo-panel);
     color: var(--qo-danger);
   }
   .qo-btn-danger:hover {
@@ -488,7 +549,8 @@
   .qo-segmented > button:hover {
     color: var(--qo-ink);
   }
-  .qo-segmented > button[aria-selected="true"] {
+  .qo-segmented > button[aria-selected="true"],
+  .qo-segmented > button[aria-checked="true"] {
     background: var(--qo-accent);
     color: var(--qo-on-accent);
   }
@@ -653,6 +715,17 @@
   .qo-fade-in {
     animation: qo-fade-in 0.24s ease-out both;
   }
+  /* Departures (0.18s, EXIT_MS in AgentPopup.tsx). No "from": they start
+     wherever the element is, e.g. a sheet already pulled half down. */
+  .qo-sheet-down {
+    animation: qo-sheet-down 0.18s cubic-bezier(0.4, 0, 1, 1) both;
+  }
+  .qo-pop-out {
+    animation: qo-pop-out 0.18s ease-in both;
+  }
+  .qo-fade-out {
+    animation: qo-fade-out 0.18s ease-in both;
+  }
 }
 
 @keyframes qo-breathe {
@@ -714,6 +787,22 @@
     opacity: 1;
   }
 }
+@keyframes qo-sheet-down {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes qo-pop-out {
+  to {
+    transform: translateY(8px) scale(0.97);
+    opacity: 0;
+  }
+}
+@keyframes qo-fade-out {
+  to {
+    opacity: 0;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .qo-live-dot,
   .qo-progress-busy > span,
@@ -721,7 +810,10 @@
   .qo-spinner,
   .qo-sheet-up,
   .qo-pop,
-  .qo-fade-in {
+  .qo-fade-in,
+  .qo-sheet-down,
+  .qo-pop-out,
+  .qo-fade-out {
     animation: none !important;
   }
 }

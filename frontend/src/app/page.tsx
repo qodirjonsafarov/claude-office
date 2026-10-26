@@ -10,6 +10,11 @@
 
 "use client";
 
+import {
+  browserStorage,
+  readStoredFlag,
+  writeStoredFlag,
+} from "@/utils/storedSize";
 import dynamic from "next/dynamic";
 import { useState, useEffect, useCallback } from "react";
 import { useWebSocketEvents } from "@/hooks/useWebSocketEvents";
@@ -94,6 +99,14 @@ export default function V2TestPage(): React.ReactNode {
     null,
   );
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
+  // The collapsed sessions panel is remembered (restored after mount).
+  useEffect(() => {
+    const restore = () => {
+      const stored = readStoredFlag(browserStorage(), "qo-left-collapsed");
+      if (stored !== null) setLeftSidebarCollapsed(stored);
+    };
+    restore();
+  }, []);
   const layoutMode = useLayoutMode();
   const isMobile = layoutMode !== "desktop";
 
@@ -409,9 +422,14 @@ export default function V2TestPage(): React.ReactNode {
             sessionsLoading={sessionsLoading}
             sessionId={sessionId}
             isCollapsed={leftSidebarCollapsed}
-            onToggleCollapsed={() =>
-              setLeftSidebarCollapsed(!leftSidebarCollapsed)
-            }
+            onToggleCollapsed={() => {
+              setLeftSidebarCollapsed(!leftSidebarCollapsed);
+              writeStoredFlag(
+                browserStorage(),
+                "qo-left-collapsed",
+                !leftSidebarCollapsed,
+              );
+            }}
             onSessionSelect={handleSessionSelect}
             onDeleteSession={setSessionPendingDelete}
             onRenameSession={handleRenameSession}
@@ -421,8 +439,7 @@ export default function V2TestPage(): React.ReactNode {
             data-tour-id="game-canvas"
             className="qo-stage qo-studio flex-grow overflow-hidden relative"
           >
-            {/* Keep the 1280x1024 scene's aspect ratio and center it, so the
-                canvas fills its box exactly (no letterbox, clicks stay aligned) */}
+            {/* The scene fills the stage; the canvas takes its shape */}
             <div className="qo-stage-inner">
               <div className="qo-stage-screen">
                 <OfficeGame />

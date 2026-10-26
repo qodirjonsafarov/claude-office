@@ -19,6 +19,7 @@ import { MobileSheet } from "@/components/layout/MobileSheet";
 import { MobileTabBar, type MobileTab } from "@/components/layout/MobileTabBar";
 import { SwitchMark } from "@/components/ui/SwitchMark";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useAttentionStore } from "@/stores/attentionStore";
 import type { Session } from "@/hooks/useSessions";
 import {
   useGameStore,
@@ -81,6 +82,12 @@ export function MobileOffice({
   const { t } = useTranslation();
   const [tab, setTab] = useState<MobileTab>("office");
   const [logTab, setLogTab] = useState<"events" | "conversation">("events");
+  // "Jump to log" on the agent card: open the events sheet.
+  const logJump = useAttentionStore((s) => s.logJump);
+  if (logJump && (tab !== "events" || logTab !== "events")) {
+    setTab("events");
+    setLogTab("events");
+  }
   const [logQuery, setLogQuery] = useState("");
   // The newest event the user has seen (by identity, not clock).
   const [seenEvent, setSeenEvent] = useState<EventLogEntry | null>(
@@ -131,8 +138,13 @@ export function MobileOffice({
     </div>
   );
 
+  // Landscape: the scene fills the space beside the team list (the canvas
+  // takes its shape); portrait: a card of the room's own shape.
   const stage = (
-    <div data-tour-id="game-canvas" className="qo-stage-phone qo-studio">
+    <div
+      data-tour-id="game-canvas"
+      className={`qo-stage-phone qo-studio ${landscape ? "qo-stage-fill" : ""}`}
+    >
       {scene}
     </div>
   );
@@ -191,11 +203,7 @@ export function MobileOffice({
 
       {landscape ? (
         <div className="flex-1 min-w-0 flex gap-3 p-3 pr-[max(12px,env(safe-area-inset-right))] pb-[max(12px,env(safe-area-inset-bottom))]">
-          <div className="relative flex-1 min-w-0 [container-type:size]">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-[min(100cqw,125cqh)]">{stage}</div>
-            </div>
-          </div>
+          <div className="relative flex-1 min-w-0">{stage}</div>
           <div className="w-[clamp(190px,32%,280px)] flex flex-col gap-2 min-h-0">
             {status}
             <MobileAgentActivity className="flex-1" />

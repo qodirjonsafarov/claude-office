@@ -1,4 +1,9 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import {
+  browserStorage,
+  readStoredSize,
+  writeStoredSize,
+} from "@/utils/storedSize";
 
 interface UseDragResizeOptions {
   initialSize: number;
@@ -13,6 +18,8 @@ interface UseDragResizeOptions {
    * - "left" / "up": dragging in negative direction increases size
    */
   edge?: "left" | "right" | "up" | "down";
+  /** Remember the size in localStorage under this key. */
+  storageKey?: string;
 }
 
 interface UseDragResizeReturn {
@@ -32,9 +39,23 @@ export function useDragResize({
   maxSize,
   direction,
   edge,
+  storageKey,
 }: UseDragResizeOptions): UseDragResizeReturn {
   const [size, setSize] = useState(initialSize);
   const [isDragging, setIsDragging] = useState(false);
+
+  // The remembered size, after mount (the server renders the default).
+  useEffect(() => {
+    if (!storageKey) return;
+    const restore = () => {
+      const max = typeof maxSize === "function" ? maxSize() : maxSize;
+      const stored = readStoredSize(browserStorage(), storageKey, minSize, max);
+      if (stored !== null) setSize(stored);
+    };
+    restore();
+    // Only once: the limits are fixed per panel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]);
 
   // Default edge based on direction
   const resolvedEdge = edge ?? (direction === "horizontal" ? "right" : "down");
@@ -49,6 +70,7 @@ export function useDragResize({
 
       const startPos = direction === "horizontal" ? e.clientX : e.clientY;
       const startSize = size;
+      let latest = size;
 
       const getMaxSize = () =>
         typeof maxSize === "function" ? maxSize() : maxSize;
@@ -74,10 +96,12 @@ export function useDragResize({
           Math.max(minSize, newSize),
         );
         setSize(constrainedSize);
+        latest = constrainedSize;
       };
 
       const onMouseUp = () => {
         setIsDragging(false);
+        if (storageKey) writeStoredSize(browserStorage(), storageKey, latest);
         document.body.style.cursor = "";
         document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("mouseup", onMouseUp);
@@ -86,7 +110,7 @@ export function useDragResize({
       document.addEventListener("mousemove", onMouseMove);
       document.addEventListener("mouseup", onMouseUp);
     },
-    [size, minSize, maxSize, direction, resolvedEdge],
+    [size, minSize, maxSize, direction, resolvedEdge, storageKey],
   );
 
   return { size, setSize, isDragging, handleDragStart };

@@ -9,7 +9,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
   useGameStore,
@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { ChevronRight, Search, Terminal, X } from "lucide-react";
 import { EventDetailModal } from "@/components/game/EventDetailModal";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useAttentionStore } from "@/stores/attentionStore";
 import { getEventTypeTextColor } from "@/utils/event-type-styles";
 import {
   FILTER_KINDS,
@@ -130,7 +131,18 @@ export function EventLog({
   const [ownQuery, setOwnQuery] = useState("");
   const query = controlledQuery ?? ownQuery;
   const setQuery = onQueryChange ?? setOwnQuery;
-  const [person, setPerson] = useState("all");
+  // "Jump to log" on the agent card opens the log on that person.
+  const logJump = useAttentionStore((s) => s.logJump);
+  const clearLogJump = useAttentionStore((s) => s.clearLogJump);
+  const [person, setPerson] = useState(() => logJump?.person ?? "all");
+  const [jumpSeen, setJumpSeen] = useState(logJump?.nonce ?? 0);
+  if (logJump && logJump.nonce !== jumpSeen) {
+    setJumpSeen(logJump.nonce);
+    setPerson(logJump.person);
+  }
+  useEffect(() => {
+    if (logJump) clearLogJump();
+  }, [logJump, clearLogJump]);
   const [kinds, setKinds] = useState<ReadonlySet<string>>(new Set());
 
   const people = useMemo(() => logPeople(eventLog), [eventLog]);

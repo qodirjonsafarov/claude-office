@@ -8,6 +8,8 @@ import {
   type ClockFormat,
 } from "@/stores/preferencesStore";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useThemePref } from "@/systems/themeStore";
+import type { ThemePref } from "@/systems/theme";
 
 // ============================================================================
 // TYPES
@@ -53,7 +55,7 @@ function SettingsToggle({
         }`}
       >
         <div
-          className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-md transition-transform ${
+          className={`absolute top-0.5 w-4 h-4 rounded-full bg-knob shadow-md transition-transform ${
             checked ? "translate-x-[18px]" : "translate-x-0.5"
           }`}
         />
@@ -110,6 +112,12 @@ export default function SettingsModal({
   );
 
   const { t } = useTranslation();
+  const [themePref, setThemePref] = useThemePref();
+  const themeLabels: Record<ThemePref, string> = {
+    dark: t("settings.themeDark"),
+    light: t("settings.themeLight"),
+    system: t("settings.themeSystem"),
+  };
 
   const handleClockTypeChange = (type: ClockType) => {
     setClockType(type);
@@ -136,6 +144,30 @@ export default function SettingsModal({
       }
     >
       <div className="space-y-6">
+        {/* Theme: dark, light or the OS choice */}
+        <div>
+          <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
+            {t("settings.theme")}
+          </label>
+          <div
+            className="qo-segmented"
+            role="radiogroup"
+            aria-label={t("settings.theme")}
+          >
+            {(["dark", "light", "system"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={themePref === value}
+                onClick={() => setThemePref(value)}
+              >
+                {themeLabels[value]}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Clock Type */}
         <div>
           <label className="block text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
@@ -273,7 +305,7 @@ export default function SettingsModal({
               }`}
             >
               <div
-                className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform ${
+                className={`absolute top-1 w-4 h-4 rounded-full bg-knob shadow-md transition-transform ${
                   autoFollowNewSessions ? "translate-x-6" : "translate-x-1"
                 }`}
               />

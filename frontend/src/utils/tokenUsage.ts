@@ -158,3 +158,35 @@ export function usageLabel(raw: unknown): string | null {
     .filter(Boolean)
     .join(" · ");
 }
+
+/**
+ * Per-person usage from a state update: "boss" from `boss.tokenUsage`, each
+ * agent from its own `tokenUsage`. People without usage yet are left out.
+ */
+export function agentUsageMap(state: {
+  boss: { tokenUsage?: unknown };
+  agents: readonly { id: string; tokenUsage?: unknown }[];
+}): Map<string, TokenTotals> {
+  const map = new Map<string, TokenTotals>();
+  const boss = parseTokenUsage(state.boss.tokenUsage);
+  if (boss) map.set("boss", boss);
+  for (const agent of state.agents) {
+    const totals = parseTokenUsage(agent.tokenUsage);
+    if (totals) map.set(agent.id, totals);
+  }
+  return map;
+}
+
+/** The agent card's two numbers: a dash while the usage is unknown. */
+export function cardUsage(t: TokenTotals | null): {
+  tokens: string;
+  cost: string;
+  title: string | null;
+} {
+  if (!t) return { tokens: "—", cost: "—", title: null };
+  return {
+    tokens: formatTokens(t.total),
+    cost: apiCost(t.costUsd) ?? "—",
+    title: usageTooltip(t),
+  };
+}

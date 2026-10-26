@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
+// Extra hosts allowed to load dev resources and HMR (`next dev` blocks other
+// origins). Comma-separated, e.g. the Tailscale IP and MagicDNS name for the
+// phone; set in frontend/.env.local. See docs/guides/deployment.md.
+const allowedDevOrigins = (process.env.NEXT_ALLOWED_DEV_ORIGINS ?? "")
+  .split(",")
+  .map((host) => host.trim())
+  .filter(Boolean);
+
 const nextConfig: NextConfig = {
+  allowedDevOrigins,
   // Enable static export for production builds
   output: "export",
   // Disable image optimization (not supported in static export)

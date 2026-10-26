@@ -272,6 +272,38 @@ class TestGates:
         resp = _post(sid, host="100.66.186.99", origin=f"https://{TAILNET}")
         assert resp.status_code == 200
 
+    def test_allow_tailnet_adds_short_magicdns_origin(
+        self, monkeypatch: pytest.MonkeyPatch, enabled: FakeTmux
+    ) -> None:
+        settings = get_settings()
+        monkeypatch.setattr(settings, "LOCALHOST_ONLY", True)
+        monkeypatch.setattr(settings, "WEB_PROMPT_TAILNET_HOST", TAILNET)
+        monkeypatch.setattr(settings, "TAILNET_HOSTS", f"safarovs-machine,{TAILNET}")
+        sid = _session()
+        origin = "http://safarovs-machine:3000"
+        monkeypatch.setattr(settings, "ALLOW_TAILNET", False)
+        resp = _post(sid, host="100.66.186.99", origin=origin)
+        assert resp.status_code == 403
+        monkeypatch.setattr(settings, "ALLOW_TAILNET", True)
+        resp = _post(sid, host="100.66.186.99", origin=origin)
+        assert resp.status_code == 200
+        resp = _post(sid, host="100.66.186.99", origin="http://192.168.1.20:3000")
+        assert resp.status_code == 403
+        assert _reason(resp) == "origin"
+
+    def test_allow_tailnet_alone_does_not_open_chat_to_tailnet_clients(
+        self, monkeypatch: pytest.MonkeyPatch, enabled: FakeTmux
+    ) -> None:
+        settings = get_settings()
+        monkeypatch.setattr(settings, "LOCALHOST_ONLY", True)
+        monkeypatch.setattr(settings, "ALLOW_TAILNET", True)
+        monkeypatch.setattr(settings, "TAILNET_HOSTS", "safarovs-machine")
+        sid = _session()
+        resp = _post(sid, host="100.66.186.99", origin="http://safarovs-machine:3000")
+        assert resp.status_code == 403
+        assert _reason(resp) == "client_ip"
+        assert enabled.sent() == []
+
     def test_foreign_origin_is_rejected(self, enabled: FakeTmux) -> None:
         sid = _session()
         resp = _post(sid, origin="https://evil.example")

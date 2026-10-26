@@ -135,7 +135,10 @@ async def send_prompt(
     if not is_allowed_client_ip(client_ip, tailnet=bool(tailnet)):
         audit("client_ip")
         raise _fail(403, "client_ip", "Chat is only allowed from this machine or the tailnet")
-    if not is_allowed_origin(origin, settings.BACKEND_CORS_ORIGINS, tailnet):
+    if not (
+        is_allowed_origin(origin, settings.BACKEND_CORS_ORIGINS, tailnet)
+        or settings.is_tailnet_origin(origin)
+    ):
         audit("origin")
         raise _fail(403, "origin", "Origin not allowed")
 

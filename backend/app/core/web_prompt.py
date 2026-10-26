@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
 
+from app.core.tailnet import TAILSCALE_NETWORKS, ip_of
+
 MAX_PROMPT_CHARS = 8000
 
 # Slash commands the web may send: /cost alone, /compact with optional focus text.
@@ -70,22 +72,12 @@ def sanitize_prompt(text: str) -> str:
 _LOOPBACK = (ipaddress.ip_network("127.0.0.0/8"), ipaddress.ip_network("::1/128"))
 # Tailscale address ranges (CGNAT IPv4 and the ULA prefix). Trusted only when
 # a tailnet host is configured (WEB_PROMPT_TAILNET_HOST).
-_TAILSCALE = (ipaddress.ip_network("100.64.0.0/10"), ipaddress.ip_network("fd7a:115c:a1e0::/48"))
-
-
-def _ip(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
-    try:
-        addr = ipaddress.ip_address(host)
-    except ValueError:
-        return None
-    if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped is not None:
-        return addr.ipv4_mapped
-    return addr
+_TAILSCALE = TAILSCALE_NETWORKS
 
 
 def is_allowed_client_ip(host: str | None, *, tailnet: bool = False) -> bool:
     """Loopback always; Tailscale addresses only with *tailnet* (IPv4-mapped too)."""
-    addr = _ip(host) if host else None
+    addr = ip_of(host) if host else None
     if addr is None:
         return False
     nets = _LOOPBACK + _TAILSCALE if tailnet else _LOOPBACK

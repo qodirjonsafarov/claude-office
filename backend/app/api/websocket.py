@@ -49,7 +49,8 @@ def _allowed_ws_origins() -> frozenset[str]:
 def validate_websocket_origin(websocket: WebSocket) -> bool:
     """Check the Origin header on a WebSocket handshake.
 
-    Browser connections must come from an allowed localhost origin.
+    Browser connections must come from an allowed localhost origin (or the
+    office UI on the tailnet when ALLOW_TAILNET is on).
     Non-browser connections (no Origin header) must present a valid
     X-API-Key matching the *effective* API key (either user-configured
     or the per-launch auto-generated token).  This prevents arbitrary
@@ -57,11 +58,14 @@ def validate_websocket_origin(websocket: WebSocket) -> bool:
     no explicit key is configured.
     """
     origin = websocket.headers.get("origin")
+    from app.config import get_settings
+
     if origin is not None:
-        return origin.rstrip("/") in _allowed_ws_origins()
+        return origin.rstrip("/") in _allowed_ws_origins() or get_settings().is_tailnet_origin(
+            origin
+        )
 
     # Non-browser clients (no Origin) — always require the effective API key
-    from app.config import get_settings
 
     key = get_settings().effective_api_key
     provided = websocket.headers.get("x-api-key", "")

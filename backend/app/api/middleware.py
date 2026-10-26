@@ -11,10 +11,12 @@ inline version in ``main.py``.
 import hmac
 
 from fastapi import Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
+from app.core.tailnet import is_tailscale_ip
 
 # Resolved once at import time, mirroring the previous ``main.py`` pattern.
 # ``Settings`` is a pydantic-settings singleton; subsequent ``get_settings()``
@@ -22,6 +24,23 @@ from app.config import get_settings
 settings = get_settings()
 
 _LOCALHOST_HOSTS = frozenset({"127.0.0.1", "::1", "localhost", "testclient"})
+
+
+def _is_trusted_client(host: str | None) -> bool:
+    if host in _LOCALHOST_HOSTS:
+        return True
+    return settings.ALLOW_TAILNET and is_tailscale_ip(host)
+
+
+class TailnetCORSMiddleware(CORSMiddleware):
+    """CORS that also allows the office UI on the tailnet when ALLOW_TAILNET is on.
+
+    Settings are read per request, so the configured origin list stays exact
+    and the tailnet rule never widens it to other LAN hosts.
+    """
+
+    def is_allowed_origin(self, origin: str) -> bool:
+        return super().is_allowed_origin(origin) or settings.is_tailnet_origin(origin)
 
 
 class LocalhostOnlyMiddleware(BaseHTTPMiddleware):
@@ -33,11 +52,12 @@ class LocalhostOnlyMiddleware(BaseHTTPMiddleware):
 
     ``"testclient"`` is the sentinel host used by Starlette's test transport
     and cannot appear on a real TCP connection, so it is safe to allow.
+    With ``ALLOW_TAILNET`` Tailscale addresses pass too (never other LANs).
     """
 
     async def dispatch(self, request: Request, call_next):  # type: ignore[override]
         client_host = request.client.host if request.client else None
-        if settings.LOCALHOST_ONLY and client_host not in _LOCALHOST_HOSTS:
+        if settings.LOCALHOST_ONLY and not _is_trusted_client(client_host):
             return JSONResponse(
                 status_code=403,
                 content={"detail": "Access denied: localhost only"},

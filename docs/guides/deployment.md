@@ -12,6 +12,7 @@ Guide for deploying Claude Office Visualizer using Docker containers.
 - [Building](#building)
 - [Running](#running)
 - [Web chat](#web-chat)
+- [Phone over Tailscale](#phone-over-tailscale)
 - [Troubleshooting](#troubleshooting)
 - [Related Documentation](#related-documentation)
 
@@ -408,14 +409,54 @@ ends on this machine (for example Termius forwarding `localhost:3000` and
 `localhost:8000` over SSH): to the backend that is a 127.0.0.1 client with a
 `localhost` Origin, and it works as is.
 
-Direct Tailscale access (`http://100.x.y.z:3000`) would also need the global
-middleware, CORS and WebSocket origin to accept the tailnet; this is not
-done. `WEB_PROMPT_TAILNET_HOST` only widens the web chat route itself.
+Direct Tailscale access (`http://100.x.y.z:3000`) is opt-in, see
+[Phone over Tailscale](#phone-over-tailscale). `WEB_PROMPT_TAILNET_HOST`
+still gates the web chat route on its own.
 
 Putting the office behind `tailscale serve` makes every request arrive from
 127.0.0.1, so the client-IP checks no longer tell the phone from local
 processes: the API key and the Origin check (set `WEB_PROMPT_TAILNET_HOST`
 to the served name) are then the only gates.
+
+## Phone over Tailscale
+
+Open the office on a phone straight over the tailnet, without a port
+forward, e.g. `http://100.66.186.99:3000` or `http://my-machine:3000`
+(MagicDNS). Native dev setup (`next dev` on :3000, backend on :8000, both
+listening on all interfaces, which `make dev` does).
+
+`backend/.env`, then restart the backend:
+
+```bash
+ALLOW_TAILNET=true
+TAILNET_HOSTS=my-machine,my-machine.tailXXXX.ts.net
+```
+
+`frontend/.env.local`, then restart `next dev` (otherwise it blocks HMR and
+dev assets for other hosts with "Blocked cross-origin request"):
+
+```bash
+NEXT_ALLOWED_DEV_ORIGINS=100.66.186.99,my-machine,my-machine.tailXXXX.ts.net
+```
+
+What changes with `ALLOW_TAILNET=true`:
+
+- the client-IP check also accepts Tailscale addresses (`100.64.0.0/10`,
+  `fd7a:115c:a1e0::/48`). Other LAN addresses (home Wi-Fi `192.168.x`,
+  `10.x`, Docker bridges) are still rejected;
+- CORS and the WebSocket Origin check also accept
+  `http(s)://<Tailscale IP or a TAILNET_HOSTS name>:3000`, and so does the
+  web chat Origin check;
+- the API key rules do not change. Open the UI once with
+  `?token=<key>` (the explicit `CLAUDE_OFFICE_API_KEY`, or the per-launch
+  token from the backend log); the phone keeps it in localStorage.
+
+Web chat from the phone additionally needs `WEB_PROMPT_TAILNET_HOST` (see
+[Web chat](#web-chat)): `ALLOW_TAILNET` alone does not let tailnet clients
+type into Claude.
+
+Anyone on your tailnet can reach the ports, so keep the tailnet to your own
+devices (or restrict it with Tailscale ACLs).
 
 ## Related Documentation
 

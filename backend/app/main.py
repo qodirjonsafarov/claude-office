@@ -9,13 +9,12 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from rich.logging import RichHandler
 from sqlalchemy import delete, select, update
 
-from app.api.middleware import ApiKeyMiddleware, LocalhostOnlyMiddleware
+from app.api.middleware import ApiKeyMiddleware, LocalhostOnlyMiddleware, TailnetCORSMiddleware
 from app.api.routes import events, floors, preferences, prompt, sessions, websockets
 from app.config import get_settings
 from app.core.chat_status import chat_status_loop
@@ -215,7 +214,7 @@ app.add_middleware(ApiKeyMiddleware)
 # Added last = outermost, so 401/403 responses from the middlewares above
 # still carry CORS headers and the browser sees the status, not a network error.
 app.add_middleware(
-    CORSMiddleware,
+    TailnetCORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=False,
     allow_methods=["*"],

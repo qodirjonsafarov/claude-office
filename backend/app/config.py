@@ -5,6 +5,8 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.tailnet import is_tailnet_origin, parse_hosts
+
 _BACKEND_DIR = Path(__file__).parent.parent.resolve()
 _DEFAULT_DB_PATH = _BACKEND_DIR / "visualizer.db"
 
@@ -122,6 +124,16 @@ class Settings(BaseSettings):
     # so the loopback boundary moves to the host port binding (127.0.0.1:8050).
     LOCALHOST_ONLY: bool = True
 
+    # Phone over Tailscale (opt-in). When True, clients on Tailscale addresses
+    # (100.64.0.0/10, fd7a:115c:a1e0::/48) pass the client-IP check, and
+    # browser origins http(s)://<tailscale IP or a TAILNET_HOSTS name>:3000
+    # pass CORS and the WebSocket / web-prompt Origin checks. Other LAN
+    # addresses stay rejected; the API key rules do not change.
+    ALLOW_TAILNET: bool = False
+    # Comma-separated MagicDNS names of this machine, e.g.
+    # "my-machine,my-machine.tailXXXX.ts.net".
+    TAILNET_HOSTS: str = ""
+
     # Chat from the office UI: POST /sessions/{id}/prompt pastes the text into
     # the session's tmux pane. Off by default; works only with an explicit
     # CLAUDE_OFFICE_API_KEY (never with the auto token).
@@ -146,6 +158,15 @@ class Settings(BaseSettings):
     def has_explicit_key(self) -> bool:
         """True when the user explicitly set CLAUDE_OFFICE_API_KEY."""
         return bool(self.CLAUDE_OFFICE_API_KEY)
+
+    @property
+    def tailnet_hosts(self) -> frozenset[str]:
+        """TAILNET_HOSTS as a lowercase set of host names."""
+        return parse_hosts(self.TAILNET_HOSTS)
+
+    def is_tailnet_origin(self, origin: str | None) -> bool:
+        """True when ALLOW_TAILNET is on and *origin* is the UI on the tailnet."""
+        return self.ALLOW_TAILNET and is_tailnet_origin(origin, self.tailnet_hosts)
 
     model_config = SettingsConfigDict(env_file=".env")
 

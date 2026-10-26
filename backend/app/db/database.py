@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool, StaticPool
 
 from app.config import get_settings
 
@@ -18,16 +18,30 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
-_engine: AsyncEngine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=False,
-    connect_args={"check_same_thread": False, "timeout": 15},
-    poolclass=StaticPool,
-)
+
+def make_engine(url: str) -> AsyncEngine:
+    """Create the app's SQLite engine (WAL + busy timeout on every connection).
+
+    A file database gets a fresh connection per session (NullPool): sessions
+    that shared one connection (StaticPool) rolled back or committed each
+    other's half-done transactions when events arrived concurrently, which
+    lost events with ``NoResultFound`` in ``_persist_event``. NullPool also
+    never runs out of connections (the QueuePool timeouts StaticPool was
+    meant to fix). Only ``:memory:`` keeps one shared connection, since each
+    new connection would be an empty database.
+    """
+    pool: type[NullPool] | type[StaticPool] = StaticPool if ":memory:" in url else NullPool
+    engine = create_async_engine(
+        url,
+        echo=False,
+        connect_args={"check_same_thread": False, "timeout": 15},
+        poolclass=pool,
+    )
+    event.listen(engine.sync_engine, "connect", _set_sqlite_pragma)
+    return engine
 
 
-@event.listens_for(_engine.sync_engine, "connect")
-def _set_sqlite_pragma(dbapi_connection: Any, _connection_record: Any) -> None:  # pyright: ignore[reportUnusedFunction]
+def _set_sqlite_pragma(dbapi_connection: Any, _connection_record: Any) -> None:
     """Enable WAL mode and busy timeout on every SQLite connection.
 
     WAL mode allows concurrent readers alongside a single writer, which
@@ -38,6 +52,9 @@ def _set_sqlite_pragma(dbapi_connection: Any, _connection_record: Any) -> None: 
     cursor.execute("PRAGMA journal_mode=WAL")
     cursor.execute("PRAGMA busy_timeout=5000")
     cursor.close()
+
+
+_engine: AsyncEngine = make_engine(settings.DATABASE_URL)
 
 
 _session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(

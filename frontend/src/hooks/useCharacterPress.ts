@@ -42,6 +42,8 @@ export function useCharacterPress(
         navigator.vibrate?.(10);
         openRef.current();
       }));
+      // A swallow left by a press that ended without a tap is stale now.
+      swallowTap.current = false;
       press.down(e.clientX, e.clientY);
       // Mice and pens just click; only a finger can long-press.
       if (e.pointerType !== "touch") {
@@ -62,7 +64,10 @@ export function useCharacterPress(
       window.addEventListener("pointercancel", onEnd);
     },
     onPointerTap: (e: FederatedPointerEvent) => {
-      if (swallowTap.current) {
+      // Pixi fires the tap from its capture-phase window pointerup, before
+      // our onEnd, so the tap ends the press itself (onEnd then gets false).
+      const longPressed = pressRef.current?.up() ?? false;
+      if (swallowTap.current || longPressed) {
         swallowTap.current = false;
         return;
       }

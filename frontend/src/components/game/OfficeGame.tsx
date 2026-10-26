@@ -110,6 +110,8 @@ import { PrinterStation } from "./PrinterStation";
 import { DebugOverlays } from "./DebugOverlays";
 import { DayNightLayer } from "./DayNightLayer";
 import {
+  BossRug,
+  DeskChair,
   DeskSurfacesBase,
   DeskSurfacesTop,
   useDeskPositions,
@@ -658,15 +660,7 @@ export function OfficeGame(): ReactNode {
                   <OfficeWings items={wings} plantTexture={textures.plant} />
 
                   {/* Boss area rug - rendered right after floor */}
-                  {textures.bossRug && (
-                    <pixiSprite
-                      texture={textures.bossRug}
-                      anchor={0.5}
-                      x={BOSS_RUG_POSITION.x}
-                      y={BOSS_RUG_POSITION.y}
-                      scale={0.3}
-                    />
-                  )}
+                  <BossRug x={BOSS_RUG_POSITION.x} y={BOSS_RUG_POSITION.y} />
 
                   {/* Modern decor: neon sign and plants */}
                   <OfficeDecor plantTexture={textures.plant} />
@@ -786,15 +780,7 @@ export function OfficeGame(): ReactNode {
                           y={desk.y}
                           zIndex={chairZIndex}
                         >
-                          {textures.chair && (
-                            <pixiSprite
-                              texture={textures.chair}
-                              anchor={0.5}
-                              x={0}
-                              y={30}
-                              scale={0.1386}
-                            />
-                          )}
+                          <DeskChair />
                         </pixiContainer>
                       );
                     })}
@@ -840,12 +826,7 @@ export function OfficeGame(): ReactNode {
                   </pixiContainer>
 
                   {/* Desk surfaces and keyboards (behind agent arms) */}
-                  <DeskSurfacesBase
-                    deskCount={deskCount}
-                    occupiedDesks={occupiedDesks}
-                    deskTexture={textures.desk}
-                    keyboardTexture={textures.keyboard}
-                  />
+                  <DeskSurfacesBase deskCount={deskCount} />
 
                   {/* Seated workers' hands on the keyboards */}
                   <pixiContainer ref={setHandsSlot} />
@@ -881,7 +862,6 @@ export function OfficeGame(): ReactNode {
                     occupiedDesks={occupiedDesks}
                     deskTasks={deskTasks}
                     terminalDesks={terminalDesks}
-                    monitorTexture={textures.monitor}
                     coffeeMugTexture={textures.coffeeMug}
                     staplerTexture={textures.stapler}
                     deskLampTexture={textures.deskLamp}
@@ -900,10 +880,6 @@ export function OfficeGame(): ReactNode {
                     bubble={boss.bubble.content}
                     inUseBy={boss.inUseBy}
                     currentTask={boss.currentTask}
-                    chairTexture={textures.chair}
-                    deskTexture={textures.desk}
-                    keyboardTexture={textures.keyboard}
-                    monitorTexture={textures.monitor}
                     phoneTexture={textures.phone}
                     headsetTexture={textures.headset}
                     sunglassesTexture={textures.sunglasses}

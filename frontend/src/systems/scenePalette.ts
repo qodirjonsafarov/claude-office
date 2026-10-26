@@ -154,6 +154,11 @@ export interface ScenePalette {
   frameLight: number;
   boardHeader: number;
   boardAccent: number;
+  /** The accent where it is ink on paper (clock hand, active board dot). */
+  accentInk: number;
+  /** The award gold (employee of the month) and its dark edge. */
+  award: number;
+  awardDark: number;
   materials: SceneMaterials;
 }
 
@@ -323,6 +328,9 @@ const PALETTES: Record<Theme, ScenePalette> = {
     frameLight: 0x45534c,
     boardHeader: 0x16211d,
     boardAccent: 0xa7f36a,
+    accentInk: 0x4f8a1f,
+    award: 0xf0b866,
+    awardDark: 0xb98a4c,
     materials: DARK_MATERIALS,
   },
   light: {
@@ -367,6 +375,9 @@ const PALETTES: Record<Theme, ScenePalette> = {
     frameLight: 0xc5cdbc,
     boardHeader: 0x1d2b26,
     boardAccent: 0x8fe04e,
+    accentInk: 0x4f8a1f,
+    award: 0xe8ac55,
+    awardDark: 0x9a6a32,
     materials: LIGHT_MATERIALS,
   },
 };

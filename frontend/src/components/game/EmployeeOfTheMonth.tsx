@@ -2,15 +2,23 @@
 
 import { Graphics, Assets, Texture } from "pixi.js";
 import { useCallback, useState, useEffect, type ReactNode } from "react";
+import { scenePalette } from "@/systems/scenePalette";
+import { useTheme } from "@/systems/themeStore";
+import { box, dropShadow, wash } from "./shared/pixelDraw";
+
+/** The ink on the gold name plate. */
+const GOLD_INK = "#2a1d0c";
+const SCENE_FONT = '"DejaVu Sans", Verdana, Arial, sans-serif';
 
 /**
  * EmployeeOfTheMonth - Wall poster showing the employee of the month
  *
- * Displays a framed poster with "Employee of the Month" header
- * and a pixel art portrait.
+ * A framed poster in the Olymp look: an oak frame, a dark green header with
+ * the lime title, the user's photo in a gold mat and a gold name plate.
  */
 export function EmployeeOfTheMonth(): ReactNode {
   const [photoTexture, setPhotoTexture] = useState<Texture | null>(null);
+  const palette = scenePalette(useTheme());
 
   useEffect(() => {
     const assetPath = "/sprites/employee-of-month.png";
@@ -23,87 +31,64 @@ export function EmployeeOfTheMonth(): ReactNode {
       });
   }, []);
 
-  const drawFrame = useCallback((g: Graphics) => {
-    g.clear();
-
-    // Shadow
-    g.roundRect(5, 5, 130, 172, 4);
-    g.fill({ color: 0x000000, alpha: 0.3 });
-
-    // Main poster background - cream/off-white
-    g.roundRect(0, 0, 130, 172, 4);
-    g.fill(0xf5f0e6);
-    g.stroke({ width: 3, color: 0x8b7355 });
-
-    // Dark header bar for contrast
-    g.rect(5, 5, 120, 26);
-    g.fill(0x2a2a4a);
-    g.stroke({ width: 1, color: 0x1a1a2a });
-
-    // Photo frame area - large, almost the full poster width
-    g.rect(7, 35, 116, 116);
-    g.fill(0x1a1a1a);
-    g.stroke({ width: 3, color: 0xdaa520 });
-
-    // Name plate background
-    g.rect(7, 154, 116, 13);
-    g.fill(0xdaa520);
-
-    // Decorative gold corners on frame
-    const cornerSize = 10;
-    const left = 7;
-    const top = 35;
-    const right = 123;
-    const bottom = 151;
-    g.moveTo(left, top + cornerSize);
-    g.lineTo(left, top);
-    g.lineTo(left + cornerSize, top);
-    g.stroke({ width: 2, color: 0xffd700 });
-    g.moveTo(right - cornerSize, top);
-    g.lineTo(right, top);
-    g.lineTo(right, top + cornerSize);
-    g.stroke({ width: 2, color: 0xffd700 });
-    g.moveTo(left, bottom - cornerSize);
-    g.lineTo(left, bottom);
-    g.lineTo(left + cornerSize, bottom);
-    g.stroke({ width: 2, color: 0xffd700 });
-    g.moveTo(right - cornerSize, bottom);
-    g.lineTo(right, bottom);
-    g.lineTo(right, bottom - cornerSize);
-    g.stroke({ width: 2, color: 0xffd700 });
-  }, []);
+  const drawFrame = useCallback(
+    (g: Graphics) => {
+      g.clear();
+      const m = palette.materials;
+      // Shadow on the wall, down-right
+      dropShadow(g, 0, 0, 130, 172, palette.shadow);
+      // Oak frame with a lit top-left edge
+      box(g, 0, 0, 130, 172, m.woodLight, m.outline);
+      wash(g, 1, 1, 128, 1, palette.bevelLight);
+      wash(g, 1, 1, 1, 170, palette.bevelLight);
+      wash(g, 2, 169, 127, 2, palette.bevelShade);
+      // Paper
+      box(g, 4, 4, 122, 164, m.paper);
+      // Dark header bar
+      box(g, 6, 6, 118, 26, palette.boardHeader);
+      box(g, 6, 31, 118, 1, palette.boardAccent);
+      // Photo in a gold mat
+      box(g, 7, 35, 116, 116, palette.award, m.outline);
+      box(g, 9, 37, 112, 112, 0x1a1a1a);
+      // Name plate
+      box(g, 7, 154, 116, 13, palette.award, palette.awardDark);
+      wash(g, 8, 155, 114, 1, { color: 0xffffff, alpha: 0.35 });
+      // A small star on each side of the title
+      for (const sx of [14, 114]) {
+        box(g, sx - 1, 14, 3, 7, palette.boardAccent);
+        box(g, sx - 3, 16, 7, 3, palette.boardAccent);
+      }
+    },
+    [palette],
+  );
 
   return (
     <pixiContainer>
       <pixiGraphics draw={drawFrame} />
       {/* Header text - rendered at 2x and scaled for sharpness */}
-      <pixiContainer x={65} y={12} scale={0.5}>
+      <pixiContainer x={65} y={13} scale={0.5}>
         <pixiText
           text="EMPLOYEE"
           anchor={0.5}
           style={{
-            fontFamily: '"Arial Black", Arial, sans-serif',
-            fontSize: 24,
+            fontFamily: SCENE_FONT,
+            fontSize: 22,
             fontWeight: "bold",
-            fill: "#ffd700",
-            dropShadow: {
-              color: "#000000",
-              blur: 0,
-              distance: 2,
-              angle: Math.PI / 4,
-            },
+            letterSpacing: 2,
+            fill: palette.boardAccent,
           }}
         />
       </pixiContainer>
-      <pixiContainer x={65} y={24} scale={0.5}>
+      <pixiContainer x={65} y={25} scale={0.5}>
         <pixiText
           text="OF THE MONTH"
           anchor={0.5}
           style={{
-            fontFamily: '"Arial Black", Arial, sans-serif',
-            fontSize: 16,
+            fontFamily: SCENE_FONT,
+            fontSize: 14,
             fontWeight: "bold",
-            fill: "#ffffff",
+            letterSpacing: 1,
+            fill: "#f2f6f2",
           }}
         />
       </pixiContainer>
@@ -114,7 +99,7 @@ export function EmployeeOfTheMonth(): ReactNode {
           x={65}
           y={93}
           anchor={0.5}
-          scale={0.111}
+          scale={0.109}
         />
       )}
       {/* Name plate text */}
@@ -123,10 +108,11 @@ export function EmployeeOfTheMonth(): ReactNode {
           text="QODIRJON"
           anchor={0.5}
           style={{
-            fontFamily: '"Arial Black", Arial, sans-serif',
-            fontSize: 20,
+            fontFamily: SCENE_FONT,
+            fontSize: 18,
             fontWeight: "bold",
-            fill: "#1a1a1a",
+            letterSpacing: 2,
+            fill: GOLD_INK,
           }}
         />
       </pixiContainer>

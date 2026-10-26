@@ -37,6 +37,8 @@ import { CoffeeMode } from "./whiteboard/CoffeeMode";
 import { HeatMapMode } from "./whiteboard/HeatMapMode";
 import { KanbanMode } from "./whiteboard/KanbanMode";
 import { MODE_INFO } from "./whiteboard/WhiteboardModeRegistry";
+import { scenePalette } from "@/systems/scenePalette";
+import { useTheme } from "@/systems/themeStore";
 
 // ============================================================================
 // WHITEBOARD FRAME
@@ -48,47 +50,68 @@ interface WhiteboardFrameProps {
   mode: WhiteboardMode;
 }
 
-/** Marker colors drawn in the whiteboard tray (red, green, blue). */
-const MARKER_COLORS = [0xef4444, 0x22c55e, 0x3b82f6];
+/** Marker colors drawn in the whiteboard tray (Olymp danger, accent, info). */
+const MARKER_COLORS = [0xff7a70, 0x4f8a1f, 0x74c7f5];
+/** The board's white surface (slightly warm, not pure white). */
+const BOARD = 0xfbfcf8;
 
 function WhiteboardFrame({
   children,
   onPointerDown,
   mode,
 }: WhiteboardFrameProps): ReactNode {
-  const drawWhiteboard = useCallback((g: Graphics) => {
-    g.clear();
+  const palette = scenePalette(useTheme());
+  const drawWhiteboard = useCallback(
+    (g: Graphics) => {
+      g.clear();
+      const m = palette.materials;
 
-    // Board shadow
-    g.roundRect(4, 4, 330, 205, 8);
-    g.fill({ color: 0x000000, alpha: 0.2 });
+      // Board shadow on the wall, down-right
+      g.roundRect(3, 4, 330, 205, 6);
+      g.fill(palette.shadow);
 
-    // Board background
-    g.roundRect(0, 0, 330, 205, 8);
-    g.fill(0xffffff);
-    g.stroke({ width: 4, color: 0x5d4037 });
+      // Aluminium frame with the shared outline and a lit top-left edge
+      g.roundRect(0, 0, 330, 205, 6);
+      g.fill(m.outline);
+      g.roundRect(1, 1, 328, 203, 5);
+      g.fill(m.metal);
+      g.rect(4, 1, 322, 1);
+      g.rect(1, 4, 1, 197);
+      g.fill({ color: 0xffffff, alpha: 0.35 });
 
-    // Inner border (silver frame effect)
-    g.roundRect(6, 6, 318, 193, 4);
-    g.stroke({ width: 2, color: 0x9e9e9e });
+      // Board surface, set back a pixel
+      g.rect(5, 5, 320, 195);
+      g.fill(BOARD);
+      g.rect(5, 5, 320, 1);
+      g.fill({ color: 0x000000, alpha: 0.12 });
+      // A faint wiped streak
+      g.poly([220, 150, 300, 60, 312, 60, 232, 150]);
+      g.fill({ color: 0x000000, alpha: 0.025 });
 
-    // Header bar
-    g.rect(10, 10, 310, 24);
-    g.fill(0x2d3748);
-    g.roundRect(10, 10, 310, 24, 3);
-    g.fill(0x2d3748);
+      // Header bar: Olymp dark green with a lime underline
+      g.roundRect(10, 10, 310, 24, 3);
+      g.fill(palette.boardHeader);
+      g.rect(10, 33, 310, 1);
+      g.fill(palette.boardAccent);
 
-    // Marker tray
-    g.rect(115, 203, 100, 8);
-    g.fill(0x9e9e9e);
-    g.stroke({ width: 1, color: 0x757575 });
+      // Marker tray
+      g.rect(112, 202, 106, 7);
+      g.fill(m.outline);
+      g.rect(113, 203, 104, 5);
+      g.fill(m.metal);
 
-    // Markers
-    MARKER_COLORS.forEach((color, i) => {
-      g.roundRect(125 + i * 25, 197, 18, 12, 2);
-      g.fill(color);
-    });
-  }, []);
+      // Markers lying in the tray
+      MARKER_COLORS.forEach((color, i) => {
+        g.roundRect(124 + i * 26, 198, 20, 6, 2);
+        g.fill(m.outline);
+        g.roundRect(125 + i * 26, 199, 14, 4, 1);
+        g.fill(color);
+        g.rect(139 + i * 26, 199, 4, 4);
+        g.fill(m.paper);
+      });
+    },
+    [palette],
+  );
 
   const modeInfo = MODE_INFO[mode];
 
@@ -102,10 +125,11 @@ function WhiteboardFrame({
           text={`${modeInfo.icon} ${modeInfo.name}`}
           anchor={0.5}
           style={{
-            fontFamily: '"Courier New", monospace',
-            fontSize: 24,
+            fontFamily: '"DejaVu Sans", Verdana, Arial, sans-serif',
+            fontSize: 22,
             fontWeight: "bold",
-            fill: "#ffffff",
+            letterSpacing: 1,
+            fill: "#f2f6f2",
           }}
         />
       </pixiContainer>
@@ -118,8 +142,8 @@ function WhiteboardFrame({
             x={(i - 5.5) * 10}
             draw={(g: Graphics) => {
               g.clear();
-              g.circle(0, 0, i === mode ? 4 : 2);
-              g.fill(i === mode ? 0x3b82f6 : 0x9ca3af);
+              g.circle(0, 0, i === mode ? 3.5 : 2);
+              g.fill(i === mode ? palette.accentInk : 0xc5cdbc);
             }}
           />
         ))}

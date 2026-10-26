@@ -6,36 +6,66 @@ import {
   useGameStore,
   selectToolUsesSinceCompaction,
 } from "@/stores/gameStore";
+import { scenePalette } from "@/systems/scenePalette";
+import { useTheme } from "@/systems/themeStore";
+import { SCENE_AMBER } from "./shared/sceneColors";
+
+const SCENE_FONT = '"DejaVu Sans", Verdana, Arial, sans-serif';
 
 /**
  * SafetySign - Office safety sign showing tool uses since compaction
  *
- * Displays a green safety sign with a counter showing the number of
- * tool uses since the last context compaction.
+ * A dark enamel sign with an amber hazard header and a counter showing the
+ * number of tool uses since the last context compaction.
  */
 export function SafetySign(): ReactNode {
   const toolUsesSinceCompaction = useGameStore(selectToolUsesSinceCompaction);
 
-  const drawSign = useCallback((g: Graphics) => {
-    g.clear();
-
-    // Shadow
-    g.roundRect(4, 4, 140, 100, 6);
-    g.fill({ color: 0x000000, alpha: 0.3 });
-
-    // Main sign background - safety green
-    g.roundRect(0, 0, 140, 100, 6);
-    g.fill(0x1a5f1a);
-    g.stroke({ width: 3, color: 0x0d3d0d });
-
-    // White inner border
-    g.roundRect(6, 6, 128, 88, 4);
-    g.stroke({ width: 2, color: 0xffffff });
-
-    // Red accent bar at top
-    g.rect(10, 10, 120, 20);
-    g.fill(0xcc2222);
-  }, []);
+  const palette = scenePalette(useTheme());
+  const drawSign = useCallback(
+    (g: Graphics) => {
+      g.clear();
+      const m = palette.materials;
+      // Shadow on the wall, a dark enamel sign with a graphite rim
+      g.roundRect(3, 4, 140, 100, 6);
+      g.fill(palette.shadow);
+      g.roundRect(0, 0, 140, 100, 6);
+      g.fill(m.outline);
+      g.roundRect(1, 1, 138, 98, 5);
+      g.fill(palette.frame);
+      g.roundRect(4, 4, 132, 92, 4);
+      g.fill(palette.boardHeader);
+      g.rect(8, 5, 124, 1);
+      g.fill(palette.frameLight);
+      // Amber header band with hazard stripes at both ends
+      g.rect(10, 10, 120, 20);
+      g.fill(SCENE_AMBER);
+      for (const x0 of [12, 112]) {
+        for (let k = 0; k < 3; k++) {
+          g.poly([
+            x0 + k * 6,
+            30,
+            x0 + k * 6 + 3,
+            30,
+            x0 + k * 6 + 7,
+            10,
+            x0 + k * 6 + 4,
+            10,
+          ]);
+          g.fill({ color: m.outline, alpha: 0.75 });
+        }
+      }
+      // Screws in the corners
+      for (const [sx, sy] of [
+        [8, 92],
+        [132, 92],
+      ]) {
+        g.rect(sx - 1, sy - 1, 3, 3);
+        g.fill(palette.frameLight);
+      }
+    },
+    [palette],
+  );
 
   return (
     <pixiContainer>
@@ -44,13 +74,14 @@ export function SafetySign(): ReactNode {
       {/* Header text */}
       <pixiContainer x={70} y={20} scale={0.5}>
         <pixiText
-          text="⚠️ SAFETY"
+          text="SAFETY"
           anchor={0.5}
           style={{
-            fontFamily: '"Arial Black", Arial, sans-serif',
-            fontSize: 22,
+            fontFamily: SCENE_FONT,
+            fontSize: 20,
             fontWeight: "bold",
-            fill: "#ffffff",
+            letterSpacing: 3,
+            fill: "#2a1d0c",
           }}
         />
       </pixiContainer>
@@ -60,10 +91,10 @@ export function SafetySign(): ReactNode {
           text={String(toolUsesSinceCompaction)}
           anchor={0.5}
           style={{
-            fontFamily: '"Arial Black", Arial, sans-serif',
-            fontSize: 56,
+            fontFamily: SCENE_FONT,
+            fontSize: 52,
             fontWeight: "bold",
-            fill: "#ffffff",
+            fill: "#f2f6f2",
           }}
         />
       </pixiContainer>
@@ -73,10 +104,11 @@ export function SafetySign(): ReactNode {
           text="TOOL USES"
           anchor={0.5}
           style={{
-            fontFamily: '"Courier New", monospace',
-            fontSize: 18,
+            fontFamily: SCENE_FONT,
+            fontSize: 15,
             fontWeight: "bold",
-            fill: "#ffcc00",
+            letterSpacing: 1,
+            fill: "#a9b8b0",
           }}
         />
       </pixiContainer>
@@ -85,10 +117,11 @@ export function SafetySign(): ReactNode {
           text="SINCE COMPACTION"
           anchor={0.5}
           style={{
-            fontFamily: '"Courier New", monospace',
-            fontSize: 18,
+            fontFamily: SCENE_FONT,
+            fontSize: 15,
             fontWeight: "bold",
-            fill: "#ffcc00",
+            letterSpacing: 1,
+            fill: "#a9b8b0",
           }}
         />
       </pixiContainer>
